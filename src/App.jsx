@@ -19,6 +19,8 @@ import {
   Camera,
   LogOut,
   Printer,
+  Trash2,
+  Bookmark,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
@@ -36,12 +38,37 @@ import {
   setDoc,
   updateDoc,
   addDoc,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 // Student photo uploads are disabled for now — Firebase Storage requires the
 // Blaze (pay-as-you-go) billing plan. Enable it later in the Firebase Console
 // (Build → Storage), then ask Claude to re-enable the photo upload feature.
 
 const DEFAULT_CLASSES = ["CLASS-1", "CLASS-2", "CLASS-3", "CLASS-4", "CLASS-5", "CLASS-6"];
+
+const DEFAULT_CATEGORIES = [
+  "Shihab Thangal Family",
+  "Women in Islamic History",
+  "Mathematics",
+  "Spirituality & Philosophy",
+  "Human Rights & Society",
+  "General Literature",
+];
+const UNCATEGORIZED = "Uncategorized";
+
+// One-time migration helper: books added before categories existed (SH/HW/SM/SPY/SHR/B-prefixed
+// codes from the original catalog PDF) get auto-sorted into a matching default category.
+function inferCategoryFromCode(code) {
+  if (/^SH\d/i.test(code)) return "Shihab Thangal Family";
+  if (/^HW\d/i.test(code)) return "Women in Islamic History";
+  if (/^SM\d/i.test(code)) return "Mathematics";
+  if (/^SPY\d/i.test(code)) return "Spirituality & Philosophy";
+  if (/^SHR\d/i.test(code)) return "Human Rights & Society";
+  if (/^B\d/i.test(code)) return "General Literature";
+  return "";
+}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -375,9 +402,12 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [classes, setClasses] = useState(DEFAULT_CLASSES);
   const [newClassName, setNewClassName] = useState("");
-  const [idCardTab, setIdCardTab] = useState("students");
-  const [idCardClass, setIdCardClass] = useState("ALL");
-  const [idCardBookQuery, setIdCardBookQuery] = useState("");
+  const [editingClassOld, setEditingClassOld] = useState(null);
+  const [editClassName, setEditClassName] = useState("");
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryOld, setEditingCategoryOld] = useState(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
 
   const [selectedClass, setSelectedClass] = useState("ALL");
   const [homeQuery, setHomeQuery] = useState("");
@@ -399,8 +429,10 @@ export default function App() {
   const [justReturnedId, setJustReturnedId] = useState(null);
 
   // catalog
-  const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1" });
+  const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
+  const [editingBookId, setEditingBookId] = useState(null);
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "" });
 
   // add student
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "" });
@@ -489,6 +521,20 @@ export default function App() {
     );
 
     unsubs.push(
+      onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
+        const list = snap.exists() ? snap.data().list : null;
+        if (Array.isArray(list) && list.length > 0) {
+          setCategories(list);
+        } else {
+          setCategories(DEFAULT_CATEGORIES);
+          try {
+            await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES });
+          } catch (e) {}
+        }
+      })
+    );
+
+    unsubs.push(
       onSnapshot(collection(db, "books"), async (qsnap) => {
         if (qsnap.empty) {
           const allSeed = [...SEED_BOOKS, ...NMMI_SEED_BOOKS];
@@ -500,11 +546,25 @@ export default function App() {
                 code: b.code,
                 totalCopies: 1,
                 availableCopies: 1,
+                category: inferCategoryFromCode(b.code) || "",
               });
             } catch (e) {}
           }
         } else {
           setBooks(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+          // One-time migration: give books added before categories existed a sensible
+          // default category, inferred from their code prefix. Harmless no-op once done.
+          for (const d of qsnap.docs) {
+            const data = d.data();
+            if (!data.category) {
+              const inferred = inferCategoryFromCode(d.id);
+              if (inferred) {
+                try {
+                  await updateDoc(doc(db, "books", d.id), { category: inferred });
+                } catch (e) {}
+              }
+            }
+          }
         }
       })
     );
@@ -566,6 +626,120 @@ export default function App() {
     setNewClassName("");
   }
 
+  function startEditClass(name) {
+    setEditingClassOld(name);
+    setEditClassName(name);
+  }
+  function cancelEditClass() {
+    setEditingClassOld(null);
+  }
+
+  async function saveEditClass(e) {
+    e.preventDefault();
+    const oldName = editingClassOld;
+    const newName = editClassName.trim();
+    if (!newName || newName === oldName) {
+      setEditingClassOld(null);
+      return;
+    }
+    if (classes.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) {
+      return; // duplicate name
+    }
+    const updatedList = classes.map((c) => (c === oldName ? newName : c));
+    try {
+      await setDoc(doc(db, "settings", "classes"), { list: updatedList });
+      const q = query(collection(db, "students"), where("className", "==", oldName));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        try {
+          await updateDoc(doc(db, "students", d.id), { className: newName });
+        } catch (e2) {}
+      }
+    } catch (e) {}
+    setEditingClassOld(null);
+  }
+
+  async function deleteClass(name) {
+    const count = students.filter((s) => s.className === name).length;
+    const msg =
+      count > 0
+        ? `${count} student(s) are in "${name}". Remove the class anyway? (their records keep "${name}" as a class, but it'll stop showing as a filter chip)`
+        : `Remove class "${name}"?`;
+    if (!window.confirm(msg)) return;
+    const updatedList = classes.filter((c) => c !== name);
+    try {
+      await setDoc(doc(db, "settings", "classes"), { list: updatedList });
+    } catch (e) {}
+  }
+
+  async function addCategory(e) {
+    e.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) {
+      setNewCategoryName("");
+      return;
+    }
+    const updated = [...categories, name];
+    try {
+      await setDoc(doc(db, "settings", "bookCategories"), { list: updated });
+    } catch (e) {}
+    setNewCategoryName("");
+  }
+
+  function startEditCategory(name) {
+    setEditingCategoryOld(name);
+    setEditCategoryName(name);
+  }
+  function cancelEditCategory() {
+    setEditingCategoryOld(null);
+  }
+
+  async function saveEditCategory(e) {
+    e.preventDefault();
+    const oldName = editingCategoryOld;
+    const newName = editCategoryName.trim();
+    if (!newName || newName === oldName) {
+      setEditingCategoryOld(null);
+      return;
+    }
+    if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) {
+      return;
+    }
+    const updatedList = categories.map((c) => (c === oldName ? newName : c));
+    try {
+      await setDoc(doc(db, "settings", "bookCategories"), { list: updatedList });
+      const q = query(collection(db, "books"), where("category", "==", oldName));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        try {
+          await updateDoc(doc(db, "books", d.id), { category: newName });
+        } catch (e2) {}
+      }
+    } catch (e) {}
+    setEditingCategoryOld(null);
+  }
+
+  async function deleteCategory(name) {
+    const count = books.filter((b) => b.category === name).length;
+    const msg =
+      count > 0
+        ? `${count} book(s) are in "${name}". Remove the category anyway? (those books move to Uncategorized)`
+        : `Remove category "${name}"?`;
+    if (!window.confirm(msg)) return;
+    const updatedList = categories.filter((c) => c !== name);
+    try {
+      await setDoc(doc(db, "settings", "bookCategories"), { list: updatedList });
+      const q = query(collection(db, "books"), where("category", "==", name));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) {
+        try {
+          await updateDoc(doc(db, "books", d.id), { category: "" });
+        } catch (e2) {}
+      }
+    } catch (e) {}
+  }
+
   async function addBook(e) {
     e.preventDefault();
     if (!bookForm.title.trim() || !bookForm.code.trim()) return;
@@ -578,9 +752,43 @@ export default function App() {
         code,
         totalCopies: copies,
         availableCopies: copies,
+        category: bookForm.category || "",
       });
     } catch (e) {}
-    setBookForm({ title: "", author: "", code: "", copies: "1" });
+    setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category });
+  }
+
+  function startEditBook(b) {
+    setEditingBookId(b.id);
+    setEditBookForm({
+      title: b.title,
+      author: b.author || "",
+      copies: String(b.totalCopies),
+      category: b.category || "",
+    });
+  }
+  function cancelEditBook() {
+    setEditingBookId(null);
+  }
+
+  async function saveEditBook(e) {
+    e.preventDefault();
+    if (!editBookForm.title.trim()) return;
+    const book = books.find((b) => b.id === editingBookId);
+    if (!book) return;
+    const newTotal = Math.max(1, parseInt(editBookForm.copies) || 1);
+    const issuedCount = book.totalCopies - book.availableCopies;
+    const newAvailable = Math.max(0, newTotal - issuedCount);
+    try {
+      await updateDoc(doc(db, "books", editingBookId), {
+        title: editBookForm.title.trim(),
+        author: editBookForm.author.trim(),
+        totalCopies: newTotal,
+        availableCopies: newAvailable,
+        category: editBookForm.category || "",
+      });
+    } catch (e) {}
+    setEditingBookId(null);
   }
 
   async function addStudent(e) {
@@ -659,6 +867,7 @@ export default function App() {
       if (!code || !title) continue;
       const author = parts[2] || "";
       const copies = Math.max(1, parseInt(parts[3]) || 1);
+      const category = parts[4] || "";
       try {
         await setDoc(doc(db, "books", code), {
           title,
@@ -666,6 +875,7 @@ export default function App() {
           code,
           totalCopies: copies,
           availableCopies: copies,
+          category,
         });
       } catch (e) {}
     }
@@ -772,6 +982,26 @@ export default function App() {
       (b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.code.toLowerCase().includes(q)
     );
   }, [catalogQuery, books]);
+
+  const catalogGrouped = useMemo(() => {
+    const groups = {};
+    catalogMatches.forEach((b) => {
+      const cat = b.category && b.category.trim() ? b.category : UNCATEGORIZED;
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(b);
+    });
+    const ordered = [];
+    categories.forEach((c) => {
+      if (groups[c]) {
+        ordered.push([c, groups[c]]);
+        delete groups[c];
+      }
+    });
+    Object.keys(groups)
+      .sort()
+      .forEach((c) => ordered.push([c, groups[c]]));
+    return ordered;
+  }, [catalogMatches, categories]);
 
   const overdueList = useMemo(() => {
     return overdueTx
@@ -1586,6 +1816,9 @@ export default function App() {
             <button className="menu-row" onClick={() => setSheet("catalog")}>
               <Library size={18} /> Book Catalog
             </button>
+            <button className="menu-row" onClick={() => setSheet("bookCategories")}>
+              <Bookmark size={18} /> Book Categories
+            </button>
             <button className="menu-row" onClick={() => setSheet("classes")}>
               <Layers size={18} /> Manage Classes
             </button>
@@ -2057,6 +2290,73 @@ export default function App() {
         </Modal>
       )}
 
+      {sheet === "bookCategories" && (
+        <Modal title="Book Categories" onClose={() => setSheet(null)}>
+          <form onSubmit={addCategory} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
+            <div style={{ flex: 1 }}>
+              <label>New category name</label>
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="e.g. Fiqh"
+              />
+            </div>
+            <button type="submit" className="btn">
+              <Plus size={16} /> Add
+            </button>
+          </form>
+          <div className="row-list">
+            {categories.map((c) => {
+              const count = books.filter((b) => b.category === c).length;
+              return editingCategoryOld === c ? (
+                <form
+                  key={c}
+                  onSubmit={saveEditCategory}
+                  className="row-card"
+                  style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}
+                >
+                  <input
+                    type="text"
+                    value={editCategoryName}
+                    onChange={(e) => setEditCategoryName(e.target.value)}
+                    required
+                  />
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
+                      <Check size={14} /> Save
+                    </button>
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      style={{ flex: 1, justifyContent: "center" }}
+                      onClick={cancelEditCategory}
+                    >
+                      <X size={14} /> Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div key={c} className="row-card">
+                  <div>
+                    <div className="title">{c}</div>
+                    <div className="meta">{count} book{count === 1 ? "" : "s"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <button className="btn secondary" onClick={() => startEditCategory(c)} aria-label="Rename category">
+                      <Pencil size={13} />
+                    </button>
+                    <button className="btn secondary" onClick={() => deleteCategory(c)} aria-label="Remove category">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
+
       {sheet === "catalog" && (
         <Modal title="Book Catalog" onClose={() => setSheet(null)}>
           <div className="field">
@@ -2067,25 +2367,98 @@ export default function App() {
               placeholder="Search books..."
             />
           </div>
-          <div style={{ maxHeight: 220, overflowY: "auto", marginBottom: "1rem" }}>
-            {catalogMatches.length === 0 ? (
+          <div style={{ maxHeight: 340, overflowY: "auto", marginBottom: "1rem" }}>
+            {catalogGrouped.length === 0 ? (
               <div className="empty">No books found.</div>
             ) : (
-              <table>
-                <thead>
-                  <tr><th>Title</th><th>Author</th><th>Code</th><th>Available</th></tr>
-                </thead>
-                <tbody>
-                  {catalogMatches.map((b) => (
-                    <tr key={b.id}>
-                      <td>{b.title}</td>
-                      <td>{b.author}</td>
-                      <td className="mono">{b.code}</td>
-                      <td className="mono">{b.availableCopies}/{b.totalCopies}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              catalogGrouped.map(([cat, list]) => (
+                <div key={cat} style={{ marginBottom: "0.9rem" }}>
+                  <h3
+                    style={{
+                      fontFamily: "Playfair Display, serif",
+                      fontSize: "0.88rem",
+                      color: "var(--navy)",
+                      margin: "0 0 0.4rem",
+                      borderBottom: "1px solid #EEE",
+                      paddingBottom: "0.25rem",
+                    }}
+                  >
+                    {cat}{" "}
+                    <span style={{ color: "var(--text-soft)", fontWeight: 400, fontSize: "0.75rem" }}>
+                      ({list.length})
+                    </span>
+                  </h3>
+                  <div className="row-list">
+                    {list.map((b) =>
+                      editingBookId === b.id ? (
+                        <form
+                          key={b.id}
+                          onSubmit={saveEditBook}
+                          className="row-card"
+                          style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}
+                        >
+                          <input
+                            type="text"
+                            value={editBookForm.title}
+                            onChange={(e) => setEditBookForm({ ...editBookForm, title: e.target.value })}
+                            placeholder="Title"
+                            required
+                          />
+                          <input
+                            type="text"
+                            value={editBookForm.author}
+                            onChange={(e) => setEditBookForm({ ...editBookForm, author: e.target.value })}
+                            placeholder="Author"
+                          />
+                          <div className="form-grid" style={{ marginBottom: 0 }}>
+                            <select
+                              value={editBookForm.category}
+                              onChange={(e) => setEditBookForm({ ...editBookForm, category: e.target.value })}
+                            >
+                              <option value="">Uncategorized</option>
+                              {categories.map((c) => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editBookForm.copies}
+                              onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })}
+                            />
+                          </div>
+                          <div className="meta" style={{ fontSize: "0.72rem" }}>Code: {b.code} (fixed)</div>
+                          <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
+                              <Check size={14} /> Save
+                            </button>
+                            <button
+                              type="button"
+                              className="btn secondary"
+                              style={{ flex: 1, justifyContent: "center" }}
+                              onClick={cancelEditBook}
+                            >
+                              <X size={14} /> Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <div key={b.id} className="row-card">
+                          <div>
+                            <div className="title">{b.title}</div>
+                            <div className="meta">
+                              {b.author} · {b.code} · {b.availableCopies}/{b.totalCopies}
+                            </div>
+                          </div>
+                          <button className="btn secondary" onClick={() => startEditBook(b)} aria-label="Edit book">
+                            <Pencil size={13} />
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </div>
           <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", color: "var(--navy)" }}>Add New Book</h2>
@@ -2106,6 +2479,18 @@ export default function App() {
                 value={bookForm.author}
                 onChange={(e) => setBookForm({ ...bookForm, author: e.target.value })}
               />
+            </div>
+            <div className="field">
+              <label>Category</label>
+              <select
+                value={bookForm.category}
+                onChange={(e) => setBookForm({ ...bookForm, category: e.target.value })}
+              >
+                <option value="">Uncategorized</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
             <div className="form-grid">
               <div>
@@ -2135,9 +2520,11 @@ export default function App() {
               Add many at once
             </h2>
             <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
-              One book per line: "Code, Title, Author, Copies" — Author and Copies are optional
-              (copies defaults to 1). Paste straight from a spreadsheet column. A book with the
-              same code already in the catalog gets overwritten with these details.
+              One book per line: "Code, Title, Author, Copies, Category" — Author, Copies and
+              Category are all optional (copies defaults to 1, category defaults to
+              Uncategorized — it must match an existing category name exactly, see Book
+              Categories in the menu). A book with the same code already in the catalog gets
+              overwritten with these details.
             </p>
             <form onSubmit={addBooksBulk}>
               <div className="field">
@@ -2187,10 +2574,47 @@ export default function App() {
           <div className="row-list">
             {classes.map((c) => {
               const count = students.filter((s) => s.className === c).length;
-              return (
+              return editingClassOld === c ? (
+                <form
+                  key={c}
+                  onSubmit={saveEditClass}
+                  className="row-card"
+                  style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}
+                >
+                  <input
+                    type="text"
+                    value={editClassName}
+                    onChange={(e) => setEditClassName(e.target.value)}
+                    required
+                  />
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
+                      <Check size={14} /> Save
+                    </button>
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      style={{ flex: 1, justifyContent: "center" }}
+                      onClick={cancelEditClass}
+                    >
+                      <X size={14} /> Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
                 <div key={c} className="row-card">
-                  <div className="title">{c}</div>
-                  <div className="meta">{count} student{count === 1 ? "" : "s"}</div>
+                  <div>
+                    <div className="title">{c}</div>
+                    <div className="meta">{count} student{count === 1 ? "" : "s"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <button className="btn secondary" onClick={() => startEditClass(c)} aria-label="Rename class">
+                      <Pencil size={13} />
+                    </button>
+                    <button className="btn secondary" onClick={() => deleteClass(c)} aria-label="Remove class">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
