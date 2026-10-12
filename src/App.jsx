@@ -18,8 +18,10 @@ import {
   Lock,
   Camera,
   LogOut,
+  Printer,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
+import JsBarcode from "jsbarcode";
 import { auth, db } from "./firebaseClient";
 import {
   onAuthStateChanged,
@@ -256,6 +258,25 @@ function Modal({ title, onClose, children }) {
   );
 }
 
+function BarcodeSVG({ value }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current && value) {
+      try {
+        JsBarcode(ref.current, String(value), {
+          format: "CODE128",
+          displayValue: true,
+          fontSize: 13,
+          height: 42,
+          margin: 6,
+        });
+      } catch (e) {}
+    }
+  }, [value]);
+  if (!value) return null;
+  return <svg ref={ref} className="id-barcode" />;
+}
+
 function Avatar({ name, photoUrl, size = 42, children }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase() || "?";
   return (
@@ -354,12 +375,17 @@ export default function App() {
   const [transactions, setTransactions] = useState([]);
   const [classes, setClasses] = useState(DEFAULT_CLASSES);
   const [newClassName, setNewClassName] = useState("");
+  const [idCardTab, setIdCardTab] = useState("students");
+  const [idCardClass, setIdCardClass] = useState("ALL");
+  const [idCardBookQuery, setIdCardBookQuery] = useState("");
 
   const [selectedClass, setSelectedClass] = useState("ALL");
   const [homeQuery, setHomeQuery] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState(null);
-  const [sheet, setSheet] = useState(null); // menu | issue | return | addStudent | catalog | dashboard | overdue | studentDetail
+  const [sheet, setSheet] = useState(null); // menu | issue | return | addStudent | catalog | dashboard | overdue | studentDetail | printCards
   const [detailStudentId, setDetailStudentId] = useState(null);
+  const [printMode, setPrintMode] = useState("students"); // students | books
+  const [printClass, setPrintClass] = useState("ALL");
 
   // issue sheet
   const [bookQuery, setBookQuery] = useState("");
@@ -774,7 +800,13 @@ export default function App() {
   function handleScanResult(text) {
     const val = (text || "").trim();
     if (scannerTarget === "home") {
-      setHomeQuery(val);
+      const match = students.find((s) => s.roll.toLowerCase() === val.toLowerCase());
+      if (match) {
+        setHomeQuery("");
+        openStudentDetail(match.id);
+      } else {
+        setHomeQuery(val);
+      }
     } else if (scannerTarget === "issueBook") {
       setBookQuery(val);
       const match = books.find((b) => b.code.toLowerCase() === val.toLowerCase());
@@ -1334,6 +1366,37 @@ export default function App() {
           margin-top: 1rem;
           text-align: center;
         }
+
+        .print-area {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.6rem;
+        }
+        .id-card {
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          padding: 0.5rem;
+          text-align: center;
+          background: #fff;
+        }
+        .id-card-name { font-weight: 700; font-size: 0.78rem; color: var(--text); }
+        .id-card-meta { font-size: 0.68rem; color: var(--text-soft); margin-bottom: 0.3rem; }
+        .id-barcode { width: 100%; height: auto; }
+
+        @media print {
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible; }
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            grid-template-columns: repeat(3, 1fr);
+          }
+          .no-print, .modal-head, .header, .bottom-bar, .class-row, .search-wrap, .book-hint {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {!authReady ? (
@@ -1520,6 +1583,9 @@ export default function App() {
               <AlertTriangle size={18} /> Overdue Books
               {overdueTx.length > 0 && <span className="badge">{overdueTx.length}</span>}
             </button>
+            <button className="menu-row" onClick={() => setSheet("printCards")}>
+              <Printer size={18} /> Print Labels (Barcodes)
+            </button>
             <button
               className="menu-row"
               onClick={() => {
@@ -1571,6 +1637,69 @@ export default function App() {
               <button type="submit" className="btn full"><Lock size={15} /> Update Password</button>
             </form>
           )}
+        </Modal>
+      )}
+
+      {sheet === "printCards" && (
+        <Modal title="Print Labels" onClose={() => setSheet(null)}>
+          <div className="no-print">
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.7rem" }}>
+              <button
+                className={`btn ${printMode === "students" ? "" : "secondary"}`}
+                style={{ flex: 1, justifyContent: "center" }}
+                onClick={() => setPrintMode("students")}
+              >
+                Students
+              </button>
+              <button
+                className={`btn ${printMode === "books" ? "" : "secondary"}`}
+                style={{ flex: 1, justifyContent: "center" }}
+                onClick={() => setPrintMode("books")}
+              >
+                Books
+              </button>
+            </div>
+            {printMode === "students" && (
+              <select
+                value={printClass}
+                onChange={(e) => setPrintClass(e.target.value)}
+                style={{ marginBottom: "0.7rem" }}
+              >
+                <option value="ALL">All classes</option>
+                {classes.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
+            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
+              Each barcode encodes the {printMode === "students" ? "roll number" : "book code"} —
+              scanning it in the app finds that {printMode === "students" ? "student" : "book"}{" "}
+              automatically. Tap Print, then choose "Save as PDF" to print or share.
+            </p>
+            <button className="btn full" onClick={() => window.print()}>
+              <Printer size={16} /> Print / Save as PDF
+            </button>
+          </div>
+
+          <div className="print-area">
+            {printMode === "students"
+              ? students
+                  .filter((s) => printClass === "ALL" || s.className === printClass)
+                  .map((s) => (
+                    <div className="id-card" key={s.id}>
+                      <div className="id-card-name">{s.name}</div>
+                      <div className="id-card-meta">{s.className} · Roll {s.roll}</div>
+                      <BarcodeSVG value={s.roll} />
+                    </div>
+                  ))
+              : books.map((b) => (
+                  <div className="id-card" key={b.id}>
+                    <div className="id-card-name">{b.title}</div>
+                    <div className="id-card-meta">{b.code}</div>
+                    <BarcodeSVG value={b.code} />
+                  </div>
+                ))}
+          </div>
         </Modal>
       )}
 
