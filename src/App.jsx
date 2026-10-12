@@ -41,6 +41,7 @@ import {
   query,
   where,
   getDocs,
+  deleteDoc,
 } from "firebase/firestore";
 // Student photo uploads are disabled for now — Firebase Storage requires the
 // Blaze (pay-as-you-go) billing plan. Enable it later in the Firebase Console
@@ -68,6 +69,16 @@ function inferCategoryFromCode(code) {
   if (/^SHR\d/i.test(code)) return "Human Rights & Society";
   if (/^B\d/i.test(code)) return "General Literature";
   return "";
+}
+
+// Strips all whitespace (so "HW 9" and "HW9" are treated as the same code)
+// and lowercases, for matching/searching. Storage keeps the space-stripped
+// form of whatever the person typed, preserving their original casing.
+function normCode(s) {
+  return (s || "").replace(/\s+/g, "").toLowerCase();
+}
+function stripSpaces(s) {
+  return (s || "").replace(/\s+/g, "");
 }
 
 function uid() {
@@ -496,6 +507,7 @@ export default function App() {
   const [editForm, setEditForm] = useState({ name: "", className: "", roll: "" });
   const [bulkClass, setBulkClass] = useState("CLASS-1");
   const [bulkBooksText, setBulkBooksText] = useState("");
+  const [bulkBookCategory, setBulkBookCategory] = useState("");
   const [bulkNames, setBulkNames] = useState("");
   const [bulkStartRoll, setBulkStartRoll] = useState("");
   const [studentListQuery, setStudentListQuery] = useState("");
@@ -801,7 +813,7 @@ export default function App() {
     e.preventDefault();
     if (!bookForm.title.trim() || !bookForm.code.trim()) return;
     const copies = Math.max(1, parseInt(bookForm.copies) || 1);
-    const code = bookForm.code.trim();
+    const code = stripSpaces(bookForm.code);
     try {
       await setDoc(doc(db, "books", code), {
         title: bookForm.title.trim(),
@@ -846,6 +858,18 @@ export default function App() {
       });
     } catch (e) {}
     setEditingBookId(null);
+  }
+
+  async function deleteBook(book) {
+    const activeCount = transactions.filter((t) => t.bookId === book.id && !t.returnDate).length;
+    if (activeCount > 0) {
+      alert(`"${book.title}" is currently issued to ${activeCount} student(s). Get it returned first, then remove it.`);
+      return;
+    }
+    if (!window.confirm(`Remove "${book.title}" (${book.code}) from the catalog? This can't be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, "books", book.id));
+    } catch (e) {}
   }
 
   async function addStudent(e) {
@@ -919,12 +943,12 @@ export default function App() {
     if (/^code\s*,/i.test(lines[0])) lines = lines.slice(1);
     for (const line of lines) {
       const parts = line.split(",").map((p) => p.trim());
-      const code = parts[0];
+      const code = stripSpaces(parts[0]);
       const title = parts[1];
       if (!code || !title) continue;
       const author = parts[2] || "";
       const copies = Math.max(1, parseInt(parts[3]) || 1);
-      const category = parts[4] || "";
+      const category = parts[4] || bulkBookCategory || "";
       try {
         await setDoc(doc(db, "books", code), {
           title,
@@ -980,9 +1004,9 @@ export default function App() {
   }
 
   const bookMatchForSearch = useMemo(() => {
-    const q = homeQuery.trim().toLowerCase();
+    const q = normCode(homeQuery);
     if (!q) return null;
-    return books.find((b) => b.code.toLowerCase() === q || b.code.toLowerCase().includes(q)) || null;
+    return books.find((b) => normCode(b.code) === q || normCode(b.code).includes(q)) || null;
   }, [homeQuery, books]);
 
   const filteredStudents = useMemo(() => {
@@ -1003,7 +1027,7 @@ export default function App() {
         (b) =>
           b.title.toLowerCase().includes(q) ||
           b.author.toLowerCase().includes(q) ||
-          b.code.toLowerCase().includes(q)
+          normCode(b.code).includes(normCode(q))
       )
       .slice(0, 6);
   }, [bookQuery, books]);
@@ -1036,7 +1060,7 @@ export default function App() {
     const q = catalogQuery.trim().toLowerCase();
     if (!q) return books;
     return books.filter(
-      (b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.code.toLowerCase().includes(q)
+      (b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))
     );
   }, [catalogQuery, books]);
 
@@ -1090,7 +1114,7 @@ export default function App() {
 
     if (scannerTarget === "home") {
       const studentMatch = students.find((s) => s.roll.toLowerCase() === val.toLowerCase());
-      const bookMatch = books.find((b) => b.code.toLowerCase() === val.toLowerCase());
+      const bookMatch = books.find((b) => normCode(b.code) === normCode(val));
       if (studentMatch) {
         feedback = { type: "success" };
         setHomeQuery("");
@@ -1103,7 +1127,7 @@ export default function App() {
       }
     } else if (scannerTarget === "issueBook") {
       setBookQuery(val);
-      const match = books.find((b) => b.code.toLowerCase() === val.toLowerCase());
+      const match = books.find((b) => normCode(b.code) === normCode(val));
       if (match && match.availableCopies > 0) {
         setSelectedBook(match);
         feedback = { type: "success" };
@@ -1120,7 +1144,7 @@ export default function App() {
     } else if (scannerTarget === "return") {
       setReturnQuery(val);
       const hasMatch =
-        books.some((b) => b.code.toLowerCase() === val.toLowerCase()) ||
+        books.some((b) => normCode(b.code) === normCode(val)) ||
         students.some(
           (s) => s.roll.toLowerCase() === val.toLowerCase() || s.name.toLowerCase().includes(val.toLowerCase())
         );
@@ -2566,9 +2590,14 @@ export default function App() {
                               {b.author} · {b.code} · {b.availableCopies}/{b.totalCopies}
                             </div>
                           </div>
-                          <button className="btn secondary" onClick={() => startEditBook(b)} aria-label="Edit book">
-                            <Pencil size={13} />
-                          </button>
+                          <div style={{ display: "flex", gap: "0.4rem" }}>
+                            <button className="btn secondary" onClick={() => startEditBook(b)} aria-label="Edit book">
+                              <Pencil size={13} />
+                            </button>
+                            <button className="btn secondary" onClick={() => deleteBook(b)} aria-label="Remove book">
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
                       )
                     )}
@@ -2636,13 +2665,23 @@ export default function App() {
               Add many at once
             </h2>
             <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
-              One book per line: "Code, Title, Author, Copies, Category" — Author, Copies and
-              Category are all optional (copies defaults to 1, category defaults to
-              Uncategorized — it must match an existing category name exactly, see Book
-              Categories in the menu). A book with the same code already in the catalog gets
+              Pick a category below and every book in this paste gets that category — so for a
+              whole stack from one category, just paste "Code, Title, Author, Copies" lines (no
+              need to repeat the category each line). To mix categories in one paste, add a 5th
+              column per line ("Code, Title, Author, Copies, Category") — that overrides the
+              default for just that line. A book with the same code already in the catalog gets
               overwritten with these details.
             </p>
             <form onSubmit={addBooksBulk}>
+              <div className="field">
+                <label>Category for this batch</label>
+                <select value={bulkBookCategory} onChange={(e) => setBulkBookCategory(e.target.value)}>
+                  <option value="">Uncategorized</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
               <div className="field">
                 <label>Books — one per line</label>
                 <textarea
