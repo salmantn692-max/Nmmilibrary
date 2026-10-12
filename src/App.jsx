@@ -1764,13 +1764,26 @@ export default function App() {
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
-          .print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            grid-template-columns: repeat(3, 1fr);
+          html, body, .app, .modal-backdrop, .modal-panel {
+            position: static !important;
+            overflow: visible !important;
+            max-height: none !important;
+            height: auto !important;
+            width: 100% !important;
+            background: #fff !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            inset: auto !important;
           }
+          .print-area {
+            position: static !important;
+            width: 100% !important;
+            grid-template-columns: repeat(4, 1fr);
+            page-break-inside: auto;
+          }
+          .id-card { break-inside: avoid; page-break-inside: avoid; }
           .no-print, .modal-head, .header, .bottom-bar, .class-row, .search-wrap, .book-hint {
             display: none !important;
           }
@@ -2077,8 +2090,6 @@ export default function App() {
                   ))
               : books.map((b) => (
                   <div className="id-card" key={b.id}>
-                    <div className="id-card-name">{b.title}</div>
-                    <div className="id-card-meta">{b.code}</div>
                     <BarcodeSVG value={b.code} />
                   </div>
                 ))}
