@@ -874,6 +874,14 @@ export default function App() {
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
 
+        .top-fixed {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          background: var(--page-bg);
+          padding-top: env(safe-area-inset-top, 0px);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
         .header {
           display: flex;
           align-items: flex-start;
@@ -1443,28 +1451,45 @@ export default function App() {
         </div>
       ) : (
         <>
-      <div className="header">
-        <div className="brand">
-          <h1>NMMI ISLAMIC LIBRARY</h1>
-          <div className="sub">Nandiyil Muhammed Musliyar Memorial Islamic Library</div>
+      <div className="top-fixed">
+        <div className="header">
+          <div className="brand">
+            <h1>NMMI ISLAMIC LIBRARY</h1>
+            <div className="sub">Nandiyil Muhammed Musliyar Memorial Islamic Library</div>
+          </div>
+          <button className="icon-btn" onClick={() => setSheet("menu")} aria-label="Menu">
+            <MoreVertical size={22} />
+          </button>
         </div>
-        <button className="icon-btn" onClick={() => setSheet("menu")} aria-label="Menu">
-          <MoreVertical size={22} />
-        </button>
-      </div>
 
-      <div className="search-wrap">
-        <Search size={16} className="icon" />
-        <input
-          type="search"
-          className="with-scan"
-          placeholder="Search student id/ Book id"
-          value={homeQuery}
-          onChange={(e) => setHomeQuery(e.target.value)}
-        />
-        <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan barcode">
-          <Camera size={15} />
-        </button>
+        <div className="search-wrap">
+          <Search size={16} className="icon" />
+          <input
+            type="search"
+            className="with-scan"
+            placeholder="Search student id/ Book id"
+            value={homeQuery}
+            onChange={(e) => setHomeQuery(e.target.value)}
+          />
+          <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan barcode">
+            <Camera size={15} />
+          </button>
+        </div>
+
+        <div className="class-row">
+          <button className={`class-chip ${selectedClass === "ALL" ? "active" : ""}`} onClick={() => setSelectedClass("ALL")}>
+            ALL
+          </button>
+          {classes.map((c) => (
+            <button
+              key={c}
+              className={`class-chip ${selectedClass === c ? "active" : ""}`}
+              onClick={() => setSelectedClass(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
       </div>
 
       {bookMatchForSearch && (
@@ -1481,21 +1506,6 @@ export default function App() {
           })()}
         </div>
       )}
-
-      <div className="class-row">
-        <button className={`class-chip ${selectedClass === "ALL" ? "active" : ""}`} onClick={() => setSelectedClass("ALL")}>
-          ALL
-        </button>
-        {classes.map((c) => (
-          <button
-            key={c}
-            className={`class-chip ${selectedClass === c ? "active" : ""}`}
-            onClick={() => setSelectedClass(c)}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
 
       {loading ? (
         <div className="empty">Loading...</div>
