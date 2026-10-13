@@ -1863,6 +1863,11 @@ export default function App() {
           <button className={`class-chip ${selectedClass === "ALL" ? "active" : ""}`} onClick={() => setSelectedClass("ALL")}>
             ALL
           </button>
+          {students.some((s) => !s.className) && (
+            <button className={`class-chip ${selectedClass === "" ? "active" : ""}`} onClick={() => setSelectedClass("")}>
+              Unassigned
+            </button>
+          )}
           {classes.map((c) => (
             <button
               key={c}
@@ -1921,7 +1926,7 @@ export default function App() {
                   <div>
                     <div className="student-name">{s.name}</div>
                     <div className="student-meta">
-                      {s.className} · Roll {s.roll}
+                      {s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}
                       {holding > 0 ? ` · holding ${holding}` : ""}
                     </div>
                   </div>
@@ -2084,7 +2089,7 @@ export default function App() {
                   .map((s) => (
                     <div className="id-card" key={s.id}>
                       <div className="id-card-name">{s.name}</div>
-                      <div className="id-card-meta">{s.className} · Roll {s.roll}</div>
+                      <div className="id-card-meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
                       <BarcodeSVG value={s.roll} />
                     </div>
                   ))
@@ -2304,6 +2309,7 @@ export default function App() {
                   value={studentForm.className}
                   onChange={(e) => setStudentForm({ ...studentForm, className: e.target.value })}
                 >
+                  <option value="">Unassigned</option>
                   {classes.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -2336,6 +2342,7 @@ export default function App() {
                 <div>
                   <label>Default class</label>
                   <select value={bulkClass} onChange={(e) => setBulkClass(e.target.value)}>
+                    <option value="">Unassigned</option>
                     {classes.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -2404,6 +2411,7 @@ export default function App() {
                         value={editForm.className}
                         onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}
                       >
+                        <option value="">Unassigned</option>
                         {classes.map((c) => (
                           <option key={c} value={c}>{c}</option>
                         ))}
@@ -2428,7 +2436,7 @@ export default function App() {
                   <div key={s.id} className="row-card">
                     <div>
                       <div className="title">{s.name}</div>
-                      <div className="meta">{s.className} · Roll {s.roll}</div>
+                      <div className="meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
                     </div>
                     <button className="btn secondary" onClick={() => startEditStudent(s)}>
                       <Pencil size={13} /> Edit
@@ -2825,7 +2833,7 @@ export default function App() {
                 <div key={r.tx.id} className="row-card overdue">
                   <div>
                     <div className="title">{r.book.title}</div>
-                    <div className="meta">{r.student.name} ({r.student.className}) · Roll {r.student.roll}</div>
+                    <div className="meta">{r.student.name} ({r.student.className || "Unassigned"}){r.student.roll ? ` · Roll ${r.student.roll}` : ""}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                     <div className="due">
@@ -2855,7 +2863,7 @@ export default function App() {
             </div>
 
             <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
-              <span>{dStudent.className} · Roll {dStudent.roll}</span>
+              <span>{dStudent.className || "Unassigned"}{dStudent.roll ? ` · Roll ${dStudent.roll}` : ""}</span>
               <button onClick={() => startEditStudent(dStudent)}>
                 <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
               </button>
@@ -2897,6 +2905,7 @@ export default function App() {
                     value={editForm.className}
                     onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}
                   >
+                    <option value="">Unassigned</option>
                     {classes.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
