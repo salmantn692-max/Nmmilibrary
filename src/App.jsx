@@ -1156,6 +1156,41 @@ export default function App() {
     return ordered;
   }, [catalogMatches, categories]);
 
+  const dashboardStats = useMemo(() => {
+    const bookCounts = {};
+    const studentCounts = {};
+    transactions.forEach((t) => {
+      bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1;
+      studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1;
+    });
+
+    const mostBorrowed = books
+      .map((b) => ({ book: b, count: bookCounts[b.id] || 0 }))
+      .filter((x) => x.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const neverBorrowed = books.filter((b) => !bookCounts[b.id]);
+
+    const topReaders = students
+      .map((s) => ({ student: s, count: studentCounts[s.id] || 0 }))
+      .filter((x) => x.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const classCounts = {};
+    students.forEach((s) => {
+      const cls = s.className && s.className.trim() ? s.className : "Unassigned";
+      classCounts[cls] = (classCounts[cls] || 0) + (studentCounts[s.id] || 0);
+    });
+    const topClasses = Object.entries(classCounts)
+      .filter(([, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    return { mostBorrowed, neverBorrowed, topReaders, topClasses };
+  }, [books, students, transactions]);
+
   const overdueList = useMemo(() => {
     return overdueTx
       .map((t) => ({ tx: t, book: bookById(t.bookId), student: studentById(t.studentId) }))
@@ -1764,6 +1799,37 @@ export default function App() {
         .stat-card .num { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--navy); }
         .stat-card.warn .num { color: var(--danger); }
         .stat-card .label { font-size: 0.78rem; color: var(--text-soft); margin-top: 0.1rem; }
+
+        .dash-heading {
+          font-family: 'Playfair Display', serif;
+          font-size: 0.95rem;
+          color: var(--navy);
+          margin: 1.1rem 0 0.5rem;
+          display: flex;
+          align-items: baseline;
+          gap: 0.4rem;
+        }
+        .dash-heading:first-of-type { margin-top: 0.2rem; }
+        .dash-heading .dash-sub {
+          font-family: 'Inter', sans-serif;
+          font-weight: 400;
+          font-size: 0.74rem;
+          color: var(--text-soft);
+        }
+        .rank {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 700;
+          color: var(--navy);
+          width: 26px;
+          flex: 0 0 auto;
+          text-align: center;
+          font-size: 0.88rem;
+        }
+        .dash-row {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+        }
 
         .lock-screen {
           min-height: 100vh;
@@ -2897,6 +2963,91 @@ export default function App() {
             <div className="label" style={{ marginBottom: "0.4rem" }}>Students</div>
             <div className="num" style={{ fontSize: "1.1rem" }}>{students.length}</div>
           </div>
+
+          <h3 className="dash-heading">📚 Most Borrowed Books</h3>
+          {dashboardStats.mostBorrowed.length === 0 ? (
+            <div className="empty">No borrowing activity yet.</div>
+          ) : (
+            <div className="row-list">
+              {dashboardStats.mostBorrowed.map((x, i) => (
+                <div key={x.book.id} className="row-card">
+                  <div className="dash-row">
+                    <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                    <div>
+                      <div className="title">{x.book.title}</div>
+                      <div className="meta">{x.book.code}</div>
+                    </div>
+                  </div>
+                  <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h3 className="dash-heading">
+            🏆 Top Readers <span className="dash-sub">all-time</span>
+          </h3>
+          {dashboardStats.topReaders.length === 0 ? (
+            <div className="empty">No borrowing activity yet.</div>
+          ) : (
+            <div className="row-list">
+              {dashboardStats.topReaders.map((x, i) => (
+                <div key={x.student.id} className="row-card">
+                  <div className="dash-row">
+                    <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                    <div>
+                      <div className="title">{x.student.name}</div>
+                      <div className="meta">{x.student.className || "Unassigned"}</div>
+                    </div>
+                  </div>
+                  <div className="due" style={{ fontWeight: 700 }}>{x.count} book{x.count === 1 ? "" : "s"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h3 className="dash-heading">🎓 Most Active Class</h3>
+          {dashboardStats.topClasses.length === 0 ? (
+            <div className="empty">No borrowing activity yet.</div>
+          ) : (
+            <div className="row-list">
+              {dashboardStats.topClasses.map(([cls, count], i) => (
+                <div key={cls} className="row-card">
+                  <div className="dash-row">
+                    <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                    <div className="title">{cls}</div>
+                  </div>
+                  <div className="due" style={{ fontWeight: 700 }}>{count} book{count === 1 ? "" : "s"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <h3 className="dash-heading">
+            📦 Never Borrowed
+            <span className="dash-sub">
+              {dashboardStats.neverBorrowed.length} of {books.length} book{books.length === 1 ? "" : "s"}
+            </span>
+          </h3>
+          {dashboardStats.neverBorrowed.length === 0 ? (
+            <div className="empty">Every book has been borrowed at least once 🎉</div>
+          ) : (
+            <div className="row-list">
+              {dashboardStats.neverBorrowed.slice(0, 8).map((b) => (
+                <div key={b.id} className="row-card">
+                  <div>
+                    <div className="title">{b.title}</div>
+                    <div className="meta">{b.code}</div>
+                  </div>
+                </div>
+              ))}
+              {dashboardStats.neverBorrowed.length > 8 && (
+                <div className="empty" style={{ padding: "0.6rem" }}>
+                  +{dashboardStats.neverBorrowed.length - 8} more
+                </div>
+              )}
+            </div>
+          )}
         </Modal>
       )}
 
