@@ -896,7 +896,7 @@ export default function App() {
 
   async function saveEditStudent(e) {
     e.preventDefault();
-    if (!editForm.name.trim() || !editForm.roll.trim()) return;
+    if (!editForm.name.trim()) return;
     try {
       await updateDoc(doc(db, "students", editingStudentId), {
         name: editForm.name.trim(),
@@ -905,6 +905,20 @@ export default function App() {
       });
     } catch (e) {}
     setEditingStudentId(null);
+  }
+
+  async function deleteStudent(student) {
+    const activeCount = studentActiveTx(student.id).length;
+    if (activeCount > 0) {
+      alert(`${student.name} currently has ${activeCount} book(s) checked out. Get them returned first, then remove.`);
+      return;
+    }
+    if (!window.confirm(`Remove ${student.name} from the app? This can't be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, "students", student.id));
+    } catch (e) {}
+    if (detailStudentId === student.id) setSheet(null);
+    if (selectedStudentId === student.id) setSelectedStudentId(null);
   }
 
   async function addStudentsBulk(e) {
@@ -2420,7 +2434,7 @@ export default function App() {
                         type="text"
                         value={editForm.roll}
                         onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })}
-                        required
+                        placeholder="Roll (optional)"
                       />
                     </div>
                     <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -2438,9 +2452,14 @@ export default function App() {
                       <div className="title">{s.name}</div>
                       <div className="meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
                     </div>
-                    <button className="btn secondary" onClick={() => startEditStudent(s)}>
-                      <Pencil size={13} /> Edit
-                    </button>
+                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                      <button className="btn secondary" onClick={() => startEditStudent(s)}>
+                        <Pencil size={13} /> Edit
+                      </button>
+                      <button className="btn secondary" onClick={() => deleteStudent(s)} aria-label="Remove student">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 )
               )}
@@ -2864,9 +2883,14 @@ export default function App() {
 
             <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
               <span>{dStudent.className || "Unassigned"}{dStudent.roll ? ` · Roll ${dStudent.roll}` : ""}</span>
-              <button onClick={() => startEditStudent(dStudent)}>
-                <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
-              </button>
+              <div style={{ display: "flex", gap: "0.7rem" }}>
+                <button onClick={() => startEditStudent(dStudent)}>
+                  <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
+                </button>
+                <button onClick={() => deleteStudent(dStudent)}>
+                  <Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove
+                </button>
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
@@ -2914,7 +2938,7 @@ export default function App() {
                     type="text"
                     value={editForm.roll}
                     onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })}
-                    required
+                    placeholder="Roll (optional)"
                   />
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
