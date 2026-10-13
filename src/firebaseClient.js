@@ -21,7 +21,7 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
-// Firebase Storage is not enabled on this project (it now requires the Blaze
-// billing plan). Student photo uploads are disabled for now. To turn it back
-// on later: enable Storage in the Firebase Console (Build → Storage), then
-// ask Claude to re-enable the photo upload feature in the app.
+// Firebase Storage is NOT used in this app (it requires the paid Blaze plan).
+// Student profile photos are instead resized small client-side and stored as
+// a data URI directly on the student's own Firestore document — works on the
+// free Spark plan, no billing needed.
