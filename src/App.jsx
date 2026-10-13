@@ -81,6 +81,40 @@ function stripSpaces(s) {
   return (s || "").replace(/\s+/g, "");
 }
 
+// Shrinks a photo to a small square-ish thumbnail and returns a JPEG data
+// URI, small enough to store directly on the student's Firestore document —
+// no Firebase Storage (and no Blaze billing plan) needed.
+function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxSize) {
+            height = Math.round(height * (maxSize / width));
+            width = maxSize;
+          }
+        } else if (height > maxSize) {
+          width = Math.round(width * (maxSize / height));
+          height = maxSize;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => reject(new Error("Couldn't read that image"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Couldn't read that file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
@@ -504,6 +538,8 @@ export default function App() {
   // add student
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
   const [editForm, setEditForm] = useState({ name: "", className: "", roll: "" });
   const [bulkClass, setBulkClass] = useState("CLASS-1");
   const [bulkBooksText, setBulkBooksText] = useState("");
@@ -919,6 +955,28 @@ export default function App() {
     } catch (e) {}
     if (detailStudentId === student.id) setSheet(null);
     if (selectedStudentId === student.id) setSelectedStudentId(null);
+  }
+
+  async function handlePhotoUpload(e, student) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError("");
+    setPhotoUploading(true);
+    try {
+      const dataUrl = await resizeImageToDataURL(file);
+      await updateDoc(doc(db, "students", student.id), { photoUrl: dataUrl });
+    } catch (e) {
+      setPhotoError("Couldn't use that photo. Try a different image.");
+    }
+    setPhotoUploading(false);
+  }
+
+  async function handleRemovePhoto(student) {
+    if (!student.photoUrl) return;
+    try {
+      await updateDoc(doc(db, "students", student.id), { photoUrl: null });
+    } catch (e) {}
   }
 
   async function addStudentsBulk(e) {
@@ -2879,6 +2937,30 @@ export default function App() {
           <Modal title={dStudent.name} onClose={() => setSheet(null)}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "0.9rem" }}>
               <Avatar name={dStudent.name} photoUrl={dStudent.photoUrl} size={84} />
+              <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem" }}>
+                <label className="btn secondary" style={{ cursor: "pointer", fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>
+                  <Camera size={14} />
+                  {photoUploading ? "Uploading..." : dStudent.photoUrl ? "Change Photo" : "Add Photo"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    disabled={photoUploading}
+                    onChange={(e) => handlePhotoUpload(e, dStudent)}
+                  />
+                </label>
+                {dStudent.photoUrl && (
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}
+                    onClick={() => handleRemovePhoto(dStudent)}
+                  >
+                    <X size={14} /> Remove
+                  </button>
+                )}
+              </div>
+              {photoError && <div className="lock-error" style={{ marginTop: "0.5rem" }}>{photoError}</div>}
             </div>
 
             <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
