@@ -493,6 +493,160 @@ function Scanner({ onResult, onClose, feedback }) {
   );
 }
 
+// A standalone, no-sign-in page: anyone with the link can search the book
+// catalog (title/author/code/availability only — nothing about students or
+// who has what). Mounted separately at /catalog, never alongside the main
+// staff App. Relies on the Firestore rule that opens "books" to public read.
+export function PublicCatalog() {
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "books"),
+      (qsnap) => {
+        setBooks(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setLoading(false);
+      },
+      () => setLoading(false)
+    );
+    return unsub;
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return books;
+    return books.filter(
+      (b) =>
+        (b.title || "").toLowerCase().includes(q) ||
+        (b.author || "").toLowerCase().includes(q) ||
+        normCode(b.code).includes(normCode(q))
+    );
+  }, [query, books]);
+
+  const grouped = useMemo(() => {
+    const groups = {};
+    filtered.forEach((b) => {
+      const cat = b.category && b.category.trim() ? b.category : "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(b);
+    });
+    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered]);
+
+  return (
+    <div className="pc-app">
+      <style>{`
+        .pc-app {
+          --navy: #163D7A; --maroon: #B5302A; --sky: #2E86DE; --green: #2ECC8F;
+          --text: #241F16; --text-soft: #6B6B6B; --line: #ECEAD8; --row-bg: #F6F3D6;
+          font-family: 'Inter', -apple-system, sans-serif;
+          max-width: 520px;
+          margin: 0 auto;
+          min-height: 100vh;
+          background: #FCFAF3;
+          padding-bottom: 3rem;
+        }
+        .pc-header {
+          padding: 1.2rem 1.1rem 0.8rem;
+          text-align: center;
+          border-bottom: 3px solid var(--sky);
+        }
+        .pc-header h1 {
+          font-family: 'Playfair Display', serif;
+          font-weight: 800;
+          font-size: 1.35rem;
+          color: var(--navy);
+          margin: 0;
+        }
+        .pc-sub { font-size: 0.78rem; color: var(--maroon); margin-top: 0.2rem; }
+        .pc-search { padding: 0.9rem 1.1rem 0.4rem; }
+        .pc-search input {
+          width: 100%;
+          font-size: 0.95rem;
+          padding: 0.65rem 0.9rem;
+          border: 1px solid var(--line);
+          border-radius: 999px;
+          background: #fff;
+          color: var(--text);
+        }
+        .pc-group { padding: 0.8rem 1.1rem 0; }
+        .pc-group h2 {
+          font-family: 'Playfair Display', serif;
+          font-size: 0.92rem;
+          color: var(--navy);
+          margin: 0 0 0.5rem;
+          border-bottom: 1px solid var(--line);
+          padding-bottom: 0.3rem;
+        }
+        .pc-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.7rem;
+          background: var(--row-bg);
+          border-radius: 8px;
+          padding: 0.6rem 0.8rem;
+          margin-bottom: 0.45rem;
+        }
+        .pc-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+        .pc-meta { font-size: 0.75rem; color: var(--text-soft); margin-top: 0.1rem; }
+        .pc-badge {
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 0.25rem 0.55rem;
+          border-radius: 999px;
+          flex: 0 0 auto;
+          white-space: nowrap;
+        }
+        .pc-avail { background: #E4F5EC; color: #1F8A5E; }
+        .pc-out { background: #F3E1DE; color: #B5302A; }
+        .pc-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-soft); font-size: 0.9rem; }
+        .pc-footer { text-align: center; padding: 1.5rem 1rem 0.5rem; }
+        .pc-footer a { color: var(--navy); font-size: 0.82rem; text-decoration: underline; }
+      `}</style>
+      <div className="pc-header">
+        <h1>NMMI ISLAMIC LIBRARY</h1>
+        <div className="pc-sub">Book Catalog — Search (no login needed)</div>
+      </div>
+      <div className="pc-search">
+        <input
+          type="search"
+          placeholder="Search by title, author or code..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
+      {loading ? (
+        <div className="pc-empty">Loading...</div>
+      ) : grouped.length === 0 ? (
+        <div className="pc-empty">No books found.</div>
+      ) : (
+        grouped.map(([cat, list]) => (
+          <div key={cat} className="pc-group">
+            <h2>{cat}</h2>
+            {list.map((b) => (
+              <div key={b.id} className="pc-row">
+                <div>
+                  <div className="pc-title">{b.title}</div>
+                  <div className="pc-meta">{b.author ? `${b.author} · ` : ""}{b.code}</div>
+                </div>
+                <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
+                  {b.availableCopies > 0 ? `${b.availableCopies} available` : "All issued"}
+                </div>
+              </div>
+            ))}
+          </div>
+        ))
+      )}
+      <div className="pc-footer">
+        <a href="/">Library staff sign in →</a>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState(null);
