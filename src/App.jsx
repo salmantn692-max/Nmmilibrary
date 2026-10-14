@@ -21,6 +21,7 @@ import {
   Printer,
   Trash2,
   Bookmark,
+  MessageCircle,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
@@ -113,6 +114,15 @@ function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
     reader.onerror = () => reject(new Error("Couldn't read that file"));
     reader.readAsDataURL(file);
   });
+}
+
+// Builds a wa.me link that opens WhatsApp with a pre-filled message.
+// Accepts a plain 10-digit Indian mobile number (adds 91) or one already
+// including a country code.
+function waLink(phone, message) {
+  let digits = (phone || "").replace(/\D/g, "");
+  if (digits.length === 10) digits = "91" + digits;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
 function uid() {
@@ -536,11 +546,11 @@ export default function App() {
   const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "" });
 
   // add student
-  const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "" });
+  const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
-  const [editForm, setEditForm] = useState({ name: "", className: "", roll: "" });
+  const [editForm, setEditForm] = useState({ name: "", className: "", roll: "", phone: "" });
   const [bulkClass, setBulkClass] = useState("CLASS-1");
   const [bulkBooksText, setBulkBooksText] = useState("");
   const [bulkBookCategory, setBulkBookCategory] = useState("");
@@ -916,14 +926,15 @@ export default function App() {
         name: studentForm.name.trim(),
         className: studentForm.className,
         roll: studentForm.roll.trim(),
+        phone: studentForm.phone.trim(),
       });
     } catch (e) {}
-    setStudentForm({ name: "", className: studentForm.className, roll: "" });
+    setStudentForm({ name: "", className: studentForm.className, roll: "", phone: "" });
   }
 
   function startEditStudent(s) {
     setEditingStudentId(s.id);
-    setEditForm({ name: s.name, className: s.className, roll: s.roll });
+    setEditForm({ name: s.name, className: s.className, roll: s.roll, phone: s.phone || "" });
   }
 
   function cancelEditStudent() {
@@ -938,6 +949,7 @@ export default function App() {
         name: editForm.name.trim(),
         className: editForm.className,
         roll: editForm.roll.trim(),
+        phone: editForm.phone.trim(),
       });
     } catch (e) {}
     setEditingStudentId(null);
@@ -996,9 +1008,10 @@ export default function App() {
       if (!name) continue;
       const className = parts[1] || bulkClass;
       const roll = parts[2] || (hasStart ? String(startNum + autoIdx) : "");
+      const phone = parts[3] || "";
       autoIdx++;
       try {
-        await addDoc(collection(db, "students"), { name, className, roll });
+        await addDoc(collection(db, "students"), { name, className, roll, phone });
       } catch (e) {}
     }
     setBulkNames("");
@@ -2463,6 +2476,15 @@ export default function App() {
                 />
               </div>
             </div>
+            <div className="field">
+              <label>Phone (optional — for WhatsApp reminders)</label>
+              <input
+                type="tel"
+                value={studentForm.phone}
+                onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })}
+                placeholder="10-digit mobile number"
+              />
+            </div>
             <button type="submit" className="btn full"><Plus size={16} /> Add Student</button>
           </form>
 
@@ -2472,8 +2494,9 @@ export default function App() {
             </h2>
             <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
               Paste one student per line. Either just a name (uses the class/roll below), or
-              "Name, Class, Roll" per line — handy for pasting straight from a spreadsheet, and
-              mixing several classes in one paste.
+              "Name, Class, Roll, Phone" per line — handy for pasting straight from a
+              spreadsheet, mixing several classes in one paste, and adding a phone number for
+              WhatsApp reminders (Phone is optional too).
             </p>
             <form onSubmit={addStudentsBulk}>
               <div className="form-grid">
@@ -2561,6 +2584,12 @@ export default function App() {
                         placeholder="Roll (optional)"
                       />
                     </div>
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      placeholder="Phone (optional)"
+                    />
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                       <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
                         <Check size={14} /> Save
@@ -3063,10 +3092,25 @@ export default function App() {
                     <div className="title">{r.book.title}</div>
                     <div className="meta">{r.student.name} ({r.student.className || "Unassigned"}){r.student.roll ? ` · Roll ${r.student.roll}` : ""}</div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <div className="due">
                       <Clock size={12} style={{ verticalAlign: "-2px" }} /> {daysBetween(r.tx.dueDate, todayISO())}d late
                     </div>
+                    {r.student.phone && (
+                      <a
+                        href={waLink(
+                          r.student.phone,
+                          `നമസ്കാരം ${r.student.name}, "${r.book.title}" (${r.book.code}) എന്ന പുസ്തകം തിരികെ നൽകേണ്ട തീയതി ${formatDate(r.tx.dueDate)} ആയിരുന്നു. ദയവായി എത്രയും വേഗം ലൈബ്രറിയിൽ തിരികെ ഏൽപ്പിക്കാൻ അഭ്യർത്ഥിക്കുന്നു. നന്ദി.`
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn secondary"
+                        style={{ padding: "0.4rem 0.5rem" }}
+                        aria-label={`WhatsApp reminder to ${r.student.name}`}
+                      >
+                        <MessageCircle size={13} />
+                      </a>
+                    )}
                     <button className="btn secondary" onClick={() => returnBook(r.tx.id)}>
                       <RotateCcw size={13} /> Return
                     </button>
@@ -3115,7 +3159,10 @@ export default function App() {
             </div>
 
             <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
-              <span>{dStudent.className || "Unassigned"}{dStudent.roll ? ` · Roll ${dStudent.roll}` : ""}</span>
+              <span>
+                {dStudent.className || "Unassigned"}{dStudent.roll ? ` · Roll ${dStudent.roll}` : ""}
+                {dStudent.phone ? ` · ${dStudent.phone}` : ""}
+              </span>
               <div style={{ display: "flex", gap: "0.7rem" }}>
                 <button onClick={() => startEditStudent(dStudent)}>
                   <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
@@ -3174,6 +3221,12 @@ export default function App() {
                     placeholder="Roll (optional)"
                   />
                 </div>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  placeholder="Phone (optional)"
+                />
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
                     <Check size={14} /> Save
