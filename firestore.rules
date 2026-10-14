@@ -1,10 +1,15 @@
 rules_version = '2';
 
-// Only signed-in staff (created in Firebase Console → Authentication → Users)
-// can read or write anything in this database. There is no public, unauthenticated
-// access — this is the real security boundary, not the sign-in screen in the app.
+// The /catalog public search page reads the "books" collection without
+// signing in — that's the only publicly readable data (title, author, code,
+// copies). Everything else (students, their phone numbers, transactions,
+// settings) stays staff-only. Writes to books still require sign-in too.
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /books/{bookId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
     match /{document=**} {
       allow read, write: if request.auth != null;
     }
