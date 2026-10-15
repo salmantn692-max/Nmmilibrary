@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
+import QRCode from "qrcode";
 import { auth, db } from "./firebaseClient";
 import {
   onAuthStateChanged,
@@ -405,6 +406,19 @@ function BarcodeSVG({ value }) {
   }, [value]);
   if (!value) return null;
   return <svg ref={ref} className="id-barcode" />;
+}
+
+function QRCodeCanvas({ value, size = 130 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current && value) {
+      QRCode.toCanvas(ref.current, String(value), { width: size, margin: 1 }, (err) => {
+        if (err) console.error(err);
+      });
+    }
+  }, [value, size]);
+  if (!value) return null;
+  return <canvas ref={ref} className="id-qrcode" />;
 }
 
 function Avatar({ name, photoUrl, size = 42, children }) {
@@ -2065,6 +2079,7 @@ export default function App() {
         .id-card-name { font-weight: 700; font-size: 0.78rem; color: var(--text); }
         .id-card-meta { font-size: 0.68rem; color: var(--text-soft); margin-bottom: 0.3rem; }
         .id-barcode { width: 100%; height: auto; }
+        .id-qrcode { width: 100%; max-width: 110px; height: auto; margin: 0 auto; display: block; }
 
         @media print {
           body * { visibility: hidden; }
@@ -2395,7 +2410,7 @@ export default function App() {
                     <div className="id-card" key={s.id}>
                       <div className="id-card-name">{s.name}</div>
                       <div className="id-card-meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
-                      <BarcodeSVG value={s.roll} />
+                      <QRCodeCanvas value={s.roll} />
                     </div>
                   ))
               : books.map((b) => (
