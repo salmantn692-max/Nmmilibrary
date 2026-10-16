@@ -24,6 +24,7 @@ import {
   MessageCircle,
   CreditCard,
   Download,
+  Award,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
@@ -144,6 +145,12 @@ function formatDate(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+function formatMonthLabel(ym) {
+  if (!ym) return "";
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, (m || 1) - 1, 1);
+  return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 function daysBetween(a, b) {
   const d1 = new Date(a + "T00:00:00");
@@ -699,6 +706,10 @@ export default function App() {
   const [detailStudentId, setDetailStudentId] = useState(null);
   const cardRef = useRef(null);
   const [cardDownloading, setCardDownloading] = useState(false);
+  const certRef = useRef(null);
+  const [certDownloading, setCertDownloading] = useState(false);
+  const [certMonth, setCertMonth] = useState(todayISO().slice(0, 7));
+  const [certStudentId, setCertStudentId] = useState("");
   const [printMode, setPrintMode] = useState("students"); // students | books
   const [printClass, setPrintClass] = useState("ALL");
 
@@ -1343,6 +1354,29 @@ export default function App() {
     return ordered;
   }, [catalogMatches, categories]);
 
+  const monthlyTopReaders = useMemo(() => {
+    if (!certMonth) return [];
+    const counts = {};
+    transactions.forEach((t) => {
+      if (t.issueDate && t.issueDate.startsWith(certMonth)) {
+        counts[t.studentId] = (counts[t.studentId] || 0) + 1;
+      }
+    });
+    return Object.entries(counts)
+      .map(([studentId, count]) => ({ student: studentById(studentId), count }))
+      .filter((x) => x.student)
+      .sort((a, b) => b.count - a.count);
+  }, [certMonth, transactions, students]);
+
+  const certStudent = certStudentId
+    ? studentById(certStudentId)
+    : monthlyTopReaders[0]
+    ? monthlyTopReaders[0].student
+    : null;
+  const certCount = certStudent
+    ? (monthlyTopReaders.find((x) => x.student.id === certStudent.id) || { count: 0 }).count
+    : 0;
+
   const dashboardStats = useMemo(() => {
     const bookCounts = {};
     const studentCounts = {};
@@ -1477,6 +1511,20 @@ export default function App() {
       alert("Couldn't create the image. Try taking a screenshot instead.");
     }
     setCardDownloading(false);
+  }
+  async function downloadCertificate(student, month) {
+    if (!certRef.current) return;
+    setCertDownloading(true);
+    try {
+      const canvas = await html2canvas(certRef.current, { scale: 3, backgroundColor: null });
+      const link = document.createElement("a");
+      link.download = `${student.name.replace(/\s+/g, "_")}_certificate_${month}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) {
+      alert("Couldn't create the image. Try taking a screenshot instead.");
+    }
+    setCertDownloading(false);
   }
   function openAddStudent() {
     const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
@@ -1922,7 +1970,7 @@ export default function App() {
         .menu-row:hover { background: #EFEFEF; }
 
         label { display: block; font-size: 0.8rem; color: var(--text-soft); margin-bottom: 0.3rem; }
-        input[type="text"], input[type="number"], input[type="search"], select {
+        input[type="text"], input[type="number"], input[type="search"], input[type="month"], select {
           width: 100%;
           font-family: 'Inter', sans-serif;
           font-size: 0.92rem;
@@ -2205,6 +2253,56 @@ export default function App() {
           line-height: 0;
         }
 
+        .certificate {
+          width: 360px;
+          max-width: 100%;
+          aspect-ratio: 4 / 3;
+          background: #FDF8ED;
+          background-image:
+            linear-gradient(45deg, rgba(201,162,39,0.06) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(201,162,39,0.06) 25%, transparent 25%);
+          background-size: 22px 22px;
+          border: 6px double var(--sky);
+          border-radius: 10px;
+          padding: 1.1rem 1.1rem 0.9rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          box-shadow: var(--shadow-md);
+        }
+        .cert-badge { font-size: 1.9rem; margin-bottom: 0.1rem; }
+        .cert-title {
+          font-family: 'Playfair Display', serif;
+          font-weight: 800;
+          font-size: 1.02rem;
+          color: var(--navy-deep);
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+        }
+        .cert-sub { font-size: 0.64rem; color: var(--maroon); margin-top: 0.1rem; margin-bottom: 0.55rem; }
+        .cert-presented { font-size: 0.7rem; color: var(--text-soft); }
+        .cert-name {
+          font-family: 'Playfair Display', serif;
+          font-weight: 700;
+          font-size: 1.25rem;
+          color: var(--navy);
+          margin: 0.3rem 0;
+          border-bottom: 2px solid var(--gold-soft);
+          padding-bottom: 0.2rem;
+        }
+        .cert-desc { font-size: 0.72rem; color: var(--text); line-height: 1.45; max-width: 92%; margin-top: 0.25rem; }
+        .cert-month { font-weight: 700; color: var(--maroon); }
+        .cert-footer {
+          display: flex;
+          justify-content: space-between;
+          width: 100%;
+          margin-top: auto;
+          padding-top: 0.7rem;
+        }
+        .cert-foot-item { font-size: 0.62rem; color: var(--text-soft); text-align: center; }
+        .cert-foot-line { border-top: 1px solid var(--text-soft); width: 80px; margin: 0 auto 0.2rem; }
+
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
@@ -2427,6 +2525,16 @@ export default function App() {
             <button className="menu-row" onClick={() => setSheet("overdue")}>
               <AlertTriangle size={18} /> Overdue Books
               {overdueTx.length > 0 && <span className="badge">{overdueTx.length}</span>}
+            </button>
+            <button
+              className="menu-row"
+              onClick={() => {
+                setCertMonth(todayISO().slice(0, 7));
+                setCertStudentId("");
+                setSheet("certificate");
+              }}
+            >
+              <Award size={18} /> Monthly Certificate
             </button>
             <button className="menu-row" onClick={() => setSheet("printCards")}>
               <Printer size={18} /> Print Labels (Barcodes)
@@ -3641,6 +3749,87 @@ export default function App() {
           </Modal>
         );
       })()}
+
+      {sheet === "certificate" && (
+        <Modal title="Monthly Certificate" onClose={() => setSheet(null)}>
+          <div className="no-print">
+            <div className="form-grid">
+              <div>
+                <label>Month</label>
+                <input
+                  type="month"
+                  value={certMonth}
+                  onChange={(e) => {
+                    setCertMonth(e.target.value);
+                    setCertStudentId("");
+                  }}
+                />
+              </div>
+              <div>
+                <label>Student (defaults to top reader)</label>
+                <select value={certStudentId} onChange={(e) => setCertStudentId(e.target.value)}>
+                  <option value="">
+                    {monthlyTopReaders[0] ? `Top reader: ${monthlyTopReaders[0].student.name}` : "No activity yet"}
+                  </option>
+                  {[...students]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
+              </div>
+            </div>
+            {monthlyTopReaders.length > 1 && (
+              <p style={{ fontSize: "0.76rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
+                Runners-up this month: {monthlyTopReaders.slice(1, 4).map((x) => `${x.student.name} (${x.count})`).join(", ")}
+              </p>
+            )}
+          </div>
+
+          {!certStudent ? (
+            <div className="empty">No borrowing activity for this month yet — pick a student above to still generate a certificate.</div>
+          ) : (
+            <>
+              <div className="id-card-wrap">
+                <div className="certificate" ref={certRef}>
+                  <div className="cert-badge">🏆</div>
+                  <div className="cert-title">Certificate of Achievement</div>
+                  <div className="cert-sub">NMMI Islamic Library</div>
+                  <div className="cert-presented">This certifies that</div>
+                  <div className="cert-name">{certStudent.name}</div>
+                  <div className="cert-desc">
+                    has been recognized as the <b>Top Reader</b> of{" "}
+                    <span className="cert-month">{formatMonthLabel(certMonth)}</span>
+                    {certCount > 0 ? (
+                      <>, having borrowed <b>{certCount}</b> book{certCount === 1 ? "" : "s"} this month.</>
+                    ) : (
+                      "."
+                    )}
+                  </div>
+                  <div className="cert-footer">
+                    <div className="cert-foot-item">
+                      <div className="cert-foot-line" />
+                      Date
+                    </div>
+                    <div className="cert-foot-item">
+                      <div className="cert-foot-line" />
+                      Librarian
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                className="btn full no-print"
+                style={{ marginTop: "1.1rem" }}
+                onClick={() => downloadCertificate(certStudent, certMonth)}
+                disabled={certDownloading}
+              >
+                <Download size={16} /> {certDownloading ? "Preparing..." : "Download as Image"}
+              </button>
+            </>
+          )}
+        </Modal>
+      )}
 
       {scannerTarget && (
         <Scanner onResult={handleScanResult} onClose={() => setScannerTarget(null)} feedback={scanFeedback} />
