@@ -553,13 +553,13 @@ export function PublicCatalog() {
     <div className="pc-app">
       <style>{`
         .pc-app {
-          --navy: #163D7A; --maroon: #B5302A; --sky: #2E86DE; --green: #2ECC8F;
-          --text: #241F16; --text-soft: #6B6B6B; --line: #ECEAD8; --row-bg: #F6F3D6;
+          --navy: #1B4D3E; --maroon: #8B2E3C; --sky: #C9A227; --green: #2F9E6E;
+          --text: #2B2420; --text-soft: #7A6F5D; --line: #E8DCC0; --row-bg: #FBF2D9;
           font-family: 'Inter', -apple-system, sans-serif;
           max-width: 520px;
           margin: 0 auto;
           min-height: 100vh;
-          background: #FCFAF3;
+          background: var(--page-bg, #FDF8ED);
           padding-bottom: 3rem;
         }
         .pc-header {
@@ -600,9 +600,10 @@ export function PublicCatalog() {
           align-items: center;
           gap: 0.7rem;
           background: var(--row-bg);
-          border-radius: 8px;
+          border-radius: 10px;
           padding: 0.6rem 0.8rem;
           margin-bottom: 0.45rem;
+          box-shadow: 0 1px 3px rgba(43,36,32,0.07);
         }
         .pc-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
         .pc-meta { font-size: 0.75rem; color: var(--text-soft); margin-top: 0.1rem; }
@@ -614,8 +615,8 @@ export function PublicCatalog() {
           flex: 0 0 auto;
           white-space: nowrap;
         }
-        .pc-avail { background: #E4F5EC; color: #1F8A5E; }
-        .pc-out { background: #F3E1DE; color: #B5302A; }
+        .pc-avail { background: #E1F0E6; color: #1F7A52; }
+        .pc-out { background: #F3E1E0; color: #8B2E3C; }
         .pc-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-soft); font-size: 0.9rem; }
         .pc-footer { text-align: center; padding: 1.5rem 1rem 0.5rem; }
         .pc-footer a { color: var(--navy); font-size: 0.82rem; text-decoration: underline; }
@@ -1477,18 +1478,22 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         :root {
-          --navy: #163D7A;
-          --maroon: #B5302A;
-          --sky: #2E86DE;
-          --green: #2ECC8F;
-          --row-bg: #F6F3D6;
-          --indigo: #3F4FC9;
-          --page-bg: #FFFFFF;
-          --text: #3A3A3A;
-          --text-soft: #6B6B6B;
-          --search-bg: #E7E7E7;
-          --danger: #C0392B;
-          --line: #ECEAD8;
+          --navy: #1B4D3E;
+          --navy-deep: #0F3328;
+          --maroon: #8B2E3C;
+          --sky: #C9A227;
+          --gold-soft: #E7C989;
+          --green: #2F9E6E;
+          --row-bg: #FBF2D9;
+          --indigo: #2C6E5C;
+          --page-bg: #FDF8ED;
+          --text: #2B2420;
+          --text-soft: #7A6F5D;
+          --search-bg: #EFE6D2;
+          --danger: #B5302A;
+          --line: #E8DCC0;
+          --shadow-sm: 0 1px 3px rgba(43,36,32,0.08), 0 1px 2px rgba(43,36,32,0.06);
+          --shadow-md: 0 4px 12px rgba(27,77,62,0.12), 0 2px 4px rgba(27,77,62,0.08);
         }
         * { box-sizing: border-box; }
         .app {
@@ -1507,9 +1512,17 @@ export default function App() {
           position: sticky;
           top: 0;
           z-index: 20;
-          background: var(--page-bg);
+          background-color: var(--page-bg);
+          background-image:
+            linear-gradient(45deg, rgba(201,162,39,0.07) 25%, transparent 25%),
+            linear-gradient(-45deg, rgba(201,162,39,0.07) 25%, transparent 25%),
+            linear-gradient(45deg, transparent 75%, rgba(201,162,39,0.07) 75%),
+            linear-gradient(-45deg, transparent 75%, rgba(201,162,39,0.07) 75%);
+          background-size: 26px 26px;
+          background-position: 0 0, 0 13px, 13px -13px, -13px 0px;
           padding-top: env(safe-area-inset-top, 0px);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+          box-shadow: 0 2px 8px rgba(27,77,62,0.08);
+          border-bottom: 2px solid var(--sky);
         }
         .header {
           display: flex;
@@ -1563,7 +1576,13 @@ export default function App() {
           font-family: 'Inter', sans-serif;
           color: var(--text);
         }
-        .search-wrap input:focus-visible { outline: 2px solid var(--indigo); }
+        .search-wrap input {
+          transition: box-shadow 0.15s ease;
+        }
+        .search-wrap input:focus-visible {
+          outline: none;
+          box-shadow: 0 0 0 2px var(--indigo), var(--shadow-sm);
+        }
         .search-wrap input.with-scan { padding-right: 2.7rem; }
         .scan-btn {
           position: absolute;
@@ -1614,7 +1633,7 @@ export default function App() {
           left: 10%;
           right: 10%;
           bottom: 30%;
-          border: 3px solid var(--brass, #B8892B);
+          border: 3px solid var(--sky);
           border-radius: 10px;
           pointer-events: none;
         }
@@ -1680,8 +1699,10 @@ export default function App() {
           cursor: pointer;
           white-space: nowrap;
           opacity: 0.55;
+          transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
         }
-        .class-chip.active { opacity: 1; box-shadow: 0 0 0 2px #163D7A33; }
+        .class-chip.active { opacity: 1; box-shadow: 0 0 0 2px rgba(27,77,62,0.25), var(--shadow-sm); }
+        .class-chip:active { transform: scale(0.95); }
         .class-chip:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
 
         .student-list { padding: 0 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -1689,12 +1710,15 @@ export default function App() {
           display: flex;
           align-items: center;
           background: var(--row-bg);
-          border-radius: 10px;
+          border-radius: 12px;
           padding: 0.4rem 0.4rem 0.4rem 0.9rem;
           border: 2px solid transparent;
           width: 100%;
+          box-shadow: var(--shadow-sm);
+          transition: box-shadow 0.15s ease, transform 0.1s ease;
         }
-        .student-row.selected { border-color: var(--indigo); }
+        .student-row:active { transform: scale(0.99); }
+        .student-row.selected { border-color: var(--indigo); box-shadow: var(--shadow-md); }
         .student-row-main {
           display: flex;
           align-items: center;
@@ -1733,6 +1757,7 @@ export default function App() {
           justify-content: center;
           color: #fff;
           font-weight: 700;
+          box-shadow: 0 0 0 3px #FAF6EC, 0 0 0 4px var(--line), var(--shadow-sm);
         }
         .avatar .dot-badge {
           position: absolute;
@@ -1759,7 +1784,7 @@ export default function App() {
         }
         .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
         .avatar-letter { line-height: 1; user-select: none; }
-        .student-name { font-size: 1.02rem; font-weight: 600; color: #333; }
+        .student-name { font-size: 1.02rem; font-weight: 600; color: var(--text); }
         .student-meta { font-size: 0.76rem; color: var(--text-soft); margin-top: 0.1rem; }
 
         .empty {
@@ -1803,9 +1828,17 @@ export default function App() {
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: var(--shadow-sm);
+          transition: transform 0.12s ease, box-shadow 0.15s ease;
         }
+        .bottom-item:active .bottom-dot { transform: scale(0.88); }
         .bottom-item .label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; }
 
+        @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalSlideUp {
+          from { transform: translateY(28px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
         .modal-backdrop {
           position: fixed;
           inset: 0;
@@ -1814,6 +1847,7 @@ export default function App() {
           align-items: flex-end;
           justify-content: center;
           z-index: 50;
+          animation: modalFadeIn 0.18s ease;
         }
         .modal-panel {
           background: #fff;
@@ -1821,8 +1855,13 @@ export default function App() {
           max-width: 480px;
           max-height: 85vh;
           overflow-y: auto;
-          border-radius: 16px 16px 0 0;
+          border-radius: 18px 18px 0 0;
           padding: 1rem 1.1rem 1.4rem;
+          box-shadow: 0 -8px 30px rgba(27,77,62,0.18);
+          animation: modalSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .modal-backdrop, .modal-panel { animation: none; }
         }
         @media (min-width: 540px) {
           .modal-backdrop { align-items: center; }
@@ -1881,14 +1920,17 @@ export default function App() {
           background: var(--navy);
           color: #fff;
           border: none;
-          border-radius: 8px;
+          border-radius: 9px;
           padding: 0.6rem 1.1rem;
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           gap: 0.4rem;
+          box-shadow: var(--shadow-sm);
+          transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
         }
-        .btn:disabled { background: #AAB1C5; cursor: not-allowed; }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { background: #B9AF98; box-shadow: none; cursor: not-allowed; }
         .btn:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
         .btn.secondary { background: transparent; color: var(--navy); border: 1px solid var(--navy); }
         .btn.full { width: 100%; justify-content: center; }
@@ -1957,12 +1999,14 @@ export default function App() {
           justify-content: space-between;
           align-items: center;
           gap: 0.6rem;
-          background: #FAFAFA;
-          border: 1px solid #E5E5E5;
-          border-radius: 8px;
+          background: #FAF6EC;
+          border: 1px solid var(--line);
+          border-radius: 10px;
           padding: 0.6rem 0.8rem;
+          box-shadow: var(--shadow-sm);
+          transition: box-shadow 0.15s ease, transform 0.15s ease;
         }
-        .row-card.overdue { border-color: var(--danger); background: #FBEAE8; }
+        .row-card.overdue { border-color: var(--danger); background: #F8E9E7; }
         .row-card .title { font-weight: 700; font-size: 0.88rem; }
         .row-card .meta { font-size: 0.74rem; color: var(--text-soft); }
         .row-card .due { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
@@ -1975,7 +2019,7 @@ export default function App() {
         th { color: var(--text-soft); font-weight: 700; font-size: 0.72rem; }
 
         .grid-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 1rem; }
-        .stat-card { background: #FAFAFA; border: 1px solid #EEE; border-top: 3px solid var(--sky); border-radius: 8px; padding: 0.75rem 0.85rem; }
+        .stat-card { background: #FAF6EC; border: 1px solid var(--line); border-top: 3px solid var(--sky); border-radius: 10px; padding: 0.75rem 0.85rem; box-shadow: var(--shadow-sm); }
         .stat-card.warn { border-top-color: var(--danger); }
         .stat-card .num { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--navy); }
         .stat-card.warn .num { color: var(--danger); }
@@ -2070,8 +2114,8 @@ export default function App() {
           gap: 0.6rem;
         }
         .id-card {
-          border: 1px solid #ccc;
-          border-radius: 6px;
+          border: 1px solid var(--line);
+          border-radius: 8px;
           padding: 0.5rem;
           text-align: center;
           background: #fff;
