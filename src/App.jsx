@@ -22,10 +22,13 @@ import {
   Trash2,
   Bookmark,
   MessageCircle,
+  CreditCard,
+  Download,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
 import QRCode from "qrcode";
+import html2canvas from "html2canvas";
 import { auth, db } from "./firebaseClient";
 import {
   onAuthStateChanged,
@@ -694,6 +697,8 @@ export default function App() {
   const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [sheet, setSheet] = useState(null); // menu | issue | return | addStudent | catalog | dashboard | overdue | studentDetail | printCards
   const [detailStudentId, setDetailStudentId] = useState(null);
+  const cardRef = useRef(null);
+  const [cardDownloading, setCardDownloading] = useState(false);
   const [printMode, setPrintMode] = useState("students"); // students | books
   const [printClass, setPrintClass] = useState("ALL");
 
@@ -1455,6 +1460,24 @@ export default function App() {
     setDetailStudentId(id);
     setSheet("studentDetail");
   }
+  function openIdCard(id) {
+    setDetailStudentId(id);
+    setSheet("idCard");
+  }
+  async function downloadCard(student) {
+    if (!cardRef.current) return;
+    setCardDownloading(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, { scale: 3, backgroundColor: null });
+      const link = document.createElement("a");
+      link.download = `${student.name.replace(/\s+/g, "_")}_library_card.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (e) {
+      alert("Couldn't create the image. Try taking a screenshot instead.");
+    }
+    setCardDownloading(false);
+  }
   function openAddStudent() {
     const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
     setStudentForm({ name: "", className: defaultClass, roll: "" });
@@ -2124,6 +2147,63 @@ export default function App() {
         .id-card-meta { font-size: 0.68rem; color: var(--text-soft); margin-bottom: 0.3rem; }
         .id-barcode { width: 100%; height: auto; }
         .id-qrcode { width: 100%; max-width: 110px; height: auto; margin: 0 auto; display: block; }
+
+        .id-card-wrap { display: flex; justify-content: center; padding: 0.4rem 0 0.2rem; }
+        .lib-card {
+          width: 320px;
+          max-width: 100%;
+          background: linear-gradient(135deg, #FDF8ED 0%, #FBF2D9 100%);
+          border: 3px solid var(--sky);
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: var(--shadow-md);
+          display: flex;
+          flex-direction: column;
+        }
+        .lib-card-top {
+          background: var(--navy);
+          background-image: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
+          padding: 0.65rem 0.9rem;
+          color: #fff;
+        }
+        .lib-card-brand-name {
+          font-family: 'Playfair Display', serif;
+          font-weight: 800;
+          font-size: 0.95rem;
+          letter-spacing: 0.02em;
+        }
+        .lib-card-brand-sub { font-size: 0.6rem; color: var(--gold-soft); margin-top: 0.15rem; }
+        .lib-card-body { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem; flex: 1; }
+        .lib-card-info { flex: 1; min-width: 0; }
+        .lib-card-name {
+          font-family: 'Playfair Display', serif;
+          font-weight: 700;
+          font-size: 1.05rem;
+          color: var(--navy-deep);
+          line-height: 1.25;
+        }
+        .lib-card-meta { font-size: 0.78rem; color: var(--text-soft); margin-top: 0.2rem; }
+        .lib-card-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.6rem 0.9rem 0.8rem;
+          border-top: 1px dashed var(--line);
+        }
+        .lib-card-id-label {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 0.62rem;
+          letter-spacing: 0.08em;
+          color: var(--text-soft);
+          font-weight: 700;
+        }
+        .lib-card-qr-wrap {
+          background: #fff;
+          padding: 4px;
+          border-radius: 6px;
+          box-shadow: var(--shadow-sm);
+          line-height: 0;
+        }
 
         @media print {
           body * { visibility: hidden; }
@@ -3409,6 +3489,14 @@ export default function App() {
               </button>
             </div>
 
+            <button
+              className="btn secondary full"
+              style={{ marginBottom: "1rem" }}
+              onClick={() => openIdCard(dStudent.id)}
+            >
+              <CreditCard size={15} /> Digital Library Card
+            </button>
+
             {editingStudentId === dStudent.id && (
               <form onSubmit={saveEditStudent} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem", marginBottom: "1rem" }}>
                 <input
@@ -3500,6 +3588,56 @@ export default function App() {
                 </table>
               </div>
             )}
+          </Modal>
+        );
+      })()}
+
+      {sheet === "idCard" && detailStudentId && (() => {
+        const cStudent = studentById(detailStudentId);
+        if (!cStudent) return null;
+        return (
+          <Modal title="Digital Library Card" onClose={() => setSheet(null)}>
+            <div className="id-card-wrap">
+              <div className="lib-card" ref={cardRef}>
+                <div className="lib-card-top">
+                  <div className="lib-card-brand-name">NMMI ISLAMIC LIBRARY</div>
+                  <div className="lib-card-brand-sub">Nandiyil Muhammed Musliyar Memorial</div>
+                </div>
+                <div className="lib-card-body">
+                  <Avatar name={cStudent.name} photoUrl={cStudent.photoUrl} size={64} />
+                  <div className="lib-card-info">
+                    <div className="lib-card-name">{cStudent.name}</div>
+                    <div className="lib-card-meta">
+                      {cStudent.className || "Unassigned"}
+                      {cStudent.roll ? ` · Roll ${cStudent.roll}` : ""}
+                    </div>
+                  </div>
+                </div>
+                <div className="lib-card-bottom">
+                  <div className="lib-card-id-label">LIBRARY MEMBER</div>
+                  {cStudent.roll ? (
+                    <div className="lib-card-qr-wrap">
+                      <QRCodeCanvas value={cStudent.roll} size={66} />
+                    </div>
+                  ) : (
+                    <div className="lib-card-id-label" style={{ color: "var(--danger)" }}>
+                      Add a roll no. for QR
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              className="btn full"
+              style={{ marginTop: "1.1rem" }}
+              onClick={() => downloadCard(cStudent)}
+              disabled={cardDownloading}
+            >
+              <Download size={16} /> {cardDownloading ? "Preparing..." : "Download as Image"}
+            </button>
+            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", textAlign: "center", marginTop: "0.6rem" }}>
+              Save this to the student's phone, or print it out.
+            </p>
           </Modal>
         );
       })()}
