@@ -25,6 +25,7 @@ import {
   CreditCard,
   Download,
   Award,
+  Bell,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
@@ -2536,6 +2537,10 @@ export default function App() {
             >
               <Award size={18} /> Monthly Certificate
             </button>
+            <button className="menu-row" onClick={() => setSheet("reservations")}>
+              <Bell size={18} /> Reservations / Waitlist
+              {waitingList.length > 0 && <span className="badge">{waitingList.length}</span>}
+            </button>
             <button className="menu-row" onClick={() => setSheet("printCards")}>
               <Printer size={18} /> Print Labels (Barcodes)
             </button>
@@ -2709,18 +2714,35 @@ export default function App() {
             <div className="pick-list">
               {issueBookMatches.length === 0 && <div className="empty">No books found</div>}
               {issueBookMatches.map((b) => (
-                <button
-                  key={b.id}
-                  className={`pick-item ${selectedBook?.id === b.id ? "selected" : ""}`}
-                  onClick={() => setSelectedBook(b)}
-                  disabled={b.availableCopies < 1}
-                >
-                  <span className="badge">{b.availableCopies}/{b.totalCopies}</span>
-                  <span>
-                    <div className="t-title">{b.title}</div>
-                    <div className="t-meta">{b.author} · {b.code}</div>
-                  </span>
-                </button>
+                <div key={b.id} style={{ display: "flex", gap: "0.4rem", alignItems: "stretch" }}>
+                  <button
+                    className={`pick-item ${selectedBook?.id === b.id ? "selected" : ""}`}
+                    style={{ flex: 1 }}
+                    onClick={() => setSelectedBook(b)}
+                    disabled={b.availableCopies < 1}
+                  >
+                    <span className="badge">{b.availableCopies}/{b.totalCopies}</span>
+                    <span>
+                      <div className="t-title">{b.title}</div>
+                      <div className="t-meta">
+                        {b.author} · {b.code}
+                        {bookWaitingCount(b.id) > 0 ? ` · 🔖 ${bookWaitingCount(b.id)} waiting` : ""}
+                      </div>
+                    </span>
+                  </button>
+                  {b.availableCopies < 1 && (
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      style={{ padding: "0.4rem 0.6rem", fontSize: "0.75rem" }}
+                      disabled={!selectedStudentId}
+                      onClick={() => reserveBook(b, selectedStudentId)}
+                      title={selectedStudentId ? "Add to waitlist" : "Select a student first"}
+                    >
+                      <Bell size={13} /> Reserve
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -3180,6 +3202,7 @@ export default function App() {
                             <div className="title">{b.title}</div>
                             <div className="meta">
                               {b.author} · {b.code} · {b.availableCopies}/{b.totalCopies}
+                              {bookWaitingCount(b.id) > 0 ? ` · 🔖 ${bookWaitingCount(b.id)} waiting` : ""}
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: "0.4rem" }}>
@@ -3749,6 +3772,72 @@ export default function App() {
           </Modal>
         );
       })()}
+
+      {sheet === "reservations" && (
+        <Modal title="Reservations / Waitlist" onClose={() => setSheet(null)}>
+          {waitingList.length === 0 ? (
+            <div className="empty">
+              ഇപ്പോൾ ആരും ഒരു പുസ്തകത്തിനായി കാത്തിരിക്കുന്നില്ല.
+              <br />
+              Issue Book-ൽ ഒരു വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുത്ത്, മുഴുവൻ issue ആയ പുസ്തകത്തിന് "Reserve" ടാപ്പ് ചെയ്യൂ.
+            </div>
+          ) : (
+            <div className="row-list">
+              {[...waitingList]
+                .sort((a, b) => (b.book.availableCopies > 0 ? 1 : 0) - (a.book.availableCopies > 0 ? 1 : 0))
+                .map(({ res, book, student }) => {
+                  const available = book.availableCopies > 0;
+                  return (
+                    <div
+                      key={res.id}
+                      className="row-card"
+                      style={available ? { borderColor: "#1F8A5E", background: "#E4F5EC" } : undefined}
+                    >
+                      <div>
+                        <div className="title">{student.name}</div>
+                        <div className="meta">
+                          “{book.title}” ({book.code}) · since {formatDate(res.reservedDate)}
+                          {res.status === "notified" ? " · notified" : ""}
+                        </div>
+                        {available && (
+                          <div className="meta" style={{ color: "#1F8A5E", fontWeight: 700 }}>
+                            ✅ ഇപ്പോൾ ലഭ്യമാണ് ({book.availableCopies})
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        {student.phone && (
+                          <a
+                            href={waLink(
+                              student.phone,
+                              `നമസ്കാരം ${student.name}, നിങ്ങൾ റിസർവ് ചെയ്ത "${book.title}" (${book.code}) എന്ന പുസ്തകം ഇപ്പോൾ ലൈബ്രറിയിൽ ലഭ്യമാണ്. ദയവായി വന്ന് എടുക്കാൻ അഭ്യർത്ഥിക്കുന്നു. നന്ദി.`
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn secondary"
+                            style={{ padding: "0.4rem 0.5rem" }}
+                            aria-label={`WhatsApp ${student.name}`}
+                            onClick={() => markReservationNotified(res.id)}
+                          >
+                            <MessageCircle size={13} />
+                          </a>
+                        )}
+                        <button
+                          className="btn secondary"
+                          style={{ padding: "0.4rem 0.5rem" }}
+                          onClick={() => cancelReservation(res.id)}
+                          aria-label="Cancel reservation"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </Modal>
+      )}
 
       {sheet === "certificate" && (
         <Modal title="Monthly Certificate" onClose={() => setSheet(null)}>
