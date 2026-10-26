@@ -1,11 +1,13 @@
-// Firebase project configuration.
-// These values come from your Firebase project settings (Project settings → General →
-// Your apps → SDK setup and configuration). They are safe to expose in client code —
-// real protection comes from your Firestore/Storage security rules + Authentication,
-// not from hiding this config. Still, we read them from a local .env file (gitignored)
-// so you don't have to hardcode them in source control.
+// Firebase setup. Values come from the VITE_FIREBASE_* variables
+// (GitHub repo secrets at build time). They are safe to ship in client code;
+// real protection comes from Firestore rules + sign-in.
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -18,10 +20,20 @@ const firebaseConfig = {
 };
 
 export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Keep a copy of the data on the device, so books, students and the public
+// catalog still open when there is no internet. Changes made offline sync
+// automatically once the connection is back.
+let firestore;
+try {
+  firestore = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  });
+} catch (e) {
+  firestore = getFirestore(app);
+}
+export const db = firestore;
 export const auth = getAuth(app);
 
-// Firebase Storage is NOT used in this app (it requires the paid Blaze plan).
-// Student profile photos are instead resized small client-side and stored as
-// a data URI directly on the student's own Firestore document — works on the
-// free Spark plan, no billing needed.
+// Student photos are stored as small images on the student's own Firestore
+// document, so Firebase Storage (paid Blaze plan) is not used.
