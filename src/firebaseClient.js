@@ -1,9 +1,5 @@
-// Firebase setup. Values come from the VITE_FIREBASE_* variables
-// (GitHub repo secrets at build time). They are safe to ship in client code;
-// real protection comes from Firestore rules + sign-in.
 import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -21,19 +17,14 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 
-// Keep a copy of the data on the device, so books, students and the public
-// catalog still open when there is no internet. Changes made offline sync
-// automatically once the connection is back.
-let firestore;
-try {
-  firestore = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-  });
-} catch (e) {
-  firestore = getFirestore(app);
-}
-export const db = firestore;
+// Keeps a copy of the data on the device, so books/students can still be
+// viewed and searched with no internet. Changes made offline sync automatically
+// when the connection returns.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
+
 export const auth = getAuth(app);
 
-// Student photos are stored as small images on the student's own Firestore
+// Student photos are stored as small data URIs on the student's Firestore
 // document, so Firebase Storage (paid Blaze plan) is not used.
