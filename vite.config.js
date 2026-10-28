@@ -2,16 +2,18 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Turns the site into an installable app (home-screen icon, full screen) and
+// caches the app files so it opens even with no internet.
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon-32.png", "apple-touch-icon.png"],
+      includeAssets: ["apple-touch-icon.png", "favicon-32.png"],
       manifest: {
         name: "NMMI Islamic Library",
         short_name: "NMMI Library",
-        description: "Library circulation app: issue, return and search books.",
+        description: "Library circulation app — Nandiyil Muhammed Musliyar Memorial Islamic Library",
         theme_color: "#1B4D3E",
         background_color: "#FDF8ED",
         display: "standalone",
@@ -25,7 +27,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/__\//],
@@ -41,7 +43,7 @@ export default defineConfig({
             handler: "CacheFirst",
             options: {
               cacheName: "google-fonts-files",
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
