@@ -25,7 +25,7 @@ import {
   CreditCard,
   Download,
   Award,
-  Bell,
+  GraduationCap,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import JsBarcode from "jsbarcode";
@@ -49,6 +49,7 @@ import {
   where,
   getDocs,
   deleteDoc,
+  writeBatch,
 } from "firebase/firestore";
 // Student photo uploads are disabled for now — Firebase Storage requires the
 // Blaze (pay-as-you-go) billing plan. Enable it later in the Firebase Console
@@ -711,6 +712,10 @@ export default function App() {
   const [certDownloading, setCertDownloading] = useState(false);
   const [certMonth, setCertMonth] = useState(todayISO().slice(0, 7));
   const [certStudentId, setCertStudentId] = useState("");
+  const [promoMap, setPromoMap] = useState({});
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoMsg, setPromoMsg] = useState("");
+  const [lastPromotion, setLastPromotion] = useState(null);
   const [printMode, setPrintMode] = useState("students"); // students | books
   const [printClass, setPrintClass] = useState("ALL");
 
@@ -887,6 +892,12 @@ export default function App() {
     unsubs.push(
       onSnapshot(collection(db, "transactions"), (qsnap) => {
         setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      })
+    );
+
+    unsubs.push(
+      onSnapshot(doc(db, "settings", "lastPromotion"), (snap) => {
+        setLastPromotion(snap.exists() ? snap.data() : null);
       })
     );
 
@@ -1489,6 +1500,72 @@ export default function App() {
       },
       feedback.type === "success" ? 450 : 750
     );
+  }
+
+  function openPromotion() {
+    const m = {};
+    classes.forEach((c, i) => {
+      m[c] = classes[i + 1] || "";
+    });
+    setPromoMap(m);
+    setPromoMsg("");
+    setSheet("promotion");
+  }
+
+  async function applyPromotion() {
+    const moves = [];
+    students.forEach((s) => {
+      if (!s.className || !(s.className in promoMap)) return;
+      const to = promoMap[s.className];
+      if (to !== s.className) moves.push({ id: s.id, from: s.className, to });
+    });
+    if (moves.length === 0) {
+      setPromoMsg("No student will change class.");
+      return;
+    }
+    if (!window.confirm(`Move ${moves.length} students to their new classes?`)) return;
+    setPromoBusy(true);
+    setPromoMsg("");
+    try {
+      for (let i = 0; i < moves.length; i += 400) {
+        const batch = writeBatch(db);
+        moves.slice(i, i + 400).forEach((m) => batch.update(doc(db, "students", m.id), { className: m.to }));
+        await batch.commit();
+      }
+      await setDoc(doc(db, "settings", "lastPromotion"), { date: todayISO(), moves });
+      setPromoMsg(`✅ ${moves.length} students moved. You can undo this below.`);
+    } catch (e) {
+      setPromoMsg("Couldn't finish — check your internet connection and look at the student list.");
+    }
+    setPromoBusy(false);
+  }
+
+  async function undoPromotion() {
+    if (!lastPromotion || !Array.isArray(lastPromotion.moves)) return;
+    const byId = {};
+    students.forEach((s) => {
+      byId[s.id] = s;
+    });
+    const revert = lastPromotion.moves.filter((m) => byId[m.id] && byId[m.id].className === m.to);
+    if (revert.length === 0) {
+      setPromoMsg("Nothing to undo — those students were changed again since.");
+      return;
+    }
+    if (!window.confirm(`Undo the last promotion? ${revert.length} students go back.`)) return;
+    setPromoBusy(true);
+    setPromoMsg("");
+    try {
+      for (let i = 0; i < revert.length; i += 400) {
+        const batch = writeBatch(db);
+        revert.slice(i, i + 400).forEach((m) => batch.update(doc(db, "students", m.id), { className: m.from }));
+        await batch.commit();
+      }
+      await deleteDoc(doc(db, "settings", "lastPromotion"));
+      setPromoMsg(`↩️ ${revert.length} students moved back.`);
+    } catch (e) {
+      setPromoMsg("Couldn't undo — check your internet connection and try again.");
+    }
+    setPromoBusy(false);
   }
 
   function openStudentDetail(id) {
@@ -2523,6 +2600,9 @@ export default function App() {
             <button className="menu-row" onClick={() => setSheet("classes")}>
               <Layers size={18} /> Manage Classes
             </button>
+            <button className="menu-row" onClick={openPromotion}>
+              <GraduationCap size={18} /> Class Promotion
+            </button>
             <button className="menu-row" onClick={() => setSheet("overdue")}>
               <AlertTriangle size={18} /> Overdue Books
               {overdueTx.length > 0 && <span className="badge">{overdueTx.length}</span>}
@@ -2536,10 +2616,6 @@ export default function App() {
               }}
             >
               <Award size={18} /> Monthly Certificate
-            </button>
-            <button className="menu-row" onClick={() => setSheet("reservations")}>
-              <Bell size={18} /> Reservations / Waitlist
-              {waitingList.length > 0 && <span className="badge">{waitingList.length}</span>}
             </button>
             <button className="menu-row" onClick={() => setSheet("printCards")}>
               <Printer size={18} /> Print Labels (Barcodes)
@@ -2714,35 +2790,18 @@ export default function App() {
             <div className="pick-list">
               {issueBookMatches.length === 0 && <div className="empty">No books found</div>}
               {issueBookMatches.map((b) => (
-                <div key={b.id} style={{ display: "flex", gap: "0.4rem", alignItems: "stretch" }}>
-                  <button
-                    className={`pick-item ${selectedBook?.id === b.id ? "selected" : ""}`}
-                    style={{ flex: 1 }}
-                    onClick={() => setSelectedBook(b)}
-                    disabled={b.availableCopies < 1}
-                  >
-                    <span className="badge">{b.availableCopies}/{b.totalCopies}</span>
-                    <span>
-                      <div className="t-title">{b.title}</div>
-                      <div className="t-meta">
-                        {b.author} · {b.code}
-                        {bookWaitingCount(b.id) > 0 ? ` · 🔖 ${bookWaitingCount(b.id)} waiting` : ""}
-                      </div>
-                    </span>
-                  </button>
-                  {b.availableCopies < 1 && (
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      style={{ padding: "0.4rem 0.6rem", fontSize: "0.75rem" }}
-                      disabled={!selectedStudentId}
-                      onClick={() => reserveBook(b, selectedStudentId)}
-                      title={selectedStudentId ? "Add to waitlist" : "Select a student first"}
-                    >
-                      <Bell size={13} /> Reserve
-                    </button>
-                  )}
-                </div>
+                <button
+                  key={b.id}
+                  className={`pick-item ${selectedBook?.id === b.id ? "selected" : ""}`}
+                  onClick={() => setSelectedBook(b)}
+                  disabled={b.availableCopies < 1}
+                >
+                  <span className="badge">{b.availableCopies}/{b.totalCopies}</span>
+                  <span>
+                    <div className="t-title">{b.title}</div>
+                    <div className="t-meta">{b.author} · {b.code}</div>
+                  </span>
+                </button>
               ))}
             </div>
           </div>
@@ -3202,7 +3261,6 @@ export default function App() {
                             <div className="title">{b.title}</div>
                             <div className="meta">
                               {b.author} · {b.code} · {b.availableCopies}/{b.totalCopies}
-                              {bookWaitingCount(b.id) > 0 ? ` · 🔖 ${bookWaitingCount(b.id)} waiting` : ""}
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: "0.4rem" }}>
@@ -3773,71 +3831,65 @@ export default function App() {
         );
       })()}
 
-      {sheet === "reservations" && (
-        <Modal title="Reservations / Waitlist" onClose={() => setSheet(null)}>
-          {waitingList.length === 0 ? (
-            <div className="empty">
-              ഇപ്പോൾ ആരും ഒരു പുസ്തകത്തിനായി കാത്തിരിക്കുന്നില്ല.
-              <br />
-              Issue Book-ൽ ഒരു വിദ്യാർത്ഥിയെ തിരഞ്ഞെടുത്ത്, മുഴുവൻ issue ആയ പുസ്തകത്തിന് "Reserve" ടാപ്പ് ചെയ്യൂ.
-            </div>
-          ) : (
+      {sheet === "promotion" && (() => {
+        const countFor = (c) => students.filter((s) => s.className === c).length;
+        const movingCount = classes.reduce((n, c) => n + ((promoMap[c] ?? c) !== c ? countFor(c) : 0), 0);
+        return (
+          <Modal title="Class Promotion" onClose={() => setSheet(null)}>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-soft)", marginBottom: "0.8rem", lineHeight: 1.5 }}>
+              Year-end: move every class up in one go. For each class, pick where its students go (default: the
+              next class). Students of the last class become "Unassigned" — remove them later from the student
+              list if they have left. Nothing changes until you tap Apply, and the last promotion can be undone.
+            </p>
             <div className="row-list">
-              {[...waitingList]
-                .sort((a, b) => (b.book.availableCopies > 0 ? 1 : 0) - (a.book.availableCopies > 0 ? 1 : 0))
-                .map(({ res, book, student }) => {
-                  const available = book.availableCopies > 0;
-                  return (
-                    <div
-                      key={res.id}
-                      className="row-card"
-                      style={available ? { borderColor: "#1F8A5E", background: "#E4F5EC" } : undefined}
-                    >
-                      <div>
-                        <div className="title">{student.name}</div>
-                        <div className="meta">
-                          “{book.title}” ({book.code}) · since {formatDate(res.reservedDate)}
-                          {res.status === "notified" ? " · notified" : ""}
-                        </div>
-                        {available && (
-                          <div className="meta" style={{ color: "#1F8A5E", fontWeight: 700 }}>
-                            ✅ ഇപ്പോൾ ലഭ്യമാണ് ({book.availableCopies})
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", gap: "0.4rem" }}>
-                        {student.phone && (
-                          <a
-                            href={waLink(
-                              student.phone,
-                              `നമസ്കാരം ${student.name}, നിങ്ങൾ റിസർവ് ചെയ്ത "${book.title}" (${book.code}) എന്ന പുസ്തകം ഇപ്പോൾ ലൈബ്രറിയിൽ ലഭ്യമാണ്. ദയവായി വന്ന് എടുക്കാൻ അഭ്യർത്ഥിക്കുന്നു. നന്ദി.`
-                            )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn secondary"
-                            style={{ padding: "0.4rem 0.5rem" }}
-                            aria-label={`WhatsApp ${student.name}`}
-                            onClick={() => markReservationNotified(res.id)}
-                          >
-                            <MessageCircle size={13} />
-                          </a>
-                        )}
-                        <button
-                          className="btn secondary"
-                          style={{ padding: "0.4rem 0.5rem" }}
-                          onClick={() => cancelReservation(res.id)}
-                          aria-label="Cancel reservation"
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+              {classes.map((c) => (
+                <div key={c} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.4rem" }}>
+                  <div>
+                    <div className="title">{c}</div>
+                    <div className="meta">{countFor(c)} student{countFor(c) === 1 ? "" : "s"}</div>
+                  </div>
+                  <select value={promoMap[c] ?? c} onChange={(e) => setPromoMap({ ...promoMap, [c]: e.target.value })}>
+                    <option value="">→ Unassigned (passed out)</option>
+                    {classes.map((t) => (
+                      <option key={t} value={t}>{t === c ? `Stay in ${t}` : `→ Move to ${t}`}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
             </div>
-          )}
-        </Modal>
-      )}
+            {promoMsg && (
+              <div
+                style={{
+                  margin: "0.8rem 0 0",
+                  fontSize: "0.84rem",
+                  fontWeight: 700,
+                  color: promoMsg.startsWith("✅") || promoMsg.startsWith("↩️") ? "#1F8A5E" : "var(--danger)",
+                }}
+              >
+                {promoMsg}
+              </div>
+            )}
+            <button
+              className="btn full"
+              style={{ marginTop: "1rem" }}
+              disabled={promoBusy || movingCount === 0}
+              onClick={applyPromotion}
+            >
+              <GraduationCap size={16} /> {promoBusy ? "Working..." : `Apply Promotion (${movingCount} students)`}
+            </button>
+            {lastPromotion && Array.isArray(lastPromotion.moves) && (
+              <button
+                className="btn secondary full"
+                style={{ marginTop: "0.6rem" }}
+                disabled={promoBusy}
+                onClick={undoPromotion}
+              >
+                <RotateCcw size={15} /> Undo last promotion ({lastPromotion.moves.length} students, {formatDate(lastPromotion.date)})
+              </button>
+            )}
+          </Modal>
+        );
+      })()}
 
       {sheet === "certificate" && (
         <Modal title="Monthly Certificate" onClose={() => setSheet(null)}>
