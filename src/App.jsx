@@ -28,7 +28,6 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
-import JsBarcode from "jsbarcode";
 import QRCode from "qrcode";
 import html2canvas from "html2canvas";
 import { auth, db } from "./firebaseClient";
@@ -399,25 +398,6 @@ function Modal({ title, onClose, children }) {
       </div>
     </div>
   );
-}
-
-function BarcodeSVG({ value }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (ref.current && value) {
-      try {
-        JsBarcode(ref.current, String(value), {
-          format: "CODE128",
-          displayValue: true,
-          fontSize: 13,
-          height: 42,
-          margin: 6,
-        });
-      } catch (e) {}
-    }
-  }, [value]);
-  if (!value) return null;
-  return <svg ref={ref} className="id-barcode" />;
 }
 
 function QRCodeCanvas({ value, size = 130 }) {
