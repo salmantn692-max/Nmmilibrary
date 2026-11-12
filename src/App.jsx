@@ -26,6 +26,7 @@ import {
   Download,
   Award,
   GraduationCap,
+  QrCode,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -50,9 +51,6 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-// Student photo uploads are disabled for now — Firebase Storage requires the
-// Blaze (pay-as-you-go) billing plan. Enable it later in the Firebase Console
-// (Build → Storage), then ask Claude to re-enable the photo upload feature.
 
 const DEFAULT_CLASSES = ["CLASS-1", "CLASS-2", "CLASS-3", "CLASS-4", "CLASS-5", "CLASS-6"];
 
@@ -66,8 +64,26 @@ const DEFAULT_CATEGORIES = [
 ];
 const UNCATEGORIZED = "Uncategorized";
 
-// One-time migration helper: books added before categories existed (SH/HW/SM/SPY/SHR/B-prefixed
-// codes from the original catalog PDF) get auto-sorted into a matching default category.
+// Prefix stored inside a book's QR code so a scanned book is never confused
+// with a student's roll number (which is the content of student QR codes).
+const BOOK_QR_PREFIX = "BOOK:";
+
+// Builds the exact string encoded in a book's QR code.
+function bookQrValue(code) {
+  return BOOK_QR_PREFIX + stripSpaces(code);
+}
+
+// Reads a scanned string and returns the plain book code it refers to,
+// whether the scan came from a new BOOK:-prefixed QR or a legacy plain-code
+// barcode/QR from an older printout.
+function parseBookQrValue(text) {
+  const raw = (text || "").trim();
+  if (raw.toUpperCase().startsWith(BOOK_QR_PREFIX)) {
+    return stripSpaces(raw.slice(BOOK_QR_PREFIX.length));
+  }
+  return stripSpaces(raw);
+}
+
 function inferCategoryFromCode(code) {
   if (/^SH\d/i.test(code)) return "Shihab Thangal Family";
   if (/^HW\d/i.test(code)) return "Women in Islamic History";
@@ -78,9 +94,6 @@ function inferCategoryFromCode(code) {
   return "";
 }
 
-// Strips all whitespace (so "HW 9" and "HW9" are treated as the same code)
-// and lowercases, for matching/searching. Storage keeps the space-stripped
-// form of whatever the person typed, preserving their original casing.
 function normCode(s) {
   return (s || "").replace(/\s+/g, "").toLowerCase();
 }
@@ -88,9 +101,6 @@ function stripSpaces(s) {
   return (s || "").replace(/\s+/g, "");
 }
 
-// Shrinks a photo to a small square-ish thumbnail and returns a JPEG data
-// URI, small enough to store directly on the student's Firestore document —
-// no Firebase Storage (and no Blaze billing plan) needed.
 function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -122,9 +132,6 @@ function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
   });
 }
 
-// Builds a wa.me link that opens WhatsApp with a pre-filled message.
-// Accepts a plain 10-digit Indian mobile number (adds 91) or one already
-// including a country code.
 function waLink(phone, message) {
   let digits = (phone || "").replace(/\D/g, "");
   if (digits.length === 10) digits = "91" + digits;
@@ -159,7 +166,6 @@ function daysBetween(a, b) {
   return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
 }
 
-// Scan feedback sounds — synthesized with the Web Audio API, no audio files needed.
 let _audioCtx = null;
 function getAudioCtx() {
   try {
@@ -194,15 +200,15 @@ function playTone(frequency, duration, type, volume, delay) {
 }
 function playScanSound(kind) {
   if (kind === "success") {
-    playTone(1047, 90, "sine", 0.22, 0); // soft "ting"
+    playTone(1047, 90, "sine", 0.22, 0);
     playTone(1568, 140, "sine", 0.2, 70);
   } else if (kind === "returnSuccess") {
-    playTone(784, 100, "sine", 0.2, 0); // distinct descending tone
+    playTone(784, 100, "sine", 0.2, 0);
     playTone(523, 150, "sine", 0.18, 90);
   } else if (kind === "error") {
-    playTone(220, 170, "square", 0.16, 0); // short error beep
+    playTone(220, 170, "square", 0.16, 0);
   } else if (kind === "warning") {
-    playTone(440, 90, "triangle", 0.2, 0); // two-beat warning
+    playTone(440, 90, "triangle", 0.2, 0);
     playTone(440, 90, "triangle", 0.2, 140);
   }
 }
@@ -235,10 +241,7 @@ const SEED_BOOKS = [
   { title: "The Palace of Illusions", author: "Chitra Banerjee Divakaruni", code: "B025" },
 ].map((b) => ({ id: uid(), totalCopies: 1, availableCopies: 1, ...b }));
 
-// Transcribed by hand from the uploaded catalog PDF (its text layer was
-// corrupted by a broken font encoding, so this was read visually page by page).
 const NMMI_SEED_BOOKS = [
-  // SH — Shihab Thangal family / biography
   { code: "SH1", title: "വംശം ദേശം സന്ദേശം", author: "സയ്യിദ് ഹൈദരലി ശിഹാബ് തങ്ങൾ" },
   { code: "SH2", title: "മമ്പുറം തങ്ങൾ", author: "മോയിൻ ഹുദവി മലയമ്മ" },
   { code: "SH3", title: "കൊന്നാര് സയ്യിദ് മുഹമ്മദ് കോയ തങ്ങൾ", author: "മുജീബ് തങ്ങൾക്ക് കൊന്നാര്" },
@@ -259,7 +262,6 @@ const NMMI_SEED_BOOKS = [
   { code: "SH18", title: "തങ്ങളുപ്പാപ്പ", author: "സിപി ബാസിത് ഹുദവി തിരൂർ" },
   { code: "SH19", title: "കാലം സമൂഹം", author: "സയ്യിദ് ഹൈദരലി ശിഹാബ് തങ്ങൾ" },
   { code: "SH20", title: "നബവി സുഗന്ധം ബാഅലവീ വസന്തം", author: "സയ്യിദ് ഹാഷിം ബാഅലവീ തങ്ങൾ" },
-  // HW — women in Islamic history
   { code: "HW1", title: "101 സ്വഹാബി വനിതകൾ", author: "മുജീബ് റഹ്മാൻ കക്കാട്" },
   { code: "HW2", title: "മാതൃരത്നങ്ങൾ", author: "ഇബിനു മൂസ പള്ളിക്കര" },
   { code: "HW3", title: "പ്രഥമ വനിത ഖദീജ", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദർ" },
@@ -307,7 +309,6 @@ const NMMI_SEED_BOOKS = [
   { code: "HW45", title: "അസ്മാഹ് ബിൻത് അബൂബക്കർ", author: "മുഹമ്മദ് പാറന്നൂർ" },
   { code: "HW48", title: "ബീവി ഉമ്മു ഉമാറ", author: "മുഹമ്മദ് പാറന്നൂർ" },
   { code: "HW49", title: "ബീവി ഫാത്തിമ", author: "മുഹമ്മദ് ഫാറൂഖ് ബുഖാരി" },
-  // SM — mathematics
   { code: "SM1", title: "കണക്കിലെ എളുപ്പവഴികൾ", author: "ടി ശിവദാസ്" },
   { code: "SM2", title: "കണ്ടുപഠിച്ചാൽ കണക്ക് എളുപ്പം", author: "മാധവൻ പള്ളത്തേരി" },
   { code: "SM3", title: "ഭാരതീയ ഗണിതം", author: "പ്രൊഫൈൽ രാമചന്ദ്രമേനോൻ" },
@@ -318,7 +319,6 @@ const NMMI_SEED_BOOKS = [
   { code: "SM8", title: "ഗണിതം എന്റെളുപ്പം", author: "എം എസ് ഖാൻ" },
   { code: "SM9", title: "ഒന്നുമില്ലായ്മയുടെ ശ്യാമ സൗന്ദര്യം", author: "ഗണിതം എന്റെളുപ്പം" },
   { code: "SM10", title: "ഗണിതം ലളിതം", author: "പള്ളിയറ ശ്രീധരൻ" },
-  // SPY — spirituality / philosophy
   { code: "SPY1", title: "ജീവിത ഗാനം", author: "പി എൻ ദാസ്" },
   { code: "SPY2", title: "സത്സംഗ പിയൂഷം", author: "ബാലകൃഷ്ണൻ നായർ" },
   { code: "SPY3", title: "റൂമിയുടെ ആകാശം", author: "സൂഫി" },
@@ -333,7 +333,6 @@ const NMMI_SEED_BOOKS = [
   { code: "SPY12", title: "ദൈവത്തിൻറെ ചുംബനങ്ങൾ", author: "ഖലീൽ ജിബ്രാൻ" },
   { code: "SPY13", title: "മുസ്ലിമിന്റെ ഒരു ദിവസം", author: "ഇസ്മായിൽ മുജദിനി" },
   { code: "SPY14", title: "ഇസ്ലാമിക തത്വചിന്ത", author: "സിദ്ധീഖ്" },
-  // SHR — human rights / social issues
   { code: "SHR1", title: "മനുഷ്യാവകാശങ്ങൾ", author: "ജി ജോ കെ മാനുവൽ" },
   { code: "SHR2", title: "വംശവൃക്ഷത്തിന്റെ വേരുകൾ", author: "സിപി അബൂബക്കർ" },
   { code: "SHR3", title: "പീഡനത്തിന് മനശാസ്ത്രം രാഷ്ട്രീയം", author: "കലിം" },
@@ -367,8 +366,6 @@ const NMMI_SEED_BOOKS = [
   { code: "SHR31", title: "മനുഷ്യാവകാശ പ്രവർത്തകർക്ക്", author: "അധ്യ എം എം അലിയാർ" },
 ].map((b) => ({ id: uid(), totalCopies: 1, availableCopies: 1, ...b }));
 
-// A handful of sample students across every default class, so the list
-// isn't empty on first run. Names are placeholders — edit or rename freely.
 const SEED_STUDENTS = [
   { name: "ആയിഷ ഫാത്തിമ", className: "CLASS-1", roll: "D1" },
   { name: "മുഹമ്മദ് ഷാദിൽ", className: "CLASS-1", roll: "D2" },
@@ -432,7 +429,7 @@ function Avatar({ name, photoUrl, size = 42, children }) {
 function Scanner({ onResult, onClose, feedback }) {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
-  const [status, setStatus] = useState("starting"); // starting | scanning | error
+  const [status, setStatus] = useState("starting");
   const [errMsg, setErrMsg] = useState("");
 
   useEffect(() => {
@@ -472,7 +469,7 @@ function Scanner({ onResult, onClose, feedback }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Scan Barcode</h2>
+          <h2>Scan QR Code</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
@@ -492,17 +489,13 @@ function Scanner({ onResult, onClose, feedback }) {
           </div>
           {status === "starting" && <div className="empty">Starting camera...</div>}
           {status === "error" && <div className="lock-error">{errMsg}</div>}
-          <div className="lock-hint">Point the camera at the barcode on the ID card.</div>
+          <div className="lock-hint">Point the camera at the QR code on the card.</div>
         </div>
       </div>
     </div>
   );
 }
 
-// A standalone, no-sign-in page: anyone with the link can search the book
-// catalog (title/author/code/availability only — nothing about students or
-// who has what). Mounted separately at /catalog, never alongside the main
-// staff App. Relies on the Firestore rule that opens "books" to public read.
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -662,7 +655,6 @@ export default function App() {
   const [pwError, setPwError] = useState("");
   const [signingIn, setSigningIn] = useState(false);
 
-  // change password
   const [changeNewPw, setChangeNewPw] = useState("");
   const [changeNewPw2, setChangeNewPw2] = useState("");
   const [changeError, setChangeError] = useState("");
@@ -684,8 +676,9 @@ export default function App() {
   const [selectedClass, setSelectedClass] = useState("ALL");
   const [homeQuery, setHomeQuery] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState(null);
-  const [sheet, setSheet] = useState(null); // menu | issue | return | addStudent | catalog | dashboard | overdue | studentDetail | printCards
+  const [sheet, setSheet] = useState(null);
   const [detailStudentId, setDetailStudentId] = useState(null);
+  const [detailBookId, setDetailBookId] = useState(null);
   const cardRef = useRef(null);
   const [cardDownloading, setCardDownloading] = useState(false);
   const certRef = useRef(null);
@@ -696,27 +689,23 @@ export default function App() {
   const [promoBusy, setPromoBusy] = useState(false);
   const [promoMsg, setPromoMsg] = useState("");
   const [lastPromotion, setLastPromotion] = useState(null);
-  const [printMode, setPrintMode] = useState("students"); // students | books
+  const [printMode, setPrintMode] = useState("students");
   const [printClass, setPrintClass] = useState("ALL");
 
-  // issue sheet
   const [bookQuery, setBookQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState(null);
   const [issueStudentQuery, setIssueStudentQuery] = useState("");
   const [days, setDays] = useState(14);
   const [lastIssued, setLastIssued] = useState(null);
 
-  // return sheet
   const [returnQuery, setReturnQuery] = useState("");
   const [justReturnedId, setJustReturnedId] = useState(null);
 
-  // catalog
   const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
   const [editingBookId, setEditingBookId] = useState(null);
   const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "" });
 
-  // add student
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -728,8 +717,8 @@ export default function App() {
   const [bulkNames, setBulkNames] = useState("");
   const [bulkStartRoll, setBulkStartRoll] = useState("");
   const [studentListQuery, setStudentListQuery] = useState("");
-  const [scannerTarget, setScannerTarget] = useState(null); // home | issueBook | issueStudent | return
-  const [scanFeedback, setScanFeedback] = useState(null); // {type: "success"|"error"|"warning", message?}
+  const [scannerTarget, setScannerTarget] = useState(null);
+  const [scanFeedback, setScanFeedback] = useState(null);
 
   async function handleSignIn(e) {
     e.preventDefault();
@@ -775,7 +764,6 @@ export default function App() {
     }
   }
 
-  // Track Firebase Auth sign-in state
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -784,7 +772,6 @@ export default function App() {
     return unsub;
   }, []);
 
-  // Subscribe to Firestore collections once signed in
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -838,8 +825,6 @@ export default function App() {
           }
         } else {
           setBooks(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-          // One-time migration: give books added before categories existed a sensible
-          // default category, inferred from their code prefix. Harmless no-op once done.
           for (const d of qsnap.docs) {
             const data = d.data();
             if (!data.category) {
@@ -935,7 +920,7 @@ export default function App() {
       return;
     }
     if (classes.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) {
-      return; // duplicate name
+      return;
     }
     const updatedList = classes.map((c) => (c === oldName ? newName : c));
     try {
@@ -1428,26 +1413,34 @@ export default function App() {
     setScannerTarget(target);
   }
 
+  // ---- Scan handling ----
+  // Student QR = roll number (plain text).
+  // Book QR = "BOOK:<code>" (BOOK_QR_PREFIX). Legacy plain-code barcodes still work.
   function handleScanResult(text) {
     const val = (text || "").trim();
+    const looksLikeBook = val.toUpperCase().startsWith(BOOK_QR_PREFIX);
+    const bookCode = parseBookQrValue(val);
     let feedback = { type: "error", message: "Not found" };
 
     if (scannerTarget === "home") {
+      // Prefer matching a student by roll, then a book by (parsed) code.
       const studentMatch = students.find((s) => s.roll.toLowerCase() === val.toLowerCase());
-      const bookMatch = books.find((b) => normCode(b.code) === normCode(val));
+      const bookMatch = books.find((b) => normCode(b.code) === normCode(bookCode));
       if (studentMatch) {
         feedback = { type: "success" };
         setHomeQuery("");
         openStudentDetail(studentMatch.id);
       } else if (bookMatch) {
         feedback = { type: "success" };
-        setHomeQuery(val);
+        setHomeQuery(bookMatch.code);
+        setDetailBookId(bookMatch.id);
+        setSheet("bookDetail");
       } else {
         setHomeQuery(val);
       }
     } else if (scannerTarget === "issueBook") {
-      setBookQuery(val);
-      const match = books.find((b) => normCode(b.code) === normCode(val));
+      setBookQuery(bookCode);
+      const match = books.find((b) => normCode(b.code) === normCode(bookCode));
       if (match && match.availableCopies > 0) {
         setSelectedBook(match);
         feedback = { type: "success" };
@@ -1462,9 +1455,9 @@ export default function App() {
         feedback = { type: "success" };
       }
     } else if (scannerTarget === "return") {
-      setReturnQuery(val);
+      setReturnQuery(bookCode);
       const hasMatch =
-        books.some((b) => normCode(b.code) === normCode(val)) ||
+        books.some((b) => normCode(b.code) === normCode(bookCode)) ||
         students.some(
           (s) => s.roll.toLowerCase() === val.toLowerCase() || s.name.toLowerCase().includes(val.toLowerCase())
         );
@@ -1555,6 +1548,10 @@ export default function App() {
   function openIdCard(id) {
     setDetailStudentId(id);
     setSheet("idCard");
+  }
+  function openBookDetail(id) {
+    setDetailBookId(id);
+    setSheet("bookDetail");
   }
   async function downloadCard(student) {
     if (!cardRef.current) return;
@@ -2028,7 +2025,7 @@ export default function App() {
         .menu-row:hover { background: #EFEFEF; }
 
         label { display: block; font-size: 0.8rem; color: var(--text-soft); margin-bottom: 0.3rem; }
-        input[type="text"], input[type="number"], input[type="search"], input[type="month"], select {
+        input[type="text"], input[type="number"], input[type="search"], input[type="month"], input[type="email"], input[type="password"], input[type="tel"], select {
           width: 100%;
           font-family: 'Inter', sans-serif;
           font-size: 0.92rem;
@@ -2242,6 +2239,9 @@ export default function App() {
           grid-template-columns: 1fr 1fr;
           gap: 0.6rem;
         }
+        .print-area.books-print {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
         .id-card {
           border: 1px solid var(--line);
           border-radius: 8px;
@@ -2249,8 +2249,8 @@ export default function App() {
           text-align: center;
           background: #fff;
         }
-        .id-card-name { font-weight: 700; font-size: 0.78rem; color: var(--text); }
-        .id-card-meta { font-size: 0.68rem; color: var(--text-soft); margin-bottom: 0.3rem; }
+        .id-card-name { font-weight: 700; font-size: 0.72rem; color: var(--text); line-height: 1.25; }
+        .id-card-meta { font-size: 0.62rem; color: var(--text-soft); margin-bottom: 0.3rem; line-height: 1.25; }
         .id-barcode { width: 100%; height: auto; }
         .id-qrcode { width: 100%; max-width: 110px; height: auto; margin: 0 auto; display: block; }
 
@@ -2307,6 +2307,20 @@ export default function App() {
           background: #fff;
           padding: 4px;
           border-radius: 6px;
+          box-shadow: var(--shadow-sm);
+          line-height: 0;
+        }
+
+        .book-qr-wrap {
+          display: flex;
+          justify-content: center;
+          margin: 0.4rem 0 0.6rem;
+        }
+        .book-qr-box {
+          background: #fff;
+          padding: 8px;
+          border: 2px solid var(--sky);
+          border-radius: 10px;
           box-shadow: var(--shadow-sm);
           line-height: 0;
         }
@@ -2383,6 +2397,9 @@ export default function App() {
             grid-template-columns: repeat(4, 1fr);
             page-break-inside: auto;
           }
+          .print-area.books-print {
+            grid-template-columns: repeat(3, 1fr);
+          }
           .id-card { break-inside: avoid; page-break-inside: avoid; }
           .no-print, .modal-head, .header, .bottom-bar, .class-row, .search-wrap, .book-hint {
             display: none !important;
@@ -2454,7 +2471,7 @@ export default function App() {
             value={homeQuery}
             onChange={(e) => setHomeQuery(e.target.value)}
           />
-          <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan barcode">
+          <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan QR code">
             <Camera size={15} />
           </button>
         </div>
@@ -2598,7 +2615,7 @@ export default function App() {
               <Award size={18} /> Monthly Certificate
             </button>
             <button className="menu-row" onClick={() => setSheet("printCards")}>
-              <Printer size={18} /> Print Labels (Barcodes)
+              <Printer size={18} /> Print QR Labels
             </button>
             <button
               className="menu-row"
@@ -2655,7 +2672,7 @@ export default function App() {
       )}
 
       {sheet === "printCards" && (
-        <Modal title="Print Labels" onClose={() => setSheet(null)}>
+        <Modal title="Print QR Labels" onClose={() => setSheet(null)}>
           <div className="no-print">
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.7rem" }}>
               <button
@@ -2686,7 +2703,7 @@ export default function App() {
               </select>
             )}
             <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
-              Each barcode encodes the {printMode === "students" ? "roll number" : "book code"} —
+              Each QR code encodes the {printMode === "students" ? "student's roll number" : "book's code (prefixed with BOOK:)"} —
               scanning it in the app finds that {printMode === "students" ? "student" : "book"}{" "}
               automatically. Tap Print, then choose "Save as PDF" to print or share.
             </p>
@@ -2695,7 +2712,7 @@ export default function App() {
             </button>
           </div>
 
-          <div className="print-area">
+          <div className={`print-area ${printMode === "books" ? "books-print" : ""}`} style={{ marginTop: "0.8rem" }}>
             {printMode === "students"
               ? students
                   .filter((s) => printClass === "ALL" || s.className === printClass)
@@ -2708,7 +2725,11 @@ export default function App() {
                   ))
               : books.map((b) => (
                   <div className="id-card" key={b.id}>
-                    <BarcodeSVG value={b.code} />
+                    <div className="id-card-name">{b.title}</div>
+                    <div className="id-card-meta">
+                      {b.category || UNCATEGORIZED} · {b.code}
+                    </div>
+                    <QRCodeCanvas value={bookQrValue(b.code)} size={110} />
                   </div>
                 ))}
           </div>
@@ -2734,7 +2755,7 @@ export default function App() {
                   onChange={(e) => setIssueStudentQuery(e.target.value)}
                   placeholder="Name or roll number..."
                 />
-                <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueStudent")} aria-label="Scan student ID">
+                <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueStudent")} aria-label="Scan student QR">
                   <Camera size={16} />
                 </button>
               </div>
@@ -2763,7 +2784,7 @@ export default function App() {
                 onChange={(e) => setBookQuery(e.target.value)}
                 placeholder="Title, author or code..."
               />
-              <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueBook")} aria-label="Scan book barcode">
+              <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueBook")} aria-label="Scan book QR">
                 <Camera size={16} />
               </button>
             </div>
@@ -2867,7 +2888,7 @@ export default function App() {
                   onChange={(e) => setReturnQuery(e.target.value)}
                   placeholder="Search book or student name..."
                 />
-                <button type="button" className="scan-btn-inline" onClick={() => openScanner("return")} aria-label="Scan barcode">
+                <button type="button" className="scan-btn-inline" onClick={() => openScanner("return")} aria-label="Scan QR">
                   <Camera size={16} />
                 </button>
               </div>
@@ -3244,6 +3265,9 @@ export default function App() {
                             </div>
                           </div>
                           <div style={{ display: "flex", gap: "0.4rem" }}>
+                            <button className="btn secondary" onClick={() => openBookDetail(b.id)} aria-label="View book details">
+                              <QrCode size={13} />
+                            </button>
                             <button className="btn secondary" onClick={() => startEditBook(b)} aria-label="Edit book">
                               <Pencil size={13} />
                             </button>
@@ -3747,6 +3771,119 @@ export default function App() {
                             ) : (
                               <span style={{ color: "var(--indigo)", fontWeight: 700 }}>
                                 Not returned · due {formatDate(t.dueDate)}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
+
+      {sheet === "bookDetail" && detailBookId && (() => {
+        const dBook = bookById(detailBookId);
+        if (!dBook) return null;
+        const holders = activeTx
+          .filter((t) => t.bookId === dBook.id)
+          .map((t) => ({ tx: t, student: studentById(t.studentId) }))
+          .filter((h) => h.student);
+        const bookHistory = transactions
+          .filter((t) => t.bookId === dBook.id)
+          .sort((a, b) => (a.issueDate < b.issueDate ? 1 : -1));
+        return (
+          <Modal title={dBook.title} onClose={() => setSheet(null)}>
+            <div className="book-qr-wrap">
+              <div className="book-qr-box">
+                <QRCodeCanvas value={bookQrValue(dBook.code)} size={150} />
+              </div>
+            </div>
+            <div style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+              Scan this QR in Issue/Return to pick this book instantly.
+            </div>
+
+            <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
+              <span>
+                <b>{dBook.code}</b>
+                {dBook.author ? ` · ${dBook.author}` : ""}
+                <br />
+                <span style={{ fontSize: "0.78rem", color: "var(--text-soft)" }}>
+                  {dBook.category || UNCATEGORIZED} · {dBook.availableCopies}/{dBook.totalCopies} available
+                </span>
+              </span>
+              <div style={{ display: "flex", gap: "0.7rem" }}>
+                <button onClick={() => { setSheet("catalog"); startEditBook(dBook); }}>
+                  <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
+                </button>
+                <button onClick={() => { deleteBook(dBook); setSheet(null); }}>
+                  <Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove
+                </button>
+              </div>
+            </div>
+
+            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.4rem" }}>
+              Currently issued to
+            </h2>
+            {holders.length === 0 ? (
+              <div className="empty" style={{ padding: "0.8rem" }}>Nobody — all copies on the shelf.</div>
+            ) : (
+              <div className="row-list" style={{ marginBottom: "1rem" }}>
+                {holders.map((h) => {
+                  const overdue = h.tx.dueDate < todayISO();
+                  return (
+                    <div key={h.tx.id} className={`row-card ${overdue ? "overdue" : ""}`}>
+                      <div>
+                        <div className="title">{h.student.name}</div>
+                        <div className="meta">{h.student.className || "Unassigned"}{h.student.roll ? ` · Roll ${h.student.roll}` : ""}</div>
+                      </div>
+                      <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(h.tx.dueDate)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>
+              Full issue history
+            </h2>
+            {bookHistory.length === 0 ? (
+              <div className="empty">This book has never been issued.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Student</th>
+                      <th>Issued</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookHistory.map((t, i) => {
+                      const st = studentById(t.studentId);
+                      const overdue = !t.returnDate && t.dueDate < todayISO();
+                      return (
+                        <tr key={t.id}>
+                          <td className="mono">{i + 1}</td>
+                          <td>{st ? st.name : "—"}</td>
+                          <td className="mono">{formatDate(t.issueDate)}</td>
+                          <td>
+                            {t.returnDate ? (
+                              <span style={{ color: "#1F8A5E", fontWeight: 700 }}>
+                                Returned {formatDate(t.returnDate)}
+                              </span>
+                            ) : overdue ? (
+                              <span style={{ color: "var(--danger)", fontWeight: 700 }}>
+                                Overdue · due {formatDate(t.dueDate)}
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--indigo)", fontWeight: 700 }}>
+                                Out · due {formatDate(t.dueDate)}
                               </span>
                             )}
                           </td>
