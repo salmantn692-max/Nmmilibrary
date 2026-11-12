@@ -63,19 +63,11 @@ const DEFAULT_CATEGORIES = [
   "General Literature",
 ];
 const UNCATEGORIZED = "Uncategorized";
-
-// Prefix stored inside a book's QR code so a scanned book is never confused
-// with a student's roll number (which is the content of student QR codes).
 const BOOK_QR_PREFIX = "BOOK:";
 
-// Builds the exact string encoded in a book's QR code.
 function bookQrValue(code) {
   return BOOK_QR_PREFIX + stripSpaces(code);
 }
-
-// Reads a scanned string and returns the plain book code it refers to,
-// whether the scan came from a new BOOK:-prefixed QR or a legacy plain-code
-// barcode/QR from an older printout.
 function parseBookQrValue(text) {
   const raw = (text || "").trim();
   if (raw.toUpperCase().startsWith(BOOK_QR_PREFIX)) {
@@ -83,7 +75,6 @@ function parseBookQrValue(text) {
   }
   return stripSpaces(raw);
 }
-
 function inferCategoryFromCode(code) {
   if (/^SH\d/i.test(code)) return "Shihab Thangal Family";
   if (/^HW\d/i.test(code)) return "Women in Islamic History";
@@ -93,14 +84,12 @@ function inferCategoryFromCode(code) {
   if (/^B\d/i.test(code)) return "General Literature";
   return "";
 }
-
 function normCode(s) {
   return (s || "").replace(/\s+/g, "").toLowerCase();
 }
 function stripSpaces(s) {
   return (s || "").replace(/\s+/g, "");
 }
-
 function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -131,13 +120,11 @@ function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
     reader.readAsDataURL(file);
   });
 }
-
 function waLink(phone, message) {
   let digits = (phone || "").replace(/\D/g, "");
   if (digits.length === 10) digits = "91" + digits;
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
-
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
@@ -547,59 +534,26 @@ export function PublicCatalog() {
           background: var(--page-bg, #FDF8ED);
           padding-bottom: 3rem;
         }
-        .pc-header {
-          padding: 1.2rem 1.1rem 0.8rem;
-          text-align: center;
-          border-bottom: 3px solid var(--sky);
+        @media (min-width: 1024px) {
+          .pc-app { max-width: 900px; }
+          .pc-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 0.5rem;
+          }
+          .pc-group h2 { grid-column: 1 / -1; }
         }
-        .pc-header h1 {
-          font-family: 'Playfair Display', serif;
-          font-weight: 800;
-          font-size: 1.35rem;
-          color: var(--navy);
-          margin: 0;
-        }
+        .pc-header { padding: 1.2rem 1.1rem 0.8rem; text-align: center; border-bottom: 3px solid var(--sky); }
+        .pc-header h1 { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 1.35rem; color: var(--navy); margin: 0; }
         .pc-sub { font-size: 0.78rem; color: var(--maroon); margin-top: 0.2rem; }
         .pc-search { padding: 0.9rem 1.1rem 0.4rem; }
-        .pc-search input {
-          width: 100%;
-          font-size: 0.95rem;
-          padding: 0.65rem 0.9rem;
-          border: 1px solid var(--line);
-          border-radius: 999px;
-          background: #fff;
-          color: var(--text);
-        }
+        .pc-search input { width: 100%; font-size: 0.95rem; padding: 0.65rem 0.9rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--text); }
         .pc-group { padding: 0.8rem 1.1rem 0; }
-        .pc-group h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 0.92rem;
-          color: var(--navy);
-          margin: 0 0 0.5rem;
-          border-bottom: 1px solid var(--line);
-          padding-bottom: 0.3rem;
-        }
-        .pc-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 0.7rem;
-          background: var(--row-bg);
-          border-radius: 10px;
-          padding: 0.6rem 0.8rem;
-          margin-bottom: 0.45rem;
-          box-shadow: 0 1px 3px rgba(43,36,32,0.07);
-        }
+        .pc-group h2 { font-family: 'Playfair Display', serif; font-size: 0.92rem; color: var(--navy); margin: 0 0 0.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.3rem; }
+        .pc-row { display: flex; justify-content: space-between; align-items: center; gap: 0.7rem; background: var(--row-bg); border-radius: 10px; padding: 0.6rem 0.8rem; margin-bottom: 0.45rem; box-shadow: 0 1px 3px rgba(43,36,32,0.07); }
         .pc-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
         .pc-meta { font-size: 0.75rem; color: var(--text-soft); margin-top: 0.1rem; }
-        .pc-badge {
-          font-size: 0.72rem;
-          font-weight: 700;
-          padding: 0.25rem 0.55rem;
-          border-radius: 999px;
-          flex: 0 0 auto;
-          white-space: nowrap;
-        }
+        .pc-badge { font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.55rem; border-radius: 999px; flex: 0 0 auto; white-space: nowrap; }
         .pc-avail { background: #E1F0E6; color: #1F7A52; }
         .pc-out { background: #F3E1E0; color: #8B2E3C; }
         .pc-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-soft); font-size: 0.9rem; }
@@ -732,29 +686,17 @@ export default function App() {
     }
     setSigningIn(false);
   }
-
   async function handleSignOut() {
-    try {
-      await signOut(auth);
-    } catch (e) {}
+    try { await signOut(auth); } catch (e) {}
   }
-
   async function handleChangePassword(e) {
     e.preventDefault();
     setChangeError("");
-    if (!changeNewPw.trim()) {
-      setChangeError("Enter a new password.");
-      return;
-    }
-    if (changeNewPw !== changeNewPw2) {
-      setChangeError("New passwords don't match.");
-      return;
-    }
+    if (!changeNewPw.trim()) { setChangeError("Enter a new password."); return; }
+    if (changeNewPw !== changeNewPw2) { setChangeError("New passwords don't match."); return; }
     try {
       await updatePassword(auth.currentUser, changeNewPw);
-      setChangeNewPw("");
-      setChangeNewPw2("");
-      setChangeSuccess(true);
+      setChangeNewPw(""); setChangeNewPw2(""); setChangeSuccess(true);
     } catch (err) {
       if (err && err.code === "auth/requires-recent-login") {
         setChangeError("For security, please sign out and sign in again before changing your password.");
@@ -765,106 +707,75 @@ export default function App() {
   }
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthReady(true);
-    });
+    const unsub = onAuthStateChanged(auth, (u) => { setUser(u); setAuthReady(true); });
     return unsub;
   }, []);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     const unsubs = [];
 
-    unsubs.push(
-      onSnapshot(doc(db, "settings", "classes"), async (snap) => {
-        const list = snap.exists() ? snap.data().list : null;
-        if (Array.isArray(list) && list.length > 0) {
-          setClasses(list);
-        } else {
-          setClasses(DEFAULT_CLASSES);
+    unsubs.push(onSnapshot(doc(db, "settings", "classes"), async (snap) => {
+      const list = snap.exists() ? snap.data().list : null;
+      if (Array.isArray(list) && list.length > 0) setClasses(list);
+      else {
+        setClasses(DEFAULT_CLASSES);
+        try { await setDoc(doc(db, "settings", "classes"), { list: DEFAULT_CLASSES }); } catch (e) {}
+      }
+    }));
+
+    unsubs.push(onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
+      const list = snap.exists() ? snap.data().list : null;
+      if (Array.isArray(list) && list.length > 0) setCategories(list);
+      else {
+        setCategories(DEFAULT_CATEGORIES);
+        try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch (e) {}
+      }
+    }));
+
+    unsubs.push(onSnapshot(collection(db, "books"), async (qsnap) => {
+      if (qsnap.empty) {
+        const allSeed = [...SEED_BOOKS, ...NMMI_SEED_BOOKS];
+        for (const b of allSeed) {
           try {
-            await setDoc(doc(db, "settings", "classes"), { list: DEFAULT_CLASSES });
+            await setDoc(doc(db, "books", b.code), {
+              title: b.title, author: b.author, code: b.code,
+              totalCopies: 1, availableCopies: 1,
+              category: inferCategoryFromCode(b.code) || "",
+            });
           } catch (e) {}
         }
-      })
-    );
-
-    unsubs.push(
-      onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
-        const list = snap.exists() ? snap.data().list : null;
-        if (Array.isArray(list) && list.length > 0) {
-          setCategories(list);
-        } else {
-          setCategories(DEFAULT_CATEGORIES);
-          try {
-            await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES });
-          } catch (e) {}
-        }
-      })
-    );
-
-    unsubs.push(
-      onSnapshot(collection(db, "books"), async (qsnap) => {
-        if (qsnap.empty) {
-          const allSeed = [...SEED_BOOKS, ...NMMI_SEED_BOOKS];
-          for (const b of allSeed) {
-            try {
-              await setDoc(doc(db, "books", b.code), {
-                title: b.title,
-                author: b.author,
-                code: b.code,
-                totalCopies: 1,
-                availableCopies: 1,
-                category: inferCategoryFromCode(b.code) || "",
-              });
-            } catch (e) {}
-          }
-        } else {
-          setBooks(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-          for (const d of qsnap.docs) {
-            const data = d.data();
-            if (!data.category) {
-              const inferred = inferCategoryFromCode(d.id);
-              if (inferred) {
-                try {
-                  await updateDoc(doc(db, "books", d.id), { category: inferred });
-                } catch (e) {}
-              }
+      } else {
+        setBooks(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        for (const d of qsnap.docs) {
+          const data = d.data();
+          if (!data.category) {
+            const inferred = inferCategoryFromCode(d.id);
+            if (inferred) {
+              try { await updateDoc(doc(db, "books", d.id), { category: inferred }); } catch (e) {}
             }
           }
         }
-      })
-    );
+      }
+    }));
 
-    unsubs.push(
-      onSnapshot(collection(db, "students"), async (qsnap) => {
-        if (qsnap.empty) {
-          for (const s of SEED_STUDENTS) {
-            try {
-              await addDoc(collection(db, "students"), { name: s.name, className: s.className, roll: s.roll });
-            } catch (e) {}
-          }
-        } else {
-          setStudents(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    unsubs.push(onSnapshot(collection(db, "students"), async (qsnap) => {
+      if (qsnap.empty) {
+        for (const s of SEED_STUDENTS) {
+          try { await addDoc(collection(db, "students"), { name: s.name, className: s.className, roll: s.roll }); } catch (e) {}
         }
-      })
-    );
+      } else {
+        setStudents(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      }
+    }));
 
-    unsubs.push(
-      onSnapshot(collection(db, "transactions"), (qsnap) => {
-        setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      })
-    );
+    unsubs.push(onSnapshot(collection(db, "transactions"), (qsnap) => {
+      setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    }));
 
-    unsubs.push(
-      onSnapshot(doc(db, "settings", "lastPromotion"), (snap) => {
-        setLastPromotion(snap.exists() ? snap.data() : null);
-      })
-    );
+    unsubs.push(onSnapshot(doc(db, "settings", "lastPromotion"), (snap) => {
+      setLastPromotion(snap.exists() ? snap.data() : null);
+    }));
 
     setLoading(false);
     return () => unsubs.forEach((u) => u && u());
@@ -875,145 +786,85 @@ export default function App() {
   const totalCopies = useMemo(() => books.reduce((s, b) => s + b.totalCopies, 0), [books]);
   const availableCopies = useMemo(() => books.reduce((s, b) => s + b.availableCopies, 0), [books]);
 
-  function bookById(id) {
-    return books.find((b) => b.id === id);
-  }
-  function studentById(id) {
-    return students.find((s) => s.id === id);
-  }
-  function studentActiveTx(id) {
-    return activeTx.filter((t) => t.studentId === id);
-  }
-  function studentHasOverdue(id) {
-    return overdueTx.some((t) => t.studentId === id);
-  }
+  function bookById(id) { return books.find((b) => b.id === id); }
+  function studentById(id) { return students.find((s) => s.id === id); }
+  function studentActiveTx(id) { return activeTx.filter((t) => t.studentId === id); }
+  function studentHasOverdue(id) { return overdueTx.some((t) => t.studentId === id); }
 
   async function addClass(e) {
     e.preventDefault();
     const name = newClassName.trim();
     if (!name) return;
-    if (classes.some((c) => c.toLowerCase() === name.toLowerCase())) {
-      setNewClassName("");
-      return;
-    }
+    if (classes.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewClassName(""); return; }
     const updated = [...classes, name];
-    try {
-      await setDoc(doc(db, "settings", "classes"), { list: updated });
-    } catch (e) {}
+    try { await setDoc(doc(db, "settings", "classes"), { list: updated }); } catch (e) {}
     setNewClassName("");
   }
-
-  function startEditClass(name) {
-    setEditingClassOld(name);
-    setEditClassName(name);
-  }
-  function cancelEditClass() {
-    setEditingClassOld(null);
-  }
-
+  function startEditClass(name) { setEditingClassOld(name); setEditClassName(name); }
+  function cancelEditClass() { setEditingClassOld(null); }
   async function saveEditClass(e) {
     e.preventDefault();
     const oldName = editingClassOld;
     const newName = editClassName.trim();
-    if (!newName || newName === oldName) {
-      setEditingClassOld(null);
-      return;
-    }
-    if (classes.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) {
-      return;
-    }
+    if (!newName || newName === oldName) { setEditingClassOld(null); return; }
+    if (classes.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
     const updatedList = classes.map((c) => (c === oldName ? newName : c));
     try {
       await setDoc(doc(db, "settings", "classes"), { list: updatedList });
       const q = query(collection(db, "students"), where("className", "==", oldName));
       const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        try {
-          await updateDoc(doc(db, "students", d.id), { className: newName });
-        } catch (e2) {}
-      }
+      for (const d of snap.docs) { try { await updateDoc(doc(db, "students", d.id), { className: newName }); } catch (e2) {} }
     } catch (e) {}
     setEditingClassOld(null);
   }
-
   async function deleteClass(name) {
     const count = students.filter((s) => s.className === name).length;
-    const msg =
-      count > 0
-        ? `${count} student(s) are in "${name}". Remove the class anyway? (their records keep "${name}" as a class, but it'll stop showing as a filter chip)`
-        : `Remove class "${name}"?`;
+    const msg = count > 0
+      ? `${count} student(s) are in "${name}". Remove the class anyway? (their records keep "${name}" as a class, but it'll stop showing as a filter chip)`
+      : `Remove class "${name}"?`;
     if (!window.confirm(msg)) return;
     const updatedList = classes.filter((c) => c !== name);
-    try {
-      await setDoc(doc(db, "settings", "classes"), { list: updatedList });
-    } catch (e) {}
+    try { await setDoc(doc(db, "settings", "classes"), { list: updatedList }); } catch (e) {}
   }
 
   async function addCategory(e) {
     e.preventDefault();
     const name = newCategoryName.trim();
     if (!name) return;
-    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) {
-      setNewCategoryName("");
-      return;
-    }
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewCategoryName(""); return; }
     const updated = [...categories, name];
-    try {
-      await setDoc(doc(db, "settings", "bookCategories"), { list: updated });
-    } catch (e) {}
+    try { await setDoc(doc(db, "settings", "bookCategories"), { list: updated }); } catch (e) {}
     setNewCategoryName("");
   }
-
-  function startEditCategory(name) {
-    setEditingCategoryOld(name);
-    setEditCategoryName(name);
-  }
-  function cancelEditCategory() {
-    setEditingCategoryOld(null);
-  }
-
+  function startEditCategory(name) { setEditingCategoryOld(name); setEditCategoryName(name); }
+  function cancelEditCategory() { setEditingCategoryOld(null); }
   async function saveEditCategory(e) {
     e.preventDefault();
     const oldName = editingCategoryOld;
     const newName = editCategoryName.trim();
-    if (!newName || newName === oldName) {
-      setEditingCategoryOld(null);
-      return;
-    }
-    if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) {
-      return;
-    }
+    if (!newName || newName === oldName) { setEditingCategoryOld(null); return; }
+    if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
     const updatedList = categories.map((c) => (c === oldName ? newName : c));
     try {
       await setDoc(doc(db, "settings", "bookCategories"), { list: updatedList });
       const q = query(collection(db, "books"), where("category", "==", oldName));
       const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        try {
-          await updateDoc(doc(db, "books", d.id), { category: newName });
-        } catch (e2) {}
-      }
+      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch (e2) {} }
     } catch (e) {}
     setEditingCategoryOld(null);
   }
-
   async function deleteCategory(name) {
     const count = books.filter((b) => b.category === name).length;
-    const msg =
-      count > 0
-        ? `${count} book(s) are in "${name}". Remove the category anyway? (those books move to Uncategorized)`
-        : `Remove category "${name}"?`;
+    const msg = count > 0
+      ? `${count} book(s) are in "${name}". Remove the category anyway? (those books move to Uncategorized)`
+      : `Remove category "${name}"?`;
     if (!window.confirm(msg)) return;
     const updatedList = categories.filter((c) => c !== name);
     try {
       await setDoc(doc(db, "settings", "bookCategories"), { list: updatedList });
       const q = query(collection(db, "books"), where("category", "==", name));
       const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        try {
-          await updateDoc(doc(db, "books", d.id), { category: "" });
-        } catch (e2) {}
-      }
+      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: "" }); } catch (e2) {} }
     } catch (e) {}
   }
 
@@ -1024,30 +875,18 @@ export default function App() {
     const code = stripSpaces(bookForm.code);
     try {
       await setDoc(doc(db, "books", code), {
-        title: bookForm.title.trim(),
-        author: bookForm.author.trim(),
-        code,
-        totalCopies: copies,
-        availableCopies: copies,
+        title: bookForm.title.trim(), author: bookForm.author.trim(), code,
+        totalCopies: copies, availableCopies: copies,
         category: bookForm.category || "",
       });
     } catch (e) {}
     setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category });
   }
-
   function startEditBook(b) {
     setEditingBookId(b.id);
-    setEditBookForm({
-      title: b.title,
-      author: b.author || "",
-      copies: String(b.totalCopies),
-      category: b.category || "",
-    });
+    setEditBookForm({ title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "" });
   }
-  function cancelEditBook() {
-    setEditingBookId(null);
-  }
-
+  function cancelEditBook() { setEditingBookId(null); }
   async function saveEditBook(e) {
     e.preventDefault();
     if (!editBookForm.title.trim()) return;
@@ -1058,16 +897,13 @@ export default function App() {
     const newAvailable = Math.max(0, newTotal - issuedCount);
     try {
       await updateDoc(doc(db, "books", editingBookId), {
-        title: editBookForm.title.trim(),
-        author: editBookForm.author.trim(),
-        totalCopies: newTotal,
-        availableCopies: newAvailable,
+        title: editBookForm.title.trim(), author: editBookForm.author.trim(),
+        totalCopies: newTotal, availableCopies: newAvailable,
         category: editBookForm.category || "",
       });
     } catch (e) {}
     setEditingBookId(null);
   }
-
   async function deleteBook(book) {
     const activeCount = transactions.filter((t) => t.bookId === book.id && !t.returnDate).length;
     if (activeCount > 0) {
@@ -1075,9 +911,7 @@ export default function App() {
       return;
     }
     if (!window.confirm(`Remove "${book.title}" (${book.code}) from the catalog? This can't be undone.`)) return;
-    try {
-      await deleteDoc(doc(db, "books", book.id));
-    } catch (e) {}
+    try { await deleteDoc(doc(db, "books", book.id)); } catch (e) {}
   }
 
   async function addStudent(e) {
@@ -1085,38 +919,28 @@ export default function App() {
     if (!studentForm.name.trim() || !studentForm.roll.trim()) return;
     try {
       await addDoc(collection(db, "students"), {
-        name: studentForm.name.trim(),
-        className: studentForm.className,
-        roll: studentForm.roll.trim(),
-        phone: studentForm.phone.trim(),
+        name: studentForm.name.trim(), className: studentForm.className,
+        roll: studentForm.roll.trim(), phone: studentForm.phone.trim(),
       });
     } catch (e) {}
     setStudentForm({ name: "", className: studentForm.className, roll: "", phone: "" });
   }
-
   function startEditStudent(s) {
     setEditingStudentId(s.id);
     setEditForm({ name: s.name, className: s.className, roll: s.roll, phone: s.phone || "" });
   }
-
-  function cancelEditStudent() {
-    setEditingStudentId(null);
-  }
-
+  function cancelEditStudent() { setEditingStudentId(null); }
   async function saveEditStudent(e) {
     e.preventDefault();
     if (!editForm.name.trim()) return;
     try {
       await updateDoc(doc(db, "students", editingStudentId), {
-        name: editForm.name.trim(),
-        className: editForm.className,
-        roll: editForm.roll.trim(),
-        phone: editForm.phone.trim(),
+        name: editForm.name.trim(), className: editForm.className,
+        roll: editForm.roll.trim(), phone: editForm.phone.trim(),
       });
     } catch (e) {}
     setEditingStudentId(null);
   }
-
   async function deleteStudent(student) {
     const activeCount = studentActiveTx(student.id).length;
     if (activeCount > 0) {
@@ -1124,9 +948,7 @@ export default function App() {
       return;
     }
     if (!window.confirm(`Remove ${student.name} from the app? This can't be undone.`)) return;
-    try {
-      await deleteDoc(doc(db, "students", student.id));
-    } catch (e) {}
+    try { await deleteDoc(doc(db, "students", student.id)); } catch (e) {}
     if (detailStudentId === student.id) setSheet(null);
     if (selectedStudentId === student.id) setSelectedStudentId(null);
   }
@@ -1145,20 +967,14 @@ export default function App() {
     }
     setPhotoUploading(false);
   }
-
   async function handleRemovePhoto(student) {
     if (!student.photoUrl) return;
-    try {
-      await updateDoc(doc(db, "students", student.id), { photoUrl: null });
-    } catch (e) {}
+    try { await updateDoc(doc(db, "students", student.id), { photoUrl: null }); } catch (e) {}
   }
 
   async function addStudentsBulk(e) {
     e.preventDefault();
-    let lines = bulkNames
-      .split("\n")
-      .map((n) => n.trim())
-      .filter(Boolean);
+    let lines = bulkNames.split("\n").map((n) => n.trim()).filter(Boolean);
     if (lines.length === 0) return;
     if (/^name\s*,/i.test(lines[0]) || /^(name|പേര്)$/i.test(lines[0])) lines = lines.slice(1);
     const startNum = parseInt(bulkStartRoll);
@@ -1172,9 +988,7 @@ export default function App() {
       const roll = parts[2] || (hasStart ? String(startNum + autoIdx) : "");
       const phone = parts[3] || "";
       autoIdx++;
-      try {
-        await addDoc(collection(db, "students"), { name, className, roll, phone });
-      } catch (e) {}
+      try { await addDoc(collection(db, "students"), { name, className, roll, phone }); } catch (e) {}
     }
     setBulkNames("");
     setBulkStartRoll("");
@@ -1182,10 +996,7 @@ export default function App() {
 
   async function addBooksBulk(e) {
     e.preventDefault();
-    let lines = bulkBooksText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
+    let lines = bulkBooksText.split("\n").map((l) => l.trim()).filter(Boolean);
     if (lines.length === 0) return;
     if (/^code\s*,/i.test(lines[0])) lines = lines.slice(1);
     for (const line of lines) {
@@ -1198,12 +1009,8 @@ export default function App() {
       const category = parts[4] || bulkBookCategory || "";
       try {
         await setDoc(doc(db, "books", code), {
-          title,
-          author,
-          code,
-          totalCopies: copies,
-          availableCopies: copies,
-          category,
+          title, author, code,
+          totalCopies: copies, availableCopies: copies, category,
         });
       } catch (e) {}
     }
@@ -1218,11 +1025,7 @@ export default function App() {
     const dueDate = addDays(issueDate, Math.max(1, parseInt(days) || 14));
     try {
       await addDoc(collection(db, "transactions"), {
-        bookId: selectedBook.id,
-        studentId,
-        issueDate,
-        dueDate,
-        returnDate: null,
+        bookId: selectedBook.id, studentId, issueDate, dueDate, returnDate: null,
       });
       await updateDoc(doc(db, "books", selectedBook.id), {
         availableCopies: selectedBook.availableCopies - 1,
@@ -1260,9 +1063,7 @@ export default function App() {
     let list = students;
     if (selectedClass !== "ALL") list = list.filter((s) => s.className === selectedClass);
     const q = homeQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter((s) => s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q));
-    }
+    if (q) list = list.filter((s) => s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q));
     return list;
   }, [students, selectedClass, homeQuery]);
 
@@ -1270,12 +1071,7 @@ export default function App() {
     const q = bookQuery.trim().toLowerCase();
     if (!q) return books.slice(0, 6);
     return books
-      .filter(
-        (b) =>
-          b.title.toLowerCase().includes(q) ||
-          b.author.toLowerCase().includes(q) ||
-          normCode(b.code).includes(normCode(q))
-      )
+      .filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)))
       .slice(0, 6);
   }, [bookQuery, books]);
 
@@ -1294,12 +1090,7 @@ export default function App() {
       .filter((r) => r.book && r.student);
     if (!q) return list.sort((a, b) => (a.tx.dueDate < b.tx.dueDate ? -1 : 1));
     return list
-      .filter(
-        (r) =>
-          r.book.title.toLowerCase().includes(q) ||
-          r.student.name.toLowerCase().includes(q) ||
-          r.book.code.toLowerCase().includes(q)
-      )
+      .filter((r) => r.book.title.toLowerCase().includes(q) || r.student.name.toLowerCase().includes(q) || r.book.code.toLowerCase().includes(q))
       .sort((a, b) => (a.tx.dueDate < b.tx.dueDate ? -1 : 1));
   }, [returnQuery, activeTx, books, students]);
 
@@ -1320,14 +1111,9 @@ export default function App() {
     });
     const ordered = [];
     categories.forEach((c) => {
-      if (groups[c]) {
-        ordered.push([c, groups[c]]);
-        delete groups[c];
-      }
+      if (groups[c]) { ordered.push([c, groups[c]]); delete groups[c]; }
     });
-    Object.keys(groups)
-      .sort()
-      .forEach((c) => ordered.push([c, groups[c]]));
+    Object.keys(groups).sort().forEach((c) => ordered.push([c, groups[c]]));
     return ordered;
   }, [catalogMatches, categories]);
 
@@ -1347,9 +1133,7 @@ export default function App() {
 
   const certStudent = certStudentId
     ? studentById(certStudentId)
-    : monthlyTopReaders[0]
-    ? monthlyTopReaders[0].student
-    : null;
+    : monthlyTopReaders[0] ? monthlyTopReaders[0].student : null;
   const certCount = certStudent
     ? (monthlyTopReaders.find((x) => x.student.id === certStudent.id) || { count: 0 }).count
     : 0;
@@ -1361,21 +1145,17 @@ export default function App() {
       bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1;
       studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1;
     });
-
     const mostBorrowed = books
       .map((b) => ({ book: b, count: bookCounts[b.id] || 0 }))
       .filter((x) => x.count > 0)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-
     const neverBorrowed = books.filter((b) => !bookCounts[b.id]);
-
     const topReaders = students
       .map((s) => ({ student: s, count: studentCounts[s.id] || 0 }))
       .filter((x) => x.count > 0)
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-
     const classCounts = {};
     students.forEach((s) => {
       const cls = s.className && s.className.trim() ? s.className : "Unassigned";
@@ -1385,7 +1165,6 @@ export default function App() {
       .filter(([, count]) => count > 0)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
-
     return { mostBorrowed, neverBorrowed, topReaders, topClasses };
   }, [books, students, transactions]);
 
@@ -1399,31 +1178,18 @@ export default function App() {
   const selectedStudent = selectedStudentId ? studentById(selectedStudentId) : null;
 
   function openIssue() {
-    setIssueStudentQuery("");
-    setBookQuery("");
-    setSelectedBook(null);
-    setLastIssued(null);
-    setSheet("issue");
+    setIssueStudentQuery(""); setBookQuery("");
+    setSelectedBook(null); setLastIssued(null); setSheet("issue");
   }
-  function openReturn() {
-    setReturnQuery("");
-    setSheet("return");
-  }
-  function openScanner(target) {
-    setScannerTarget(target);
-  }
+  function openReturn() { setReturnQuery(""); setSheet("return"); }
+  function openScanner(target) { setScannerTarget(target); }
 
-  // ---- Scan handling ----
-  // Student QR = roll number (plain text).
-  // Book QR = "BOOK:<code>" (BOOK_QR_PREFIX). Legacy plain-code barcodes still work.
   function handleScanResult(text) {
     const val = (text || "").trim();
-    const looksLikeBook = val.toUpperCase().startsWith(BOOK_QR_PREFIX);
     const bookCode = parseBookQrValue(val);
     let feedback = { type: "error", message: "Not found" };
 
     if (scannerTarget === "home") {
-      // Prefer matching a student by roll, then a book by (parsed) code.
       const studentMatch = students.find((s) => s.roll.toLowerCase() === val.toLowerCase());
       const bookMatch = books.find((b) => normCode(b.code) === normCode(bookCode));
       if (studentMatch) {
@@ -1441,50 +1207,32 @@ export default function App() {
     } else if (scannerTarget === "issueBook") {
       setBookQuery(bookCode);
       const match = books.find((b) => normCode(b.code) === normCode(bookCode));
-      if (match && match.availableCopies > 0) {
-        setSelectedBook(match);
-        feedback = { type: "success" };
-      } else if (match) {
-        feedback = { type: "warning", message: "Already issued" };
-      }
+      if (match && match.availableCopies > 0) { setSelectedBook(match); feedback = { type: "success" }; }
+      else if (match) feedback = { type: "warning", message: "Already issued" };
     } else if (scannerTarget === "issueStudent") {
       setIssueStudentQuery(val);
       const match = students.find((s) => s.roll.toLowerCase() === val.toLowerCase());
-      if (match) {
-        setSelectedStudentId(match.id);
-        feedback = { type: "success" };
-      }
+      if (match) { setSelectedStudentId(match.id); feedback = { type: "success" }; }
     } else if (scannerTarget === "return") {
       setReturnQuery(bookCode);
-      const hasMatch =
-        books.some((b) => normCode(b.code) === normCode(bookCode)) ||
-        students.some(
-          (s) => s.roll.toLowerCase() === val.toLowerCase() || s.name.toLowerCase().includes(val.toLowerCase())
-        );
+      const hasMatch = books.some((b) => normCode(b.code) === normCode(bookCode)) ||
+        students.some((s) => s.roll.toLowerCase() === val.toLowerCase() || s.name.toLowerCase().includes(val.toLowerCase()));
       if (hasMatch) feedback = { type: "success" };
     }
 
     playScanSound(feedback.type);
     setScanFeedback(feedback);
-    setTimeout(
-      () => {
-        setScanFeedback(null);
-        setScannerTarget(null);
-      },
-      feedback.type === "success" ? 450 : 750
-    );
+    setTimeout(() => {
+      setScanFeedback(null);
+      setScannerTarget(null);
+    }, feedback.type === "success" ? 450 : 750);
   }
 
   function openPromotion() {
     const m = {};
-    classes.forEach((c, i) => {
-      m[c] = classes[i + 1] || "";
-    });
-    setPromoMap(m);
-    setPromoMsg("");
-    setSheet("promotion");
+    classes.forEach((c, i) => { m[c] = classes[i + 1] || ""; });
+    setPromoMap(m); setPromoMsg(""); setSheet("promotion");
   }
-
   async function applyPromotion() {
     const moves = [];
     students.forEach((s) => {
@@ -1492,13 +1240,9 @@ export default function App() {
       const to = promoMap[s.className];
       if (to !== s.className) moves.push({ id: s.id, from: s.className, to });
     });
-    if (moves.length === 0) {
-      setPromoMsg("No student will change class.");
-      return;
-    }
+    if (moves.length === 0) { setPromoMsg("No student will change class."); return; }
     if (!window.confirm(`Move ${moves.length} students to their new classes?`)) return;
-    setPromoBusy(true);
-    setPromoMsg("");
+    setPromoBusy(true); setPromoMsg("");
     try {
       for (let i = 0; i < moves.length; i += 400) {
         const batch = writeBatch(db);
@@ -1512,21 +1256,14 @@ export default function App() {
     }
     setPromoBusy(false);
   }
-
   async function undoPromotion() {
     if (!lastPromotion || !Array.isArray(lastPromotion.moves)) return;
     const byId = {};
-    students.forEach((s) => {
-      byId[s.id] = s;
-    });
+    students.forEach((s) => { byId[s.id] = s; });
     const revert = lastPromotion.moves.filter((m) => byId[m.id] && byId[m.id].className === m.to);
-    if (revert.length === 0) {
-      setPromoMsg("Nothing to undo — those students were changed again since.");
-      return;
-    }
+    if (revert.length === 0) { setPromoMsg("Nothing to undo — those students were changed again since."); return; }
     if (!window.confirm(`Undo the last promotion? ${revert.length} students go back.`)) return;
-    setPromoBusy(true);
-    setPromoMsg("");
+    setPromoBusy(true); setPromoMsg("");
     try {
       for (let i = 0; i < revert.length; i += 400) {
         const batch = writeBatch(db);
@@ -1541,18 +1278,10 @@ export default function App() {
     setPromoBusy(false);
   }
 
-  function openStudentDetail(id) {
-    setDetailStudentId(id);
-    setSheet("studentDetail");
-  }
-  function openIdCard(id) {
-    setDetailStudentId(id);
-    setSheet("idCard");
-  }
-  function openBookDetail(id) {
-    setDetailBookId(id);
-    setSheet("bookDetail");
-  }
+  function openStudentDetail(id) { setDetailStudentId(id); setSheet("studentDetail"); }
+  function openIdCard(id) { setDetailStudentId(id); setSheet("idCard"); }
+  function openBookDetail(id) { setDetailBookId(id); setSheet("bookDetail"); }
+
   async function downloadCard(student) {
     if (!cardRef.current) return;
     setCardDownloading(true);
@@ -1585,10 +1314,8 @@ export default function App() {
     const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
     setStudentForm({ name: "", className: defaultClass, roll: "" });
     setBulkClass(defaultClass);
-    setBulkNames("");
-    setBulkStartRoll("");
-    setEditingStudentId(null);
-    setStudentListQuery("");
+    setBulkNames(""); setBulkStartRoll("");
+    setEditingStudentId(null); setStudentListQuery("");
     setSheet("addStudent");
   }
 
@@ -1622,6 +1349,7 @@ export default function App() {
           --shadow-md: 0 4px 12px rgba(27,77,62,0.12), 0 2px 4px rgba(27,77,62,0.08);
         }
         * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
         .app {
           font-family: 'Inter', sans-serif;
           background: var(--page-bg);
@@ -1670,6 +1398,24 @@ export default function App() {
           font-weight: 500;
           margin-top: 0.15rem;
         }
+        .desktop-title { display: none; }
+        .desktop-title h1 {
+          font-family: 'Playfair Display', serif;
+          font-weight: 800;
+          font-size: 1.7rem;
+          color: var(--navy);
+          margin: 0;
+          line-height: 1.15;
+        }
+        .desktop-title .sub {
+          font-size: 0.82rem;
+          color: var(--text-soft);
+          margin-top: 0.25rem;
+        }
+
+        /* Sidebar - hidden on mobile */
+        .sidebar { display: none; }
+
         .icon-btn {
           background: transparent;
           border: none;
@@ -1681,150 +1427,70 @@ export default function App() {
         .icon-btn:hover { background: #F0F0F0; }
         .icon-btn:focus-visible { outline: 2px solid var(--indigo); outline-offset: 1px; }
 
-        .search-wrap {
-          margin: 0 1.1rem 0.8rem;
-          position: relative;
-        }
+        .search-wrap { margin: 0 1.1rem 0.8rem; position: relative; }
         .search-wrap .icon {
-          position: absolute;
-          left: 0.8rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: var(--text-soft);
+          position: absolute; left: 0.8rem; top: 50%;
+          transform: translateY(-50%); color: var(--text-soft);
         }
         .search-wrap input {
-          width: 100%;
-          background: var(--search-bg);
-          border: none;
-          border-radius: 999px;
-          padding: 0.7rem 0.9rem 0.7rem 2.3rem;
-          font-size: 0.92rem;
-          font-family: 'Inter', sans-serif;
-          color: var(--text);
-        }
-        .search-wrap input {
+          width: 100%; background: var(--search-bg); border: none;
+          border-radius: 999px; padding: 0.7rem 0.9rem 0.7rem 2.3rem;
+          font-size: 0.92rem; font-family: 'Inter', sans-serif; color: var(--text);
           transition: box-shadow 0.15s ease;
         }
         .search-wrap input:focus-visible {
-          outline: none;
-          box-shadow: 0 0 0 2px var(--indigo), var(--shadow-sm);
+          outline: none; box-shadow: 0 0 0 2px var(--indigo), var(--shadow-sm);
         }
         .search-wrap input.with-scan { padding-right: 2.7rem; }
         .scan-btn {
-          position: absolute;
-          right: 0.35rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: var(--indigo);
-          color: #fff;
-          border: none;
-          border-radius: 50%;
-          width: 30px;
-          height: 30px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          flex: 0 0 auto;
+          position: absolute; right: 0.35rem; top: 50%; transform: translateY(-50%);
+          background: var(--indigo); color: #fff; border: none; border-radius: 50%;
+          width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; flex: 0 0 auto;
         }
         .scan-btn:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
         .scan-row { display: flex; gap: 0.5rem; align-items: stretch; }
         .scan-row input { flex: 1; min-width: 0; }
         .scan-btn-inline {
-          background: var(--indigo);
-          color: #fff;
-          border: none;
-          border-radius: 6px;
-          padding: 0 0.8rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          flex: 0 0 auto;
+          background: var(--indigo); color: #fff; border: none; border-radius: 6px;
+          padding: 0 0.8rem; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; flex: 0 0 auto;
         }
         .scan-btn-inline:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
         .scanner-video-wrap {
-          position: relative;
-          width: 100%;
-          aspect-ratio: 3 / 4;
-          background: #000;
-          border-radius: 10px;
-          overflow: hidden;
-          margin-bottom: 0.8rem;
+          position: relative; width: 100%; aspect-ratio: 3 / 4;
+          background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 0.8rem;
         }
         .scanner-video { width: 100%; height: 100%; object-fit: cover; display: block; }
         .scanner-frame {
-          position: absolute;
-          top: 20%;
-          left: 10%;
-          right: 10%;
-          bottom: 30%;
-          border: 3px solid var(--sky);
-          border-radius: 10px;
-          pointer-events: none;
+          position: absolute; top: 20%; left: 10%; right: 10%; bottom: 30%;
+          border: 3px solid var(--sky); border-radius: 10px; pointer-events: none;
         }
-
         .scan-flash {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.6rem;
-          z-index: 5;
+          position: absolute; inset: 0; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 0.6rem; z-index: 5;
           animation: scanFlashPop 0.22s ease-out;
         }
         .scan-flash-success { background: rgba(31, 138, 94, 0.9); }
         .scan-flash-warning { background: rgba(217, 149, 19, 0.92); }
         .scan-flash-error { background: rgba(192, 57, 43, 0.92); }
-        .scan-flash-msg {
-          color: #fff;
-          font-weight: 700;
-          font-size: 0.92rem;
-          text-align: center;
-          padding: 0 1.2rem;
-        }
-        @keyframes scanFlashPop {
-          0% { opacity: 0; transform: scale(0.92); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .scan-flash { animation: none; }
-        }
+        .scan-flash-msg { color: #fff; font-weight: 700; font-size: 0.92rem; text-align: center; padding: 0 1.2rem; }
+        @keyframes scanFlashPop { 0% { opacity: 0; transform: scale(0.92); } 100% { opacity: 1; transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) { .scan-flash { animation: none; } }
 
         .book-hint {
-          margin: -0.2rem 1.1rem 0.8rem;
-          background: #EAF2FB;
-          border: 1px solid #C9DFF5;
-          border-radius: 8px;
-          padding: 0.55rem 0.75rem;
-          font-size: 0.8rem;
-          color: var(--navy);
+          margin: -0.2rem 1.1rem 0.8rem; background: #EAF2FB; border: 1px solid #C9DFF5;
+          border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.8rem; color: var(--navy);
         }
-
         .class-row {
-          display: flex;
-          gap: 0.5rem;
-          overflow-x: auto;
-          margin: 0 1.1rem 1rem;
-          padding: 0.4rem 0.5rem;
-          border: 1px solid var(--line);
-          border-radius: 999px;
+          display: flex; gap: 0.5rem; overflow-x: auto; margin: 0 1.1rem 1rem;
+          padding: 0.4rem 0.5rem; border: 1px solid var(--line); border-radius: 999px;
           background: #FFFFFF;
         }
         .class-chip {
-          flex: 0 0 auto;
-          background: var(--sky);
-          color: #fff;
-          border: none;
-          border-radius: 999px;
-          padding: 0.45rem 0.95rem;
-          font-size: 0.82rem;
-          font-weight: 700;
-          cursor: pointer;
-          white-space: nowrap;
-          opacity: 0.55;
+          flex: 0 0 auto; background: var(--sky); color: #fff; border: none;
+          border-radius: 999px; padding: 0.45rem 0.95rem; font-size: 0.82rem;
+          font-weight: 700; cursor: pointer; white-space: nowrap; opacity: 0.55;
           transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
         }
         .class-chip.active { opacity: 1; box-shadow: 0 0 0 2px rgba(27,77,62,0.25), var(--shadow-sm); }
@@ -1833,156 +1499,76 @@ export default function App() {
 
         .student-list { padding: 0 1.1rem; display: flex; flex-direction: column; gap: 0.5rem; }
         .student-row {
-          display: flex;
-          align-items: center;
-          background: var(--row-bg);
-          border-radius: 12px;
-          padding: 0.4rem 0.4rem 0.4rem 0.9rem;
-          border: 2px solid transparent;
-          width: 100%;
-          box-shadow: var(--shadow-sm);
-          transition: box-shadow 0.15s ease, transform 0.1s ease;
+          display: flex; align-items: center; background: var(--row-bg);
+          border-radius: 12px; padding: 0.4rem 0.4rem 0.4rem 0.9rem;
+          border: 2px solid transparent; width: 100%;
+          box-shadow: var(--shadow-sm); transition: box-shadow 0.15s ease, transform 0.1s ease;
         }
         .student-row:active { transform: scale(0.99); }
         .student-row.selected { border-color: var(--indigo); box-shadow: var(--shadow-md); }
         .student-row-main {
-          display: flex;
-          align-items: center;
-          gap: 0.9rem;
-          flex: 1;
-          min-width: 0;
-          background: none;
-          border: none;
-          padding: 0.4rem 0;
-          margin: 0;
-          cursor: pointer;
-          text-align: left;
+          display: flex; align-items: center; gap: 0.9rem; flex: 1; min-width: 0;
+          background: none; border: none; padding: 0.4rem 0; margin: 0;
+          cursor: pointer; text-align: left;
         }
         .student-row-main:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
         .row-view-btn {
-          background: none;
-          border: none;
-          color: var(--text-soft);
-          cursor: pointer;
-          padding: 0.5rem;
-          flex: 0 0 auto;
-          border-radius: 50%;
-          display: flex;
+          background: none; border: none; color: var(--text-soft); cursor: pointer;
+          padding: 0.5rem; flex: 0 0 auto; border-radius: 50%; display: flex;
         }
         .row-view-btn:hover { background: rgba(0,0,0,0.06); color: var(--navy); }
         .row-view-btn:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; }
         .avatar {
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          background: var(--green);
-          flex: 0 0 auto;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #fff;
-          font-weight: 700;
+          width: 42px; height: 42px; border-radius: 50%; background: var(--green);
+          flex: 0 0 auto; position: relative; display: flex; align-items: center; justify-content: center;
+          color: #fff; font-weight: 700;
           box-shadow: 0 0 0 3px #FAF6EC, 0 0 0 4px var(--line), var(--shadow-sm);
         }
         .avatar .dot-badge {
-          position: absolute;
-          top: -3px;
-          right: -3px;
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: var(--danger);
-          border: 2px solid #fff;
+          position: absolute; top: -3px; right: -3px; width: 12px; height: 12px;
+          border-radius: 50%; background: var(--danger); border: 2px solid #fff;
         }
         .avatar .check-badge {
-          position: absolute;
-          bottom: -2px;
-          right: -2px;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: var(--indigo);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 2px solid #fff;
+          position: absolute; bottom: -2px; right: -2px; width: 16px; height: 16px;
+          border-radius: 50%; background: var(--indigo); display: flex;
+          align-items: center; justify-content: center; border: 2px solid #fff;
         }
         .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; }
         .avatar-letter { line-height: 1; user-select: none; }
         .student-name { font-size: 1.02rem; font-weight: 600; color: var(--text); }
         .student-meta { font-size: 0.76rem; color: var(--text-soft); margin-top: 0.1rem; }
 
-        .empty {
-          text-align: center;
-          padding: 2.2rem 1rem;
-          color: var(--text-soft);
-          font-size: 0.9rem;
-        }
+        .empty { text-align: center; padding: 2.2rem 1rem; color: var(--text-soft); font-size: 0.9rem; }
 
         .bottom-bar {
-          position: fixed;
-          bottom: 1rem;
-          left: 50%;
-          transform: translateX(-50%);
-          width: calc(100% - 2.2rem);
-          max-width: 440px;
-          background: #fff;
-          border-radius: 999px;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-          display: flex;
-          justify-content: space-around;
-          padding: 0.6rem 0.5rem;
+          position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
+          width: calc(100% - 2.2rem); max-width: 440px; background: #fff;
+          border-radius: 999px; box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+          display: flex; justify-content: space-around; padding: 0.6rem 0.5rem; z-index: 15;
         }
         .bottom-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.3rem;
-          background: transparent;
-          border: none;
-          cursor: pointer;
-          color: var(--text);
+          display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+          background: transparent; border: none; cursor: pointer; color: var(--text);
         }
         .bottom-item:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px; border-radius: 8px; }
         .bottom-dot {
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          background: var(--indigo);
-          color: #fff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: var(--shadow-sm);
-          transition: transform 0.12s ease, box-shadow 0.15s ease;
+          width: 34px; height: 34px; border-radius: 50%; background: var(--indigo);
+          color: #fff; display: flex; align-items: center; justify-content: center;
+          box-shadow: var(--shadow-sm); transition: transform 0.12s ease, box-shadow 0.15s ease;
         }
         .bottom-item:active .bottom-dot { transform: scale(0.88); }
         .bottom-item .label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; }
 
         @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes modalSlideUp {
-          from { transform: translateY(28px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
+        @keyframes modalSlideUp { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .modal-backdrop {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.45);
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-          z-index: 50;
+          position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+          display: flex; align-items: flex-end; justify-content: center; z-index: 50;
           animation: modalFadeIn 0.18s ease;
         }
         .modal-panel {
-          background: #fff;
-          width: 100%;
-          max-width: 480px;
-          max-height: 85vh;
-          overflow-y: auto;
-          border-radius: 18px 18px 0 0;
-          padding: 1rem 1.1rem 1.4rem;
+          background: #fff; width: 100%; max-width: 480px; max-height: 85vh;
+          overflow-y: auto; border-radius: 18px 18px 0 0; padding: 1rem 1.1rem 1.4rem;
           box-shadow: 0 -8px 30px rgba(27,77,62,0.18);
           animation: modalSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -1994,65 +1580,35 @@ export default function App() {
           .modal-panel { border-radius: 14px; max-height: 80vh; }
         }
         .modal-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.8rem;
+          display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;
         }
         .modal-head h2 {
-          font-family: 'Playfair Display', serif;
-          font-size: 1.15rem;
-          color: var(--navy);
-          margin: 0;
+          font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--navy); margin: 0;
         }
 
         .menu-list { display: flex; flex-direction: column; gap: 0.4rem; }
         .menu-row {
-          display: flex;
-          align-items: center;
-          gap: 0.7rem;
-          padding: 0.75rem 0.5rem;
-          border-radius: 8px;
-          background: #F7F7F7;
-          border: none;
-          cursor: pointer;
-          font-size: 0.92rem;
-          font-weight: 600;
-          color: var(--text);
-          width: 100%;
-          text-align: left;
+          display: flex; align-items: center; gap: 0.7rem; padding: 0.75rem 0.5rem;
+          border-radius: 8px; background: #F7F7F7; border: none; cursor: pointer;
+          font-size: 0.92rem; font-weight: 600; color: var(--text); width: 100%; text-align: left;
         }
         .menu-row:hover { background: #EFEFEF; }
 
         label { display: block; font-size: 0.8rem; color: var(--text-soft); margin-bottom: 0.3rem; }
-        input[type="text"], input[type="number"], input[type="search"], input[type="month"], input[type="email"], input[type="password"], input[type="tel"], select {
-          width: 100%;
-          font-family: 'Inter', sans-serif;
-          font-size: 0.92rem;
-          padding: 0.55rem 0.7rem;
-          border: 1px solid #DDD;
-          border-radius: 6px;
-          background: #FAFAFA;
-          color: var(--text);
+        input[type="text"], input[type="number"], input[type="search"], input[type="month"], input[type="email"], input[type="password"], input[type="tel"], select, textarea {
+          width: 100%; font-family: 'Inter', sans-serif; font-size: 0.92rem;
+          padding: 0.55rem 0.7rem; border: 1px solid #DDD; border-radius: 6px;
+          background: #FAFAFA; color: var(--text);
         }
-        input:focus-visible, select:focus-visible { outline: 2px solid var(--indigo); border-color: var(--indigo); }
+        input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--indigo); border-color: var(--indigo); }
         .field { margin-bottom: 0.7rem; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 0.7rem; }
 
         .btn {
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          font-size: 0.9rem;
-          background: var(--navy);
-          color: #fff;
-          border: none;
-          border-radius: 9px;
-          padding: 0.6rem 1.1rem;
-          cursor: pointer;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          box-shadow: var(--shadow-sm);
+          font-family: 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem;
+          background: var(--navy); color: #fff; border: none; border-radius: 9px;
+          padding: 0.6rem 1.1rem; cursor: pointer; display: inline-flex; align-items: center;
+          gap: 0.4rem; box-shadow: var(--shadow-sm);
           transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
         }
         .btn:active { transform: scale(0.97); }
@@ -2063,16 +1619,9 @@ export default function App() {
 
         .pick-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.9rem; max-height: 220px; overflow-y: auto; }
         .pick-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: #FAFAFA;
-          border: 1px solid #E5E5E5;
-          border-radius: 7px;
-          padding: 0.55rem 0.75rem;
-          cursor: pointer;
-          width: 100%;
-          text-align: left;
+          display: flex; justify-content: space-between; align-items: center;
+          background: #FAFAFA; border: 1px solid #E5E5E5; border-radius: 7px;
+          padding: 0.55rem 0.75rem; cursor: pointer; width: 100%; text-align: left;
         }
         .pick-item:hover, .pick-item.selected { border-color: var(--indigo); background: #EDEEFB; }
         .pick-item .t-title { font-weight: 700; font-size: 0.88rem; }
@@ -2080,37 +1629,20 @@ export default function App() {
         .pick-item .badge { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--navy); background: #E4EFFB; padding: 0.15rem 0.4rem; border-radius: 4px; }
 
         .current-pick {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: #EDEEFB;
-          border: 1px solid var(--indigo);
-          border-radius: 7px;
-          padding: 0.5rem 0.75rem;
-          margin-bottom: 0.7rem;
-          font-size: 0.86rem;
+          display: flex; justify-content: space-between; align-items: center;
+          background: #EDEEFB; border: 1px solid var(--indigo); border-radius: 7px;
+          padding: 0.5rem 0.75rem; margin-bottom: 0.7rem; font-size: 0.86rem;
         }
         .current-pick button { background: none; border: none; color: var(--indigo); font-weight: 700; cursor: pointer; font-size: 0.78rem; }
 
         .stamp-card {
-          margin-top: 1rem;
-          background: #FFF;
-          border: 1px dashed var(--danger);
-          border-radius: 8px;
-          padding: 0.9rem;
-          display: flex;
-          align-items: center;
-          gap: 0.9rem;
+          margin-top: 1rem; background: #FFF; border: 1px dashed var(--danger);
+          border-radius: 8px; padding: 0.9rem; display: flex; align-items: center; gap: 0.9rem;
         }
         .stamp-mark {
-          border: 3px solid var(--danger);
-          color: var(--danger);
-          border-radius: 8px;
-          padding: 0.45rem 0.8rem;
-          transform: rotate(-6deg);
-          animation: stampIn 0.35s ease-out;
-          text-align: center;
-          flex: 0 0 auto;
+          border: 3px solid var(--danger); color: var(--danger); border-radius: 8px;
+          padding: 0.45rem 0.8rem; transform: rotate(-6deg);
+          animation: stampIn 0.35s ease-out; text-align: center; flex: 0 0 auto;
         }
         .stamp-mark .l1 { font-weight: 800; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
         .stamp-mark .l2 { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.95rem; }
@@ -2121,15 +1653,9 @@ export default function App() {
 
         .row-list { display: flex; flex-direction: column; gap: 0.5rem; }
         .row-card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 0.6rem;
-          background: #FAF6EC;
-          border: 1px solid var(--line);
-          border-radius: 10px;
-          padding: 0.6rem 0.8rem;
-          box-shadow: var(--shadow-sm);
+          display: flex; justify-content: space-between; align-items: center; gap: 0.6rem;
+          background: #FAF6EC; border: 1px solid var(--line); border-radius: 10px;
+          padding: 0.6rem 0.8rem; box-shadow: var(--shadow-sm);
           transition: box-shadow 0.15s ease, transform 0.15s ease;
         }
         .row-card.overdue { border-color: var(--danger); background: #F8E9E7; }
@@ -2152,229 +1678,297 @@ export default function App() {
         .stat-card .label { font-size: 0.78rem; color: var(--text-soft); margin-top: 0.1rem; }
 
         .dash-heading {
-          font-family: 'Playfair Display', serif;
-          font-size: 0.95rem;
-          color: var(--navy);
-          margin: 1.1rem 0 0.5rem;
-          display: flex;
-          align-items: baseline;
-          gap: 0.4rem;
+          font-family: 'Playfair Display', serif; font-size: 0.95rem; color: var(--navy);
+          margin: 1.1rem 0 0.5rem; display: flex; align-items: baseline; gap: 0.4rem;
         }
         .dash-heading:first-of-type { margin-top: 0.2rem; }
-        .dash-heading .dash-sub {
-          font-family: 'Inter', sans-serif;
-          font-weight: 400;
-          font-size: 0.74rem;
-          color: var(--text-soft);
-        }
-        .rank {
-          font-family: 'JetBrains Mono', monospace;
-          font-weight: 700;
-          color: var(--navy);
-          width: 26px;
-          flex: 0 0 auto;
-          text-align: center;
-          font-size: 0.88rem;
-        }
-        .dash-row {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-        }
+        .dash-heading .dash-sub { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 0.74rem; color: var(--text-soft); }
+        .rank { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--navy); width: 26px; flex: 0 0 auto; text-align: center; font-size: 0.88rem; }
+        .dash-row { display: flex; align-items: center; gap: 0.6rem; }
 
         .lock-screen {
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem 1.3rem;
-          text-align: center;
+          position: fixed; inset: 0; z-index: 100;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 2rem 1.3rem; text-align: center; overflow-y: auto;
+          background: var(--page-bg);
         }
         .lock-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 50%;
-          background: var(--navy);
-          color: #fff;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 1rem;
+          width: 56px; height: 56px; border-radius: 50%; background: var(--navy);
+          color: #fff; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;
         }
         .lock-screen h1 {
-          font-family: 'Playfair Display', serif;
-          font-weight: 800;
-          font-size: 1.3rem;
-          color: var(--navy);
-          margin: 0 0 0.15rem;
+          font-family: 'Playfair Display', serif; font-weight: 800; font-size: 1.3rem;
+          color: var(--navy); margin: 0 0 0.15rem;
         }
-        .lock-screen .sub {
-          font-size: 0.74rem;
-          color: var(--maroon);
-          margin-bottom: 1.6rem;
-        }
-        .lock-form {
-          width: 100%;
-          max-width: 320px;
-          text-align: left;
-        }
+        .lock-screen .sub { font-size: 0.74rem; color: var(--maroon); margin-bottom: 1.6rem; }
+        .lock-form { width: 100%; max-width: 320px; text-align: left; }
         .lock-form .field { margin-bottom: 0.8rem; }
-        .lock-error {
-          color: var(--danger);
-          font-size: 0.82rem;
-          font-weight: 600;
-          margin-bottom: 0.7rem;
-          text-align: center;
-        }
-        .lock-hint {
-          font-size: 0.76rem;
-          color: var(--text-soft);
-          margin-top: 1rem;
-          text-align: center;
-        }
+        .lock-error { color: var(--danger); font-size: 0.82rem; font-weight: 600; margin-bottom: 0.7rem; text-align: center; }
+        .lock-hint { font-size: 0.76rem; color: var(--text-soft); margin-top: 1rem; text-align: center; }
 
-        .print-area {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0.6rem;
-        }
-        .print-area.books-print {
-          grid-template-columns: 1fr 1fr 1fr;
-        }
-        .id-card {
-          border: 1px solid var(--line);
-          border-radius: 8px;
-          padding: 0.5rem;
-          text-align: center;
-          background: #fff;
-        }
+        .print-area { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        .print-area.books-print { grid-template-columns: 1fr 1fr 1fr; }
+        .id-card { border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem; text-align: center; background: #fff; }
         .id-card-name { font-weight: 700; font-size: 0.72rem; color: var(--text); line-height: 1.25; }
         .id-card-meta { font-size: 0.62rem; color: var(--text-soft); margin-bottom: 0.3rem; line-height: 1.25; }
-        .id-barcode { width: 100%; height: auto; }
         .id-qrcode { width: 100%; max-width: 110px; height: auto; margin: 0 auto; display: block; }
 
         .id-card-wrap { display: flex; justify-content: center; padding: 0.4rem 0 0.2rem; }
         .lib-card {
-          width: 320px;
-          max-width: 100%;
+          width: 320px; max-width: 100%;
           background: linear-gradient(135deg, #FDF8ED 0%, #FBF2D9 100%);
-          border: 3px solid var(--sky);
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: var(--shadow-md);
-          display: flex;
-          flex-direction: column;
+          border: 3px solid var(--sky); border-radius: 16px; overflow: hidden;
+          box-shadow: var(--shadow-md); display: flex; flex-direction: column;
         }
         .lib-card-top {
           background: var(--navy);
           background-image: linear-gradient(135deg, var(--navy) 0%, var(--navy-deep) 100%);
-          padding: 0.65rem 0.9rem;
-          color: #fff;
+          padding: 0.65rem 0.9rem; color: #fff;
         }
-        .lib-card-brand-name {
-          font-family: 'Playfair Display', serif;
-          font-weight: 800;
-          font-size: 0.95rem;
-          letter-spacing: 0.02em;
-        }
+        .lib-card-brand-name { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em; }
         .lib-card-brand-sub { font-size: 0.6rem; color: var(--gold-soft); margin-top: 0.15rem; }
         .lib-card-body { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem; flex: 1; }
         .lib-card-info { flex: 1; min-width: 0; }
-        .lib-card-name {
-          font-family: 'Playfair Display', serif;
-          font-weight: 700;
-          font-size: 1.05rem;
-          color: var(--navy-deep);
-          line-height: 1.25;
-        }
+        .lib-card-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.05rem; color: var(--navy-deep); line-height: 1.25; }
         .lib-card-meta { font-size: 0.78rem; color: var(--text-soft); margin-top: 0.2rem; }
         .lib-card-bottom {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.6rem 0.9rem 0.8rem;
-          border-top: 1px dashed var(--line);
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 0.6rem 0.9rem 0.8rem; border-top: 1px dashed var(--line);
         }
-        .lib-card-id-label {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 0.62rem;
-          letter-spacing: 0.08em;
-          color: var(--text-soft);
-          font-weight: 700;
-        }
-        .lib-card-qr-wrap {
-          background: #fff;
-          padding: 4px;
-          border-radius: 6px;
-          box-shadow: var(--shadow-sm);
-          line-height: 0;
-        }
+        .lib-card-id-label { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.08em; color: var(--text-soft); font-weight: 700; }
+        .lib-card-qr-wrap { background: #fff; padding: 4px; border-radius: 6px; box-shadow: var(--shadow-sm); line-height: 0; }
 
-        .book-qr-wrap {
-          display: flex;
-          justify-content: center;
-          margin: 0.4rem 0 0.6rem;
-        }
+        .book-qr-wrap { display: flex; justify-content: center; margin: 0.4rem 0 0.6rem; }
         .book-qr-box {
-          background: #fff;
-          padding: 8px;
-          border: 2px solid var(--sky);
-          border-radius: 10px;
-          box-shadow: var(--shadow-sm);
-          line-height: 0;
+          background: #fff; padding: 8px; border: 2px solid var(--sky);
+          border-radius: 10px; box-shadow: var(--shadow-sm); line-height: 0;
         }
 
         .certificate {
-          width: 360px;
-          max-width: 100%;
-          aspect-ratio: 4 / 3;
-          background: #FDF8ED;
+          width: 360px; max-width: 100%; aspect-ratio: 4 / 3; background: #FDF8ED;
           background-image:
             linear-gradient(45deg, rgba(201,162,39,0.06) 25%, transparent 25%),
             linear-gradient(-45deg, rgba(201,162,39,0.06) 25%, transparent 25%);
-          background-size: 22px 22px;
-          border: 6px double var(--sky);
-          border-radius: 10px;
-          padding: 1.1rem 1.1rem 0.9rem;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          text-align: center;
-          box-shadow: var(--shadow-md);
+          background-size: 22px 22px; border: 6px double var(--sky); border-radius: 10px;
+          padding: 1.1rem 1.1rem 0.9rem; display: flex; flex-direction: column;
+          align-items: center; text-align: center; box-shadow: var(--shadow-md);
         }
         .cert-badge { font-size: 1.9rem; margin-bottom: 0.1rem; }
         .cert-title {
-          font-family: 'Playfair Display', serif;
-          font-weight: 800;
-          font-size: 1.02rem;
-          color: var(--navy-deep);
-          letter-spacing: 0.03em;
-          text-transform: uppercase;
+          font-family: 'Playfair Display', serif; font-weight: 800; font-size: 1.02rem;
+          color: var(--navy-deep); letter-spacing: 0.03em; text-transform: uppercase;
         }
         .cert-sub { font-size: 0.64rem; color: var(--maroon); margin-top: 0.1rem; margin-bottom: 0.55rem; }
         .cert-presented { font-size: 0.7rem; color: var(--text-soft); }
         .cert-name {
-          font-family: 'Playfair Display', serif;
-          font-weight: 700;
-          font-size: 1.25rem;
-          color: var(--navy);
-          margin: 0.3rem 0;
-          border-bottom: 2px solid var(--gold-soft);
+          font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.25rem;
+          color: var(--navy); margin: 0.3rem 0; border-bottom: 2px solid var(--gold-soft);
           padding-bottom: 0.2rem;
         }
         .cert-desc { font-size: 0.72rem; color: var(--text); line-height: 1.45; max-width: 92%; margin-top: 0.25rem; }
         .cert-month { font-weight: 700; color: var(--maroon); }
-        .cert-footer {
-          display: flex;
-          justify-content: space-between;
-          width: 100%;
-          margin-top: auto;
-          padding-top: 0.7rem;
-        }
+        .cert-footer { display: flex; justify-content: space-between; width: 100%; margin-top: auto; padding-top: 0.7rem; }
         .cert-foot-item { font-size: 0.62rem; color: var(--text-soft); text-align: center; }
         .cert-foot-line { border-top: 1px solid var(--text-soft); width: 80px; margin: 0 auto 0.2rem; }
 
+        /* =====================================================
+           TABLET (≥ 640px) - slightly wider card style
+           ===================================================== */
+        @media (min-width: 640px) and (max-width: 1023px) {
+          .app { max-width: 640px; }
+        }
+
+        /* =====================================================
+           DESKTOP (≥ 1024px) - sidebar + grid layout
+           ===================================================== */
+        @media (min-width: 1024px) {
+          .app {
+            max-width: none;
+            padding-bottom: 2rem;
+            padding-left: 240px;
+          }
+
+          /* ----- Sidebar ----- */
+          .sidebar {
+            display: flex;
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: 240px;
+            background: linear-gradient(180deg, #0F3328 0%, #1B4D3E 100%);
+            color: #fff;
+            flex-direction: column;
+            padding: 1rem 0 0.8rem;
+            z-index: 30;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.12);
+            overflow-y: auto;
+          }
+          .sidebar-brand {
+            padding: 0.4rem 1.2rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            margin-bottom: 0.8rem;
+          }
+          .sidebar-brand-logo {
+            font-family: 'Playfair Display', serif;
+            font-weight: 800;
+            font-size: 1.3rem;
+            line-height: 1.15;
+            color: #fff;
+            letter-spacing: 0.01em;
+          }
+          .sidebar-brand-sub {
+            font-size: 0.68rem;
+            color: var(--gold-soft);
+            margin-top: 0.25rem;
+            line-height: 1.3;
+          }
+          .sidebar-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            padding: 0 0.7rem 0.9rem;
+            margin-bottom: 0.6rem;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+          }
+          .sidebar-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--sky);
+            color: var(--navy-deep);
+            border: none;
+            border-radius: 8px;
+            padding: 0.62rem 0.85rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s ease, transform 0.1s ease;
+          }
+          .sidebar-action-btn:hover { background: var(--gold-soft); }
+          .sidebar-action-btn:active { transform: scale(0.98); }
+          .sidebar-action-btn svg { flex: 0 0 auto; color: var(--navy-deep); }
+          .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.12rem;
+            padding: 0 0.7rem;
+            flex: 1;
+          }
+          .sidebar-nav button {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            background: transparent;
+            color: rgba(255,255,255,0.82);
+            border: none;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.86rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            position: relative;
+            transition: background 0.15s ease, color 0.15s ease;
+          }
+          .sidebar-nav button:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+          }
+          .sidebar-nav button svg { flex: 0 0 auto; }
+          .sidebar-badge {
+            position: absolute;
+            right: 0.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--danger);
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.12rem 0.5rem;
+            border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace;
+          }
+          .sidebar-footer {
+            padding: 0.8rem 0.7rem 0;
+            border-top: 1px solid rgba(255,255,255,0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 0.12rem;
+          }
+          .sidebar-footer button {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            background: transparent;
+            color: rgba(255,255,255,0.65);
+            border: none;
+            padding: 0.55rem 0.8rem;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82rem;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.15s ease, color 0.15s ease;
+          }
+          .sidebar-footer button:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+          }
+
+          /* ----- Header / search / class-row ----- */
+          .header { padding: 1.5rem 2rem 0.8rem; }
+          .header .brand { display: none; }
+          .header .icon-btn { display: none; }
+          .desktop-title { display: block; }
+
+          .search-wrap { margin: 0 2rem 0.8rem; }
+          .search-wrap input { font-size: 0.95rem; padding-top: 0.85rem; padding-bottom: 0.85rem; }
+
+          .class-row {
+            margin: 0 2rem 1rem;
+            flex-wrap: wrap;
+            overflow-x: visible;
+          }
+
+          .book-hint { margin: 0 2rem 0.8rem; }
+
+          /* ----- Student list grid ----- */
+          .student-list {
+            padding: 0 2rem 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 0.7rem;
+          }
+
+          /* ----- Hide mobile bottom bar ----- */
+          .bottom-bar { display: none; }
+
+          /* ----- Modals centered on desktop ----- */
+          .modal-backdrop {
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+          }
+          .modal-panel {
+            max-width: 720px;
+            max-height: 88vh;
+            border-radius: 14px;
+            padding: 1.3rem 1.6rem 1.6rem;
+            animation: modalFadeIn 0.18s ease;
+          }
+
+          /* ----- Empty / loading states ----- */
+          .empty { padding: 3rem 1rem; }
+        }
+        @media (min-width: 1440px) {
+          .student-list { grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); }
+        }
+
+        /* =====================================================
+           PRINT
+           ===================================================== */
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
@@ -2390,6 +1984,7 @@ export default function App() {
             margin: 0 !important;
             border-radius: 0 !important;
             inset: auto !important;
+            padding-left: 0 !important;
           }
           .print-area {
             position: static !important;
@@ -2397,11 +1992,10 @@ export default function App() {
             grid-template-columns: repeat(4, 1fr);
             page-break-inside: auto;
           }
-          .print-area.books-print {
-            grid-template-columns: repeat(3, 1fr);
-          }
+          .print-area.books-print { grid-template-columns: repeat(3, 1fr); }
           .id-card { break-inside: avoid; page-break-inside: avoid; }
-          .no-print, .modal-head, .header, .bottom-bar, .class-row, .search-wrap, .book-hint {
+          .no-print, .modal-head, .header, .bottom-bar, .class-row,
+          .search-wrap, .book-hint, .sidebar, .top-fixed, .desktop-title {
             display: none !important;
           }
         }
@@ -2424,22 +2018,11 @@ export default function App() {
             {pwError && <div className="lock-error">{pwError}</div>}
             <div className="field">
               <label>Email</label>
-              <input
-                type="email"
-                value={signInEmail}
-                onChange={(e) => setSignInEmail(e.target.value)}
-                autoFocus
-                required
-              />
+              <input type="email" value={signInEmail} onChange={(e) => setSignInEmail(e.target.value)} autoFocus required />
             </div>
             <div className="field">
               <label>Password</label>
-              <input
-                type="password"
-                value={signInPassword}
-                onChange={(e) => setSignInPassword(e.target.value)}
-                required
-              />
+              <input type="password" value={signInPassword} onChange={(e) => setSignInPassword(e.target.value)} required />
             </div>
             <button type="submit" className="btn full" disabled={signingIn}>
               <Lock size={15} /> {signingIn ? "Signing in..." : "Sign In"}
@@ -2451,1647 +2034,1240 @@ export default function App() {
         </div>
       ) : (
         <>
-      <div className="top-fixed">
-        <div className="header">
-          <div className="brand">
-            <h1>NMMI ISLAMIC LIBRARY</h1>
-            <div className="sub">Nandiyil Muhammed Musliyar Memorial Islamic Library</div>
-          </div>
-          <button className="icon-btn" onClick={() => setSheet("menu")} aria-label="Menu">
-            <MoreVertical size={22} />
-          </button>
-        </div>
-
-        <div className="search-wrap">
-          <Search size={16} className="icon" />
-          <input
-            type="search"
-            className="with-scan"
-            placeholder="Search student id/ Book id"
-            value={homeQuery}
-            onChange={(e) => setHomeQuery(e.target.value)}
-          />
-          <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan QR code">
-            <Camera size={15} />
-          </button>
-        </div>
-
-        <div className="class-row">
-          <button className={`class-chip ${selectedClass === "ALL" ? "active" : ""}`} onClick={() => setSelectedClass("ALL")}>
-            ALL
-          </button>
-          {students.some((s) => !s.className) && (
-            <button className={`class-chip ${selectedClass === "" ? "active" : ""}`} onClick={() => setSelectedClass("")}>
-              Unassigned
-            </button>
-          )}
-          {classes.map((c) => (
-            <button
-              key={c}
-              className={`class-chip ${selectedClass === c ? "active" : ""}`}
-              onClick={() => setSelectedClass(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {bookMatchForSearch && (
-        <div className="book-hint">
-          <b>{bookMatchForSearch.title}</b> ({bookMatchForSearch.code}) — {bookMatchForSearch.availableCopies}/
-          {bookMatchForSearch.totalCopies} available
-          {(() => {
-            const holders = activeTx
-              .filter((t) => t.bookId === bookMatchForSearch.id)
-              .map((t) => studentById(t.studentId))
-              .filter(Boolean);
-            if (holders.length === 0) return null;
-            return <> · with: {holders.map((h) => h.name).join(", ")}</>;
-          })()}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="empty">Loading...</div>
-      ) : filteredStudents.length === 0 ? (
-        <div className="empty">
-          {students.length === 0
-            ? "No students added yet. Use the Add Student button below to get started."
-            : "No matching students."}
-        </div>
-      ) : (
-        <div className="student-list">
-          {filteredStudents.map((s) => {
-            const holding = studentActiveTx(s.id).length;
-            const overdue = studentHasOverdue(s.id);
-            const isSelected = selectedStudentId === s.id;
-            return (
-              <div key={s.id} className={`student-row ${isSelected ? "selected" : ""}`}>
-                <button
-                  className="student-row-main"
-                  onClick={() => setSelectedStudentId(isSelected ? null : s.id)}
-                >
-                  <Avatar name={s.name} photoUrl={s.photoUrl}>
-                    {overdue && <span className="dot-badge" />}
-                    {isSelected && (
-                      <span className="check-badge">
-                        <Check size={10} color="#fff" />
-                      </span>
-                    )}
-                  </Avatar>
-                  <div>
-                    <div className="student-name">{s.name}</div>
-                    <div className="student-meta">
-                      {s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}
-                      {holding > 0 ? ` · holding ${holding}` : ""}
-                    </div>
-                  </div>
-                </button>
-                <button
-                  className="row-view-btn"
-                  onClick={() => openStudentDetail(s.id)}
-                  aria-label={`View ${s.name}'s book history`}
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="bottom-bar">
-        <button className="bottom-item" onClick={openIssue}>
-          <span className="bottom-dot">
-            <BookMarked size={16} />
-          </span>
-          <span className="label">ISSUE BOOK</span>
-        </button>
-        <button className="bottom-item" onClick={openReturn}>
-          <span className="bottom-dot">
-            <RotateCcw size={16} />
-          </span>
-          <span className="label">RETURN BOOK</span>
-        </button>
-        <button className="bottom-item" onClick={openAddStudent}>
-          <span className="bottom-dot">
-            <UserPlus size={16} />
-          </span>
-          <span className="label">ADD STUDENT</span>
-        </button>
-      </div>
-
-      {sheet === "menu" && (
-        <Modal title="More" onClose={() => setSheet(null)}>
-          <div className="menu-list">
-            <button className="menu-row" onClick={() => setSheet("dashboard")}>
-              <LayoutDashboard size={18} /> Dashboard
-            </button>
-            <button className="menu-row" onClick={() => setSheet("catalog")}>
-              <Library size={18} /> Book Catalog
-            </button>
-            <button className="menu-row" onClick={() => setSheet("bookCategories")}>
-              <Bookmark size={18} /> Book Categories
-            </button>
-            <button className="menu-row" onClick={() => setSheet("classes")}>
-              <Layers size={18} /> Manage Classes
-            </button>
-            <button className="menu-row" onClick={openPromotion}>
-              <GraduationCap size={18} /> Class Promotion
-            </button>
-            <button className="menu-row" onClick={() => setSheet("overdue")}>
-              <AlertTriangle size={18} /> Overdue Books
-              {overdueTx.length > 0 && <span className="badge">{overdueTx.length}</span>}
-            </button>
-            <button
-              className="menu-row"
-              onClick={() => {
-                setCertMonth(todayISO().slice(0, 7));
-                setCertStudentId("");
-                setSheet("certificate");
-              }}
-            >
-              <Award size={18} /> Monthly Certificate
-            </button>
-            <button className="menu-row" onClick={() => setSheet("printCards")}>
-              <Printer size={18} /> Print QR Labels
-            </button>
-            <button
-              className="menu-row"
-              onClick={() => {
-                setChangeNewPw("");
-                setChangeNewPw2("");
-                setChangeError("");
-                setChangeSuccess(false);
-                setSheet("changePassword");
-              }}
-            >
-              <Lock size={18} /> Change Password
-            </button>
-            <button className="menu-row" onClick={handleSignOut}>
-              <LogOut size={18} /> Sign Out
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {sheet === "changePassword" && (
-        <Modal title="Change Password" onClose={() => setSheet(null)}>
-          {changeSuccess ? (
-            <div className="empty">
-              <Check size={18} style={{ marginBottom: "0.3rem" }} />
-              <br />
-              Password updated.
+          <aside className="sidebar">
+            <div className="sidebar-brand">
+              <div className="sidebar-brand-logo">NMMI</div>
+              <div className="sidebar-brand-sub">Islamic Library<br />Nandiyil Muhammed Musliyar Memorial</div>
             </div>
-          ) : (
-            <form onSubmit={handleChangePassword}>
-              {changeError && <div className="lock-error">{changeError}</div>}
-              <div className="field">
-                <label>New password</label>
-                <input
-                  type="password"
-                  value={changeNewPw}
-                  onChange={(e) => setChangeNewPw(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label>Confirm new password</label>
-                <input
-                  type="password"
-                  value={changeNewPw2}
-                  onChange={(e) => setChangeNewPw2(e.target.value)}
-                  required
-                />
-              </div>
-              <button type="submit" className="btn full"><Lock size={15} /> Update Password</button>
-            </form>
-          )}
-        </Modal>
-      )}
-
-      {sheet === "printCards" && (
-        <Modal title="Print QR Labels" onClose={() => setSheet(null)}>
-          <div className="no-print">
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.7rem" }}>
-              <button
-                className={`btn ${printMode === "students" ? "" : "secondary"}`}
-                style={{ flex: 1, justifyContent: "center" }}
-                onClick={() => setPrintMode("students")}
-              >
-                Students
+            <div className="sidebar-actions">
+              <button className="sidebar-action-btn" onClick={openIssue}>
+                <BookMarked size={18} />
+                <span>Issue Book</span>
               </button>
-              <button
-                className={`btn ${printMode === "books" ? "" : "secondary"}`}
-                style={{ flex: 1, justifyContent: "center" }}
-                onClick={() => setPrintMode("books")}
-              >
-                Books
+              <button className="sidebar-action-btn" onClick={openReturn}>
+                <RotateCcw size={18} />
+                <span>Return Book</span>
+              </button>
+              <button className="sidebar-action-btn" onClick={openAddStudent}>
+                <UserPlus size={18} />
+                <span>Add Student</span>
               </button>
             </div>
-            {printMode === "students" && (
-              <select
-                value={printClass}
-                onChange={(e) => setPrintClass(e.target.value)}
-                style={{ marginBottom: "0.7rem" }}
-              >
-                <option value="ALL">All classes</option>
-                {classes.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            )}
-            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
-              Each QR code encodes the {printMode === "students" ? "student's roll number" : "book's code (prefixed with BOOK:)"} —
-              scanning it in the app finds that {printMode === "students" ? "student" : "book"}{" "}
-              automatically. Tap Print, then choose "Save as PDF" to print or share.
-            </p>
-            <button className="btn full" onClick={() => window.print()}>
-              <Printer size={16} /> Print / Save as PDF
-            </button>
-          </div>
-
-          <div className={`print-area ${printMode === "books" ? "books-print" : ""}`} style={{ marginTop: "0.8rem" }}>
-            {printMode === "students"
-              ? students
-                  .filter((s) => printClass === "ALL" || s.className === printClass)
-                  .map((s) => (
-                    <div className="id-card" key={s.id}>
-                      <div className="id-card-name">{s.name}</div>
-                      <div className="id-card-meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
-                      <QRCodeCanvas value={s.roll} />
-                    </div>
-                  ))
-              : books.map((b) => (
-                  <div className="id-card" key={b.id}>
-                    <div className="id-card-name">{b.title}</div>
-                    <div className="id-card-meta">
-                      {b.category || UNCATEGORIZED} · {b.code}
-                    </div>
-                    <QRCodeCanvas value={bookQrValue(b.code)} size={110} />
-                  </div>
-                ))}
-          </div>
-        </Modal>
-      )}
-
-      {sheet === "issue" && (
-        <Modal title="Issue Book" onClose={() => setSheet(null)}>
-          {selectedStudent ? (
-            <div className="current-pick">
-              <span>
-                Student: <b>{selectedStudent.name}</b> ({selectedStudent.className})
-              </span>
-              <button onClick={() => setSelectedStudentId(null)}>Change</button>
+            <nav className="sidebar-nav">
+              <button onClick={() => setSheet("dashboard")}><LayoutDashboard size={18} /> Dashboard</button>
+              <button onClick={() => setSheet("catalog")}><Library size={18} /> Book Catalog</button>
+              <button onClick={() => setSheet("bookCategories")}><Bookmark size={18} /> Categories</button>
+              <button onClick={() => setSheet("classes")}><Layers size={18} /> Classes</button>
+              <button onClick={openPromotion}><GraduationCap size={18} /> Promotion</button>
+              <button onClick={() => setSheet("overdue")}>
+                <AlertTriangle size={18} /> Overdue
+                {overdueTx.length > 0 && <span className="sidebar-badge">{overdueTx.length}</span>}
+              </button>
+              <button onClick={() => { setCertMonth(todayISO().slice(0, 7)); setCertStudentId(""); setSheet("certificate"); }}>
+                <Award size={18} /> Certificate
+              </button>
+              <button onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
+            </nav>
+            <div className="sidebar-footer">
+              <button onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
+                <Lock size={16} /> Change Password
+              </button>
+              <button onClick={handleSignOut}><LogOut size={16} /> Sign Out</button>
             </div>
-          ) : (
-            <div className="field">
-              <label>Find student</label>
-              <div className="scan-row">
-                <input
-                  type="search"
-                  value={issueStudentQuery}
-                  onChange={(e) => setIssueStudentQuery(e.target.value)}
-                  placeholder="Name or roll number..."
-                />
-                <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueStudent")} aria-label="Scan student QR">
-                  <Camera size={16} />
-                </button>
-              </div>
-              <div className="pick-list">
-                {issueStudentMatches.length === 0 && <div className="empty">No students found</div>}
-                {issueStudentMatches.map((s) => (
-                  <button key={s.id} className="pick-item" onClick={() => setSelectedStudentId(s.id)}>
-                    <span className="badge">{s.roll}</span>
-                    <span>
-                      <div className="t-title">{s.name}</div>
-                      <div className="t-meta">{s.className}</div>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+          </aside>
 
-          <div className="field">
-            <label>Find book</label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+          <div className="top-fixed">
+            <div className="header">
+              <div className="brand">
+                <h1>NMMI ISLAMIC LIBRARY</h1>
+                <div className="sub">Nandiyil Muhammed Musliyar Memorial Islamic Library</div>
+              </div>
+              <div className="desktop-title">
+                <h1>Students</h1>
+                <div className="sub">
+                  {filteredStudents.length} student{filteredStudents.length === 1 ? "" : "s"}
+                  {selectedClass !== "ALL" ? ` · ${selectedClass || "Unassigned"}` : ""}
+                </div>
+              </div>
+              <button className="icon-btn" onClick={() => setSheet("menu")} aria-label="Menu">
+                <MoreVertical size={22} />
+              </button>
+            </div>
+
+            <div className="search-wrap">
+              <Search size={16} className="icon" />
               <input
                 type="search"
-                style={{ flex: 1 }}
-                value={bookQuery}
-                onChange={(e) => setBookQuery(e.target.value)}
-                placeholder="Title, author or code..."
+                className="with-scan"
+                placeholder="Search student id/ Book id"
+                value={homeQuery}
+                onChange={(e) => setHomeQuery(e.target.value)}
               />
-              <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueBook")} aria-label="Scan book QR">
-                <Camera size={16} />
+              <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan QR code">
+                <Camera size={15} />
               </button>
             </div>
-            <div className="pick-list">
-              {issueBookMatches.length === 0 && <div className="empty">No books found</div>}
-              {issueBookMatches.map((b) => (
+
+            <div className="class-row">
+              <button className={`class-chip ${selectedClass === "ALL" ? "active" : ""}`} onClick={() => setSelectedClass("ALL")}>ALL</button>
+              {students.some((s) => !s.className) && (
+                <button className={`class-chip ${selectedClass === "" ? "active" : ""}`} onClick={() => setSelectedClass("")}>Unassigned</button>
+              )}
+              {classes.map((c) => (
                 <button
-                  key={b.id}
-                  className={`pick-item ${selectedBook?.id === b.id ? "selected" : ""}`}
-                  onClick={() => setSelectedBook(b)}
-                  disabled={b.availableCopies < 1}
+                  key={c}
+                  className={`class-chip ${selectedClass === c ? "active" : ""}`}
+                  onClick={() => setSelectedClass(c)}
                 >
-                  <span className="badge">{b.availableCopies}/{b.totalCopies}</span>
-                  <span>
-                    <div className="t-title">{b.title}</div>
-                    <div className="t-meta">{b.author} · {b.code}</div>
-                  </span>
+                  {c}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="form-grid" style={{ gridTemplateColumns: "120px 1fr", alignItems: "end" }}>
-            <div>
-              <label>Days</label>
-              <input type="number" min="1" value={days} onChange={(e) => setDays(e.target.value)} />
-            </div>
-            <div>
-              <button
-                className="btn full"
-                disabled={!selectedStudentId || !selectedBook || selectedBook.availableCopies < 1}
-                onClick={issueBook}
-              >
-                <BookMarked size={16} /> Issue Book
-              </button>
-            </div>
-          </div>
-
-          {lastIssued && (
-            <div className="stamp-card">
-              <div className="stamp-mark">
-                <div className="l1">Issued</div>
-                <div className="l2">{formatDate(lastIssued.dueDate)}</div>
-              </div>
-              <div className="stamp-info">
-                <b>{lastIssued.bookTitle}</b> issued to {lastIssued.studentName}.
-                <br />
-                Due on <b>{formatDate(lastIssued.dueDate)}</b>
-              </div>
+          {bookMatchForSearch && (
+            <div className="book-hint">
+              <b>{bookMatchForSearch.title}</b> ({bookMatchForSearch.code}) — {bookMatchForSearch.availableCopies}/
+              {bookMatchForSearch.totalCopies} available
+              {(() => {
+                const holders = activeTx
+                  .filter((t) => t.bookId === bookMatchForSearch.id)
+                  .map((t) => studentById(t.studentId))
+                  .filter(Boolean);
+                if (holders.length === 0) return null;
+                return <> · with: {holders.map((h) => h.name).join(", ")}</>;
+              })()}
             </div>
           )}
-        </Modal>
-      )}
 
-      {sheet === "return" && (
-        <Modal title="Return Book" onClose={() => setSheet(null)}>
-          {selectedStudent ? (
-            <>
-              <div className="current-pick">
-                <span>
-                  Student: <b>{selectedStudent.name}</b> ({selectedStudent.className})
-                </span>
-                <button onClick={() => setSelectedStudentId(null)}>Change</button>
-              </div>
-              {studentActiveTx(selectedStudent.id).length === 0 ? (
-                <div className="empty">This student has no books currently issued.</div>
-              ) : (
-                <div className="row-list">
-                  {studentActiveTx(selectedStudent.id).map((t) => {
-                    const book = bookById(t.bookId);
-                    const overdue = t.dueDate < todayISO();
-                    return (
-                      <div key={t.id} className={`row-card ${overdue ? "overdue" : ""}`}>
-                        <div>
-                          <div className="title">{book?.title}</div>
-                          <div className="meta">{book?.code}</div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                          <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(t.dueDate)}</div>
-                          {justReturnedId === t.id ? (
-                            <span className="returned-flash"><Check size={14} /> Returned</span>
-                          ) : (
-                            <button className="btn secondary" onClick={() => returnBook(t.id)}>
-                              <RotateCcw size={13} /> Return
-                            </button>
-                          )}
+          {loading ? (
+            <div className="empty">Loading...</div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="empty">
+              {students.length === 0
+                ? "No students added yet. Use the Add Student button below to get started."
+                : "No matching students."}
+            </div>
+          ) : (
+            <div className="student-list">
+              {filteredStudents.map((s) => {
+                const holding = studentActiveTx(s.id).length;
+                const overdue = studentHasOverdue(s.id);
+                const isSelected = selectedStudentId === s.id;
+                return (
+                  <div key={s.id} className={`student-row ${isSelected ? "selected" : ""}`}>
+                    <button className="student-row-main" onClick={() => setSelectedStudentId(isSelected ? null : s.id)}>
+                      <Avatar name={s.name} photoUrl={s.photoUrl}>
+                        {overdue && <span className="dot-badge" />}
+                        {isSelected && (
+                          <span className="check-badge"><Check size={10} color="#fff" /></span>
+                        )}
+                      </Avatar>
+                      <div>
+                        <div className="student-name">{s.name}</div>
+                        <div className="student-meta">
+                          {s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}
+                          {holding > 0 ? ` · holding ${holding}` : ""}
                         </div>
                       </div>
-                    );
-                  })}
+                    </button>
+                    <button className="row-view-btn" onClick={() => openStudentDetail(s.id)} aria-label={`View ${s.name}'s book history`}>
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="bottom-bar">
+            <button className="bottom-item" onClick={openIssue}>
+              <span className="bottom-dot"><BookMarked size={16} /></span>
+              <span className="label">ISSUE BOOK</span>
+            </button>
+            <button className="bottom-item" onClick={openReturn}>
+              <span className="bottom-dot"><RotateCcw size={16} /></span>
+              <span className="label">RETURN BOOK</span>
+            </button>
+            <button className="bottom-item" onClick={openAddStudent}>
+              <span className="bottom-dot"><UserPlus size={16} /></span>
+              <span className="label">ADD STUDENT</span>
+            </button>
+          </div>
+
+          {/* ============ MODALS ============ */}
+          {sheet === "menu" && (
+            <Modal title="More" onClose={() => setSheet(null)}>
+              <div className="menu-list">
+                <button className="menu-row" onClick={() => setSheet("dashboard")}><LayoutDashboard size={18} /> Dashboard</button>
+                <button className="menu-row" onClick={() => setSheet("catalog")}><Library size={18} /> Book Catalog</button>
+                <button className="menu-row" onClick={() => setSheet("bookCategories")}><Bookmark size={18} /> Book Categories</button>
+                <button className="menu-row" onClick={() => setSheet("classes")}><Layers size={18} /> Manage Classes</button>
+                <button className="menu-row" onClick={openPromotion}><GraduationCap size={18} /> Class Promotion</button>
+                <button className="menu-row" onClick={() => setSheet("overdue")}>
+                  <AlertTriangle size={18} /> Overdue Books
+                  {overdueTx.length > 0 && <span className="badge" style={{ marginLeft: "auto", background: "var(--danger)", color: "#fff", padding: "0.15rem 0.5rem", borderRadius: "999px", fontSize: "0.7rem" }}>{overdueTx.length}</span>}
+                </button>
+                <button className="menu-row" onClick={() => { setCertMonth(todayISO().slice(0, 7)); setCertStudentId(""); setSheet("certificate"); }}>
+                  <Award size={18} /> Monthly Certificate
+                </button>
+                <button className="menu-row" onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
+                <button className="menu-row" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
+                  <Lock size={18} /> Change Password
+                </button>
+                <button className="menu-row" onClick={handleSignOut}><LogOut size={18} /> Sign Out</button>
+              </div>
+            </Modal>
+          )}
+
+          {sheet === "changePassword" && (
+            <Modal title="Change Password" onClose={() => setSheet(null)}>
+              {changeSuccess ? (
+                <div className="empty">
+                  <Check size={18} style={{ marginBottom: "0.3rem" }} />
+                  <br />Password updated.
                 </div>
+              ) : (
+                <form onSubmit={handleChangePassword}>
+                  {changeError && <div className="lock-error">{changeError}</div>}
+                  <div className="field">
+                    <label>New password</label>
+                    <input type="password" value={changeNewPw} onChange={(e) => setChangeNewPw(e.target.value)} required />
+                  </div>
+                  <div className="field">
+                    <label>Confirm new password</label>
+                    <input type="password" value={changeNewPw2} onChange={(e) => setChangeNewPw2(e.target.value)} required />
+                  </div>
+                  <button type="submit" className="btn full"><Lock size={15} /> Update Password</button>
+                </form>
               )}
-            </>
-          ) : (
-            <>
-              <div className="field" style={{ display: "flex", gap: "0.5rem" }}>
-                <input
-                  type="search"
-                  style={{ flex: 1 }}
-                  value={returnQuery}
-                  onChange={(e) => setReturnQuery(e.target.value)}
-                  placeholder="Search book or student name..."
-                />
-                <button type="button" className="scan-btn-inline" onClick={() => openScanner("return")} aria-label="Scan QR">
-                  <Camera size={16} />
+            </Modal>
+          )}
+
+          {sheet === "printCards" && (
+            <Modal title="Print QR Labels" onClose={() => setSheet(null)}>
+              <div className="no-print">
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.7rem" }}>
+                  <button
+                    className={`btn ${printMode === "students" ? "" : "secondary"}`}
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => setPrintMode("students")}
+                  >Students</button>
+                  <button
+                    className={`btn ${printMode === "books" ? "" : "secondary"}`}
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => setPrintMode("books")}
+                  >Books</button>
+                </div>
+                {printMode === "students" && (
+                  <select value={printClass} onChange={(e) => setPrintClass(e.target.value)} style={{ marginBottom: "0.7rem" }}>
+                    <option value="ALL">All classes</option>
+                    {classes.map((c) => (<option key={c} value={c}>{c}</option>))}
+                  </select>
+                )}
+                <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
+                  Each QR code encodes the {printMode === "students" ? "student's roll number" : "book's code (prefixed with BOOK:)"} —
+                  scanning it in the app finds that {printMode === "students" ? "student" : "book"} automatically.
+                  Tap Print, then choose "Save as PDF" to print or share.
+                </p>
+                <button className="btn full" onClick={() => window.print()}>
+                  <Printer size={16} /> Print / Save as PDF
                 </button>
               </div>
-              {returnSearchMatches.length === 0 ? (
-                <div className="empty">No books currently issued.</div>
-              ) : (
-                <div className="row-list">
-                  {returnSearchMatches.map((r) => {
-                    const overdue = r.tx.dueDate < todayISO();
-                    return (
-                      <div key={r.tx.id} className={`row-card ${overdue ? "overdue" : ""}`}>
-                        <div>
-                          <div className="title">{r.book.title}</div>
-                          <div className="meta">{r.student.name} ({r.student.className})</div>
+
+              <div className={`print-area ${printMode === "books" ? "books-print" : ""}`} style={{ marginTop: "0.8rem" }}>
+                {printMode === "students"
+                  ? students
+                      .filter((s) => printClass === "ALL" || s.className === printClass)
+                      .map((s) => (
+                        <div className="id-card" key={s.id}>
+                          <div className="id-card-name">{s.name}</div>
+                          <div className="id-card-meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
+                          <QRCodeCanvas value={s.roll} />
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                          <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(r.tx.dueDate)}</div>
-                          {justReturnedId === r.tx.id ? (
-                            <span className="returned-flash"><Check size={14} /> Returned</span>
-                          ) : (
-                            <button className="btn secondary" onClick={() => returnBook(r.tx.id)}>
-                              <RotateCcw size={13} /> Return
-                            </button>
-                          )}
-                        </div>
+                      ))
+                  : books.map((b) => (
+                      <div className="id-card" key={b.id}>
+                        <div className="id-card-name">{b.title}</div>
+                        <div className="id-card-meta">{b.category || UNCATEGORIZED} · {b.code}</div>
+                        <QRCodeCanvas value={bookQrValue(b.code)} size={110} />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-        </Modal>
-      )}
-
-      {sheet === "addStudent" && (
-        <Modal title="Students" onClose={() => setSheet(null)}>
-          <form onSubmit={addStudent}>
-            <div className="field">
-              <label>Name</label>
-              <input
-                type="text"
-                value={studentForm.name}
-                onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-grid">
-              <div>
-                <label>Class</label>
-                <select
-                  value={studentForm.className}
-                  onChange={(e) => setStudentForm({ ...studentForm, className: e.target.value })}
-                >
-                  <option value="">Unassigned</option>
-                  {classes.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label>Roll number</label>
-                <input
-                  type="text"
-                  value={studentForm.roll}
-                  onChange={(e) => setStudentForm({ ...studentForm, roll: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <div className="field">
-              <label>Phone (optional — for WhatsApp reminders)</label>
-              <input
-                type="tel"
-                value={studentForm.phone}
-                onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })}
-                placeholder="10-digit mobile number"
-              />
-            </div>
-            <button type="submit" className="btn full"><Plus size={16} /> Add Student</button>
-          </form>
-
-          <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: "0.9rem" }}>
-            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>
-              Add many at once
-            </h2>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
-              Paste one student per line. Either just a name (uses the class/roll below), or
-              "Name, Class, Roll, Phone" per line — handy for pasting straight from a
-              spreadsheet, mixing several classes in one paste, and adding a phone number for
-              WhatsApp reminders (Phone is optional too).
-            </p>
-            <form onSubmit={addStudentsBulk}>
-              <div className="form-grid">
-                <div>
-                  <label>Default class</label>
-                  <select value={bulkClass} onChange={(e) => setBulkClass(e.target.value)}>
-                    <option value="">Unassigned</option>
-                    {classes.map((c) => (
-                      <option key={c} value={c}>{c}</option>
                     ))}
-                  </select>
+              </div>
+            </Modal>
+          )}
+
+          {sheet === "issue" && (
+            <Modal title="Issue Book" onClose={() => setSheet(null)}>
+              {selectedStudent ? (
+                <div className="current-pick">
+                  <span>Student: <b>{selectedStudent.name}</b> ({selectedStudent.className})</span>
+                  <button onClick={() => setSelectedStudentId(null)}>Change</button>
+                </div>
+              ) : (
+                <div className="field">
+                  <label>Find student</label>
+                  <div className="scan-row">
+                    <input
+                      type="search"
+                      value={issueStudentQuery}
+                      onChange={(e) => setIssueStudentQuery(e.target.value)}
+                      placeholder="Name or roll number..."
+                    />
+                    <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueStudent")} aria-label="Scan student QR">
+                      <Camera size={16} />
+                    </button>
+                  </div>
+                  <div className="pick-list">
+                    {issueStudentMatches.length === 0 && <div className="empty">No students found</div>}
+                    {issueStudentMatches.map((s) => (
+                      <button key={s.id} className="pick-item" onClick={() => setSelectedStudentId(s.id)}>
+                        <span className="badge">{s.roll}</span>
+                        <span>
+                          <div className="t-title">{s.name}</div>
+                          <div className="t-meta">{s.className}</div>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="field">
+                <label>Find book</label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    type="search"
+                    style={{ flex: 1 }}
+                    value={bookQuery}
+                    onChange={(e) => setBookQuery(e.target.value)}
+                    placeholder="Title, author or code..."
+                  />
+                  <button type="button" className="scan-btn-inline" onClick={() => openScanner("issueBook")} aria-label="Scan book QR">
+                    <Camera size={16} />
+                  </button>
+                </div>
+                <div className="pick-list">
+                  {issueBookMatches.length === 0 && <div className="empty">No books found</div>}
+                  {issueBookMatches.map((b) => (
+                    <button
+                      key={b.id}
+                      className={`pick-item ${selectedBook?.id === b.id ? "selected" : ""}`}
+                      onClick={() => setSelectedBook(b)}
+                      disabled={b.availableCopies < 1}
+                    >
+                      <span className="badge">{b.availableCopies}/{b.totalCopies}</span>
+                      <span>
+                        <div className="t-title">{b.title}</div>
+                        <div className="t-meta">{b.author} · {b.code}</div>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-grid" style={{ gridTemplateColumns: "120px 1fr", alignItems: "end" }}>
+                <div>
+                  <label>Days</label>
+                  <input type="number" min="1" value={days} onChange={(e) => setDays(e.target.value)} />
                 </div>
                 <div>
-                  <label>Starting roll no. (optional)</label>
-                  <input
-                    type="text"
-                    value={bulkStartRoll}
-                    onChange={(e) => setBulkStartRoll(e.target.value)}
-                    placeholder="e.g. 1"
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label>Students — one per line</label>
-                <textarea
-                  rows={5}
-                  value={bulkNames}
-                  onChange={(e) => setBulkNames(e.target.value)}
-                  placeholder={"Fathima, CLASS-1, 12\nAhmed Riyas, CLASS-2, 7\nAisha\nMuhammed Shiyas, CLASS-3"}
-                  style={{
-                    width: "100%",
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "0.92rem",
-                    padding: "0.55rem 0.7rem",
-                    border: "1px solid #DDD",
-                    borderRadius: "6px",
-                    background: "#FAFAFA",
-                    color: "var(--text)",
-                    resize: "vertical",
-                  }}
-                />
-              </div>
-              <button type="submit" className="btn full secondary">
-                <Plus size={16} /> Add All Students
-              </button>
-            </form>
-          </div>
-
-          <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: "0.9rem" }}>
-            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>
-              All students
-            </h2>
-            <input
-              type="search"
-              value={studentListQuery}
-              onChange={(e) => setStudentListQuery(e.target.value)}
-              placeholder="Search name or roll..."
-              style={{ marginBottom: "0.6rem" }}
-            />
-            <div className="row-list" style={{ maxHeight: 280, overflowY: "auto" }}>
-              {studentListForManage.length === 0 && <div className="empty">No students yet.</div>}
-              {studentListForManage.map((s) =>
-                editingStudentId === s.id ? (
-                  <form key={s.id} onSubmit={saveEditStudent} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}>
-                    <input
-                      type="text"
-                      value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                      required
-                    />
-                    <div className="form-grid" style={{ marginBottom: 0 }}>
-                      <select
-                        value={editForm.className}
-                        onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}
-                      >
-                        <option value="">Unassigned</option>
-                        {classes.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={editForm.roll}
-                        onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })}
-                        placeholder="Roll (optional)"
-                      />
-                    </div>
-                    <input
-                      type="tel"
-                      value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                      placeholder="Phone (optional)"
-                    />
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
-                        <Check size={14} /> Save
-                      </button>
-                      <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditStudent}>
-                        <X size={14} /> Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div key={s.id} className="row-card">
-                    <div>
-                      <div className="title">{s.name}</div>
-                      <div className="meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.4rem" }}>
-                      <button className="btn secondary" onClick={() => startEditStudent(s)}>
-                        <Pencil size={13} /> Edit
-                      </button>
-                      <button className="btn secondary" onClick={() => deleteStudent(s)} aria-label="Remove student">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {sheet === "bookCategories" && (
-        <Modal title="Book Categories" onClose={() => setSheet(null)}>
-          <form onSubmit={addCategory} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
-            <div style={{ flex: 1 }}>
-              <label>New category name</label>
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="e.g. Fiqh"
-              />
-            </div>
-            <button type="submit" className="btn">
-              <Plus size={16} /> Add
-            </button>
-          </form>
-          <div className="row-list">
-            {categories.map((c) => {
-              const count = books.filter((b) => b.category === c).length;
-              return editingCategoryOld === c ? (
-                <form
-                  key={c}
-                  onSubmit={saveEditCategory}
-                  className="row-card"
-                  style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}
-                >
-                  <input
-                    type="text"
-                    value={editCategoryName}
-                    onChange={(e) => setEditCategoryName(e.target.value)}
-                    required
-                  />
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
-                      <Check size={14} /> Save
-                    </button>
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      style={{ flex: 1, justifyContent: "center" }}
-                      onClick={cancelEditCategory}
-                    >
-                      <X size={14} /> Cancel
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <div key={c} className="row-card">
-                  <div>
-                    <div className="title">{c}</div>
-                    <div className="meta">{count} book{count === 1 ? "" : "s"}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: "0.4rem" }}>
-                    <button className="btn secondary" onClick={() => startEditCategory(c)} aria-label="Rename category">
-                      <Pencil size={13} />
-                    </button>
-                    <button className="btn secondary" onClick={() => deleteCategory(c)} aria-label="Remove category">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Modal>
-      )}
-
-      {sheet === "catalog" && (
-        <Modal title="Book Catalog" onClose={() => setSheet(null)}>
-          <div className="field">
-            <input
-              type="search"
-              value={catalogQuery}
-              onChange={(e) => setCatalogQuery(e.target.value)}
-              placeholder="Search books..."
-            />
-          </div>
-          <div style={{ maxHeight: 340, overflowY: "auto", marginBottom: "1rem" }}>
-            {catalogGrouped.length === 0 ? (
-              <div className="empty">No books found.</div>
-            ) : (
-              catalogGrouped.map(([cat, list]) => (
-                <div key={cat} style={{ marginBottom: "0.9rem" }}>
-                  <h3
-                    style={{
-                      fontFamily: "Playfair Display, serif",
-                      fontSize: "0.88rem",
-                      color: "var(--navy)",
-                      margin: "0 0 0.4rem",
-                      borderBottom: "1px solid #EEE",
-                      paddingBottom: "0.25rem",
-                    }}
+                  <button
+                    className="btn full"
+                    disabled={!selectedStudentId || !selectedBook || selectedBook.availableCopies < 1}
+                    onClick={issueBook}
                   >
-                    {cat}{" "}
-                    <span style={{ color: "var(--text-soft)", fontWeight: 400, fontSize: "0.75rem" }}>
-                      ({list.length})
-                    </span>
-                  </h3>
-                  <div className="row-list">
-                    {list.map((b) =>
-                      editingBookId === b.id ? (
-                        <form
-                          key={b.id}
-                          onSubmit={saveEditBook}
-                          className="row-card"
-                          style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}
-                        >
-                          <input
-                            type="text"
-                            value={editBookForm.title}
-                            onChange={(e) => setEditBookForm({ ...editBookForm, title: e.target.value })}
-                            placeholder="Title"
-                            required
-                          />
-                          <input
-                            type="text"
-                            value={editBookForm.author}
-                            onChange={(e) => setEditBookForm({ ...editBookForm, author: e.target.value })}
-                            placeholder="Author"
-                          />
-                          <div className="form-grid" style={{ marginBottom: 0 }}>
-                            <select
-                              value={editBookForm.category}
-                              onChange={(e) => setEditBookForm({ ...editBookForm, category: e.target.value })}
-                            >
-                              <option value="">Uncategorized</option>
-                              {categories.map((c) => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                            <input
-                              type="number"
-                              min="1"
-                              value={editBookForm.copies}
-                              onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })}
-                            />
-                          </div>
-                          <div className="meta" style={{ fontSize: "0.72rem" }}>Code: {b.code} (fixed)</div>
-                          <div style={{ display: "flex", gap: "0.5rem" }}>
-                            <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
-                              <Check size={14} /> Save
-                            </button>
-                            <button
-                              type="button"
-                              className="btn secondary"
-                              style={{ flex: 1, justifyContent: "center" }}
-                              onClick={cancelEditBook}
-                            >
-                              <X size={14} /> Cancel
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <div key={b.id} className="row-card">
-                          <div>
-                            <div className="title">{b.title}</div>
-                            <div className="meta">
-                              {b.author} · {b.code} · {b.availableCopies}/{b.totalCopies}
+                    <BookMarked size={16} /> Issue Book
+                  </button>
+                </div>
+              </div>
+
+              {lastIssued && (
+                <div className="stamp-card">
+                  <div className="stamp-mark">
+                    <div className="l1">Issued</div>
+                    <div className="l2">{formatDate(lastIssued.dueDate)}</div>
+                  </div>
+                  <div className="stamp-info">
+                    <b>{lastIssued.bookTitle}</b> issued to {lastIssued.studentName}.
+                    <br />Due on <b>{formatDate(lastIssued.dueDate)}</b>
+                  </div>
+                </div>
+              )}
+            </Modal>
+          )}
+
+          {sheet === "return" && (
+            <Modal title="Return Book" onClose={() => setSheet(null)}>
+              {selectedStudent ? (
+                <>
+                  <div className="current-pick">
+                    <span>Student: <b>{selectedStudent.name}</b> ({selectedStudent.className})</span>
+                    <button onClick={() => setSelectedStudentId(null)}>Change</button>
+                  </div>
+                  {studentActiveTx(selectedStudent.id).length === 0 ? (
+                    <div className="empty">This student has no books currently issued.</div>
+                  ) : (
+                    <div className="row-list">
+                      {studentActiveTx(selectedStudent.id).map((t) => {
+                        const book = bookById(t.bookId);
+                        const overdue = t.dueDate < todayISO();
+                        return (
+                          <div key={t.id} className={`row-card ${overdue ? "overdue" : ""}`}>
+                            <div>
+                              <div className="title">{book?.title}</div>
+                              <div className="meta">{book?.code}</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                              <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(t.dueDate)}</div>
+                              {justReturnedId === t.id ? (
+                                <span className="returned-flash"><Check size={14} /> Returned</span>
+                              ) : (
+                                <button className="btn secondary" onClick={() => returnBook(t.id)}>
+                                  <RotateCcw size={13} /> Return
+                                </button>
+                              )}
                             </div>
                           </div>
-                          <div style={{ display: "flex", gap: "0.4rem" }}>
-                            <button className="btn secondary" onClick={() => openBookDetail(b.id)} aria-label="View book details">
-                              <QrCode size={13} />
-                            </button>
-                            <button className="btn secondary" onClick={() => startEditBook(b)} aria-label="Edit book">
-                              <Pencil size={13} />
-                            </button>
-                            <button className="btn secondary" onClick={() => deleteBook(b)} aria-label="Remove book">
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-          <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", color: "var(--navy)" }}>Add New Book</h2>
-          <form onSubmit={addBook}>
-            <div className="field">
-              <label>Title</label>
-              <input
-                type="text"
-                value={bookForm.title}
-                onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })}
-                required
-              />
-            </div>
-            <div className="field">
-              <label>Author</label>
-              <input
-                type="text"
-                value={bookForm.author}
-                onChange={(e) => setBookForm({ ...bookForm, author: e.target.value })}
-              />
-            </div>
-            <div className="field">
-              <label>Category</label>
-              <select
-                value={bookForm.category}
-                onChange={(e) => setBookForm({ ...bookForm, category: e.target.value })}
-              >
-                <option value="">Uncategorized</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-grid">
-              <div>
-                <label>Code</label>
-                <input
-                  type="text"
-                  value={bookForm.code}
-                  onChange={(e) => setBookForm({ ...bookForm, code: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label>Copies</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={bookForm.copies}
-                  onChange={(e) => setBookForm({ ...bookForm, copies: e.target.value })}
-                />
-              </div>
-            </div>
-            <button type="submit" className="btn full"><Plus size={16} /> Add Book</button>
-          </form>
-
-          <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: "0.9rem" }}>
-            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>
-              Add many at once
-            </h2>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
-              Pick a category below and every book in this paste gets that category — so for a
-              whole stack from one category, just paste "Code, Title, Author, Copies" lines (no
-              need to repeat the category each line). To mix categories in one paste, add a 5th
-              column per line ("Code, Title, Author, Copies, Category") — that overrides the
-              default for just that line. A book with the same code already in the catalog gets
-              overwritten with these details.
-            </p>
-            <form onSubmit={addBooksBulk}>
-              <div className="field">
-                <label>Category for this batch</label>
-                <select value={bulkBookCategory} onChange={(e) => setBulkBookCategory(e.target.value)}>
-                  <option value="">Uncategorized</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>Books — one per line</label>
-                <textarea
-                  rows={6}
-                  value={bulkBooksText}
-                  onChange={(e) => setBulkBooksText(e.target.value)}
-                  placeholder={"SH21, ദേശഭക്തി, എ ബി സി, 2\nHW50, ഒരു കഥ, എക്സ് വൈ ഇസഡ്\nSM11, പുതിയ പുസ്തകം"}
-                  style={{
-                    width: "100%",
-                    fontFamily: "Inter, sans-serif",
-                    fontSize: "0.92rem",
-                    padding: "0.55rem 0.7rem",
-                    border: "1px solid #DDD",
-                    borderRadius: "6px",
-                    background: "#FAFAFA",
-                    color: "var(--text)",
-                    resize: "vertical",
-                  }}
-                />
-              </div>
-              <button type="submit" className="btn full secondary">
-                <Plus size={16} /> Add All Books
-              </button>
-            </form>
-          </div>
-        </Modal>
-      )}
-
-      {sheet === "classes" && (
-        <Modal title="Manage Classes" onClose={() => setSheet(null)}>
-          <form onSubmit={addClass} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
-            <div style={{ flex: 1 }}>
-              <label>New class name</label>
-              <input
-                type="text"
-                value={newClassName}
-                onChange={(e) => setNewClassName(e.target.value)}
-                placeholder="e.g. CLASS-7"
-              />
-            </div>
-            <button type="submit" className="btn">
-              <Plus size={16} /> Add
-            </button>
-          </form>
-          <div className="row-list">
-            {classes.map((c) => {
-              const count = students.filter((s) => s.className === c).length;
-              return editingClassOld === c ? (
-                <form
-                  key={c}
-                  onSubmit={saveEditClass}
-                  className="row-card"
-                  style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}
-                >
-                  <input
-                    type="text"
-                    value={editClassName}
-                    onChange={(e) => setEditClassName(e.target.value)}
-                    required
-                  />
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
-                      <Check size={14} /> Save
-                    </button>
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      style={{ flex: 1, justifyContent: "center" }}
-                      onClick={cancelEditClass}
-                    >
-                      <X size={14} /> Cancel
-                    </button>
-                  </div>
-                </form>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
               ) : (
-                <div key={c} className="row-card">
-                  <div>
-                    <div className="title">{c}</div>
-                    <div className="meta">{count} student{count === 1 ? "" : "s"}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: "0.4rem" }}>
-                    <button className="btn secondary" onClick={() => startEditClass(c)} aria-label="Rename class">
-                      <Pencil size={13} />
+                <>
+                  <div className="field" style={{ display: "flex", gap: "0.5rem" }}>
+                    <input
+                      type="search"
+                      style={{ flex: 1 }}
+                      value={returnQuery}
+                      onChange={(e) => setReturnQuery(e.target.value)}
+                      placeholder="Search book or student name..."
+                    />
+                    <button type="button" className="scan-btn-inline" onClick={() => openScanner("return")} aria-label="Scan QR">
+                      <Camera size={16} />
                     </button>
-                    <button className="btn secondary" onClick={() => deleteClass(c)} aria-label="Remove class">
-                      <Trash2 size={13} />
-                    </button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </Modal>
-      )}
-
-      {sheet === "dashboard" && (
-        <Modal title="Dashboard" onClose={() => setSheet(null)}>
-          <div className="grid-stats">
-            <div className="stat-card">
-              <div className="num">{totalCopies}</div>
-              <div className="label">Total Books</div>
-            </div>
-            <div className="stat-card">
-              <div className="num">{availableCopies}</div>
-              <div className="label">Available</div>
-            </div>
-            <div className="stat-card">
-              <div className="num">{activeTx.length}</div>
-              <div className="label">Currently Issued</div>
-            </div>
-            <div className={`stat-card ${overdueTx.length > 0 ? "warn" : ""}`}>
-              <div className="num">{overdueTx.length}</div>
-              <div className="label">Overdue</div>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="label" style={{ marginBottom: "0.4rem" }}>Students</div>
-            <div className="num" style={{ fontSize: "1.1rem" }}>{students.length}</div>
-          </div>
-
-          <h3 className="dash-heading">📚 Most Borrowed Books</h3>
-          {dashboardStats.mostBorrowed.length === 0 ? (
-            <div className="empty">No borrowing activity yet.</div>
-          ) : (
-            <div className="row-list">
-              {dashboardStats.mostBorrowed.map((x, i) => (
-                <div key={x.book.id} className="row-card">
-                  <div className="dash-row">
-                    <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
-                    <div>
-                      <div className="title">{x.book.title}</div>
-                      <div className="meta">{x.book.code}</div>
+                  {returnSearchMatches.length === 0 ? (
+                    <div className="empty">No books currently issued.</div>
+                  ) : (
+                    <div className="row-list">
+                      {returnSearchMatches.map((r) => {
+                        const overdue = r.tx.dueDate < todayISO();
+                        return (
+                          <div key={r.tx.id} className={`row-card ${overdue ? "overdue" : ""}`}>
+                            <div>
+                              <div className="title">{r.book.title}</div>
+                              <div className="meta">{r.student.name} ({r.student.className})</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                              <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(r.tx.dueDate)}</div>
+                              {justReturnedId === r.tx.id ? (
+                                <span className="returned-flash"><Check size={14} /> Returned</span>
+                              ) : (
+                                <button className="btn secondary" onClick={() => returnBook(r.tx.id)}>
+                                  <RotateCcw size={13} /> Return
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                  <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <h3 className="dash-heading">
-            🏆 Top Readers <span className="dash-sub">all-time</span>
-          </h3>
-          {dashboardStats.topReaders.length === 0 ? (
-            <div className="empty">No borrowing activity yet.</div>
-          ) : (
-            <div className="row-list">
-              {dashboardStats.topReaders.map((x, i) => (
-                <div key={x.student.id} className="row-card">
-                  <div className="dash-row">
-                    <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
-                    <div>
-                      <div className="title">{x.student.name}</div>
-                      <div className="meta">{x.student.className || "Unassigned"}</div>
-                    </div>
-                  </div>
-                  <div className="due" style={{ fontWeight: 700 }}>{x.count} book{x.count === 1 ? "" : "s"}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <h3 className="dash-heading">🎓 Most Active Class</h3>
-          {dashboardStats.topClasses.length === 0 ? (
-            <div className="empty">No borrowing activity yet.</div>
-          ) : (
-            <div className="row-list">
-              {dashboardStats.topClasses.map(([cls, count], i) => (
-                <div key={cls} className="row-card">
-                  <div className="dash-row">
-                    <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
-                    <div className="title">{cls}</div>
-                  </div>
-                  <div className="due" style={{ fontWeight: 700 }}>{count} book{count === 1 ? "" : "s"}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <h3 className="dash-heading">
-            📦 Never Borrowed
-            <span className="dash-sub">
-              {dashboardStats.neverBorrowed.length} of {books.length} book{books.length === 1 ? "" : "s"}
-            </span>
-          </h3>
-          {dashboardStats.neverBorrowed.length === 0 ? (
-            <div className="empty">Every book has been borrowed at least once 🎉</div>
-          ) : (
-            <div className="row-list">
-              {dashboardStats.neverBorrowed.slice(0, 8).map((b) => (
-                <div key={b.id} className="row-card">
-                  <div>
-                    <div className="title">{b.title}</div>
-                    <div className="meta">{b.code}</div>
-                  </div>
-                </div>
-              ))}
-              {dashboardStats.neverBorrowed.length > 8 && (
-                <div className="empty" style={{ padding: "0.6rem" }}>
-                  +{dashboardStats.neverBorrowed.length - 8} more
-                </div>
+                  )}
+                </>
               )}
-            </div>
+            </Modal>
           )}
-        </Modal>
-      )}
 
-      {sheet === "overdue" && (
-        <Modal title="Overdue Books" onClose={() => setSheet(null)}>
-          {overdueList.length === 0 ? (
-            <div className="empty">Nothing overdue right now.</div>
-          ) : (
-            <div className="row-list">
-              {overdueList.map((r) => (
-                <div key={r.tx.id} className="row-card overdue">
+          {sheet === "addStudent" && (
+            <Modal title="Students" onClose={() => setSheet(null)}>
+              <form onSubmit={addStudent}>
+                <div className="field">
+                  <label>Name</label>
+                  <input type="text" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} required />
+                </div>
+                <div className="form-grid">
                   <div>
-                    <div className="title">{r.book.title}</div>
-                    <div className="meta">{r.student.name} ({r.student.className || "Unassigned"}){r.student.roll ? ` · Roll ${r.student.roll}` : ""}</div>
+                    <label>Class</label>
+                    <select value={studentForm.className} onChange={(e) => setStudentForm({ ...studentForm, className: e.target.value })}>
+                      <option value="">Unassigned</option>
+                      {classes.map((c) => (<option key={c} value={c}>{c}</option>))}
+                    </select>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <div className="due">
-                      <Clock size={12} style={{ verticalAlign: "-2px" }} /> {daysBetween(r.tx.dueDate, todayISO())}d late
-                    </div>
-                    {r.student.phone && (
-                      <a
-                        href={waLink(
-                          r.student.phone,
-                          `നമസ്കാരം ${r.student.name}, "${r.book.title}" (${r.book.code}) എന്ന പുസ്തകം തിരികെ നൽകേണ്ട തീയതി ${formatDate(r.tx.dueDate)} ആയിരുന്നു. ദയവായി എത്രയും വേഗം ലൈബ്രറിയിൽ തിരികെ ഏൽപ്പിക്കാൻ അഭ്യർത്ഥിക്കുന്നു. നന്ദി.`
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn secondary"
-                        style={{ padding: "0.4rem 0.5rem" }}
-                        aria-label={`WhatsApp reminder to ${r.student.name}`}
-                      >
-                        <MessageCircle size={13} />
-                      </a>
-                    )}
-                    <button className="btn secondary" onClick={() => returnBook(r.tx.id)}>
-                      <RotateCcw size={13} /> Return
-                    </button>
+                  <div>
+                    <label>Roll number</label>
+                    <input type="text" value={studentForm.roll} onChange={(e) => setStudentForm({ ...studentForm, roll: e.target.value })} required />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </Modal>
-      )}
-
-      {sheet === "studentDetail" && detailStudentId && (() => {
-        const dStudent = studentById(detailStudentId);
-        if (!dStudent) return null;
-        const dTx = transactions
-          .filter((t) => t.studentId === detailStudentId)
-          .sort((a, b) => (a.issueDate < b.issueDate ? 1 : -1));
-        return (
-          <Modal title={dStudent.name} onClose={() => setSheet(null)}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "0.9rem" }}>
-              <Avatar name={dStudent.name} photoUrl={dStudent.photoUrl} size={84} />
-              <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem" }}>
-                <label className="btn secondary" style={{ cursor: "pointer", fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>
-                  <Camera size={14} />
-                  {photoUploading ? "Uploading..." : dStudent.photoUrl ? "Change Photo" : "Add Photo"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    disabled={photoUploading}
-                    onChange={(e) => handlePhotoUpload(e, dStudent)}
-                  />
-                </label>
-                {dStudent.photoUrl && (
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}
-                    onClick={() => handleRemovePhoto(dStudent)}
-                  >
-                    <X size={14} /> Remove
-                  </button>
-                )}
-              </div>
-              {photoError && <div className="lock-error" style={{ marginTop: "0.5rem" }}>{photoError}</div>}
-            </div>
-
-            <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
-              <span>
-                {dStudent.className || "Unassigned"}{dStudent.roll ? ` · Roll ${dStudent.roll}` : ""}
-                {dStudent.phone ? ` · ${dStudent.phone}` : ""}
-              </span>
-              <div style={{ display: "flex", gap: "0.7rem" }}>
-                <button onClick={() => startEditStudent(dStudent)}>
-                  <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
-                </button>
-                <button onClick={() => deleteStudent(dStudent)}>
-                  <Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove
-                </button>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-              <button
-                className="btn"
-                style={{ flex: 1, justifyContent: "center" }}
-                onClick={() => {
-                  setSelectedStudentId(dStudent.id);
-                  openIssue();
-                }}
-              >
-                <BookMarked size={15} /> Issue
-              </button>
-              <button
-                className="btn secondary"
-                style={{ flex: 1, justifyContent: "center" }}
-                onClick={() => {
-                  setSelectedStudentId(dStudent.id);
-                  openReturn();
-                }}
-              >
-                <RotateCcw size={15} /> Return
-              </button>
-            </div>
-
-            <button
-              className="btn secondary full"
-              style={{ marginBottom: "1rem" }}
-              onClick={() => openIdCard(dStudent.id)}
-            >
-              <CreditCard size={15} /> Digital Library Card
-            </button>
-
-            {editingStudentId === dStudent.id && (
-              <form onSubmit={saveEditStudent} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem", marginBottom: "1rem" }}>
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  required
-                />
-                <div className="form-grid" style={{ marginBottom: 0 }}>
-                  <select
-                    value={editForm.className}
-                    onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}
-                  >
-                    <option value="">Unassigned</option>
-                    {classes.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={editForm.roll}
-                    onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })}
-                    placeholder="Roll (optional)"
-                  />
+                <div className="field">
+                  <label>Phone (optional — for WhatsApp reminders)</label>
+                  <input type="tel" value={studentForm.phone} onChange={(e) => setStudentForm({ ...studentForm, phone: e.target.value })} placeholder="10-digit mobile number" />
                 </div>
-                <input
-                  type="tel"
-                  value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                  placeholder="Phone (optional)"
-                />
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}>
-                    <Check size={14} /> Save
-                  </button>
-                  <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditStudent}>
-                    <X size={14} /> Cancel
-                  </button>
-                </div>
+                <button type="submit" className="btn full"><Plus size={16} /> Add Student</button>
               </form>
-            )}
 
-            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>
-              Book history
-            </h2>
-            {dTx.length === 0 ? (
-              <div className="empty">No books issued to this student yet.</div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Book</th>
-                      <th>Code</th>
-                      <th>Issued</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dTx.map((t, i) => {
-                      const book = bookById(t.bookId);
-                      const overdue = !t.returnDate && t.dueDate < todayISO();
-                      return (
-                        <tr key={t.id}>
-                          <td className="mono">{i + 1}</td>
-                          <td>{book ? book.title : "—"}</td>
-                          <td className="mono">{book ? book.code : "—"}</td>
-                          <td className="mono">{formatDate(t.issueDate)}</td>
-                          <td>
-                            {t.returnDate ? (
-                              <span style={{ color: "#1F8A5E", fontWeight: 700 }}>
-                                Returned {formatDate(t.returnDate)}
-                              </span>
-                            ) : overdue ? (
-                              <span style={{ color: "var(--danger)", fontWeight: 700 }}>
-                                Overdue · due {formatDate(t.dueDate)}
-                              </span>
-                            ) : (
-                              <span style={{ color: "var(--indigo)", fontWeight: 700 }}>
-                                Not returned · due {formatDate(t.dueDate)}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: "0.9rem" }}>
+                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>Add many at once</h2>
+                <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
+                  Paste one student per line. Either just a name (uses the class/roll below), or
+                  "Name, Class, Roll, Phone" per line — handy for pasting straight from a spreadsheet,
+                  mixing several classes in one paste, and adding a phone number for WhatsApp reminders
+                  (Phone is optional too).
+                </p>
+                <form onSubmit={addStudentsBulk}>
+                  <div className="form-grid">
+                    <div>
+                      <label>Default class</label>
+                      <select value={bulkClass} onChange={(e) => setBulkClass(e.target.value)}>
+                        <option value="">Unassigned</option>
+                        {classes.map((c) => (<option key={c} value={c}>{c}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label>Starting roll no. (optional)</label>
+                      <input type="text" value={bulkStartRoll} onChange={(e) => setBulkStartRoll(e.target.value)} placeholder="e.g. 1" />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>Students — one per line</label>
+                    <textarea
+                      rows={5}
+                      value={bulkNames}
+                      onChange={(e) => setBulkNames(e.target.value)}
+                      placeholder={"Fathima, CLASS-1, 12\nAhmed Riyas, CLASS-2, 7\nAisha\nMuhammed Shiyas, CLASS-3"}
+                      style={{ resize: "vertical" }}
+                    />
+                  </div>
+                  <button type="submit" className="btn full secondary"><Plus size={16} /> Add All Students</button>
+                </form>
               </div>
-            )}
-          </Modal>
-        );
-      })()}
 
-      {sheet === "bookDetail" && detailBookId && (() => {
-        const dBook = bookById(detailBookId);
-        if (!dBook) return null;
-        const holders = activeTx
-          .filter((t) => t.bookId === dBook.id)
-          .map((t) => ({ tx: t, student: studentById(t.studentId) }))
-          .filter((h) => h.student);
-        const bookHistory = transactions
-          .filter((t) => t.bookId === dBook.id)
-          .sort((a, b) => (a.issueDate < b.issueDate ? 1 : -1));
-        return (
-          <Modal title={dBook.title} onClose={() => setSheet(null)}>
-            <div className="book-qr-wrap">
-              <div className="book-qr-box">
-                <QRCodeCanvas value={bookQrValue(dBook.code)} size={150} />
-              </div>
-            </div>
-            <div style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
-              Scan this QR in Issue/Return to pick this book instantly.
-            </div>
-
-            <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
-              <span>
-                <b>{dBook.code}</b>
-                {dBook.author ? ` · ${dBook.author}` : ""}
-                <br />
-                <span style={{ fontSize: "0.78rem", color: "var(--text-soft)" }}>
-                  {dBook.category || UNCATEGORIZED} · {dBook.availableCopies}/{dBook.totalCopies} available
-                </span>
-              </span>
-              <div style={{ display: "flex", gap: "0.7rem" }}>
-                <button onClick={() => { setSheet("catalog"); startEditBook(dBook); }}>
-                  <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
-                </button>
-                <button onClick={() => { deleteBook(dBook); setSheet(null); }}>
-                  <Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove
-                </button>
-              </div>
-            </div>
-
-            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.4rem" }}>
-              Currently issued to
-            </h2>
-            {holders.length === 0 ? (
-              <div className="empty" style={{ padding: "0.8rem" }}>Nobody — all copies on the shelf.</div>
-            ) : (
-              <div className="row-list" style={{ marginBottom: "1rem" }}>
-                {holders.map((h) => {
-                  const overdue = h.tx.dueDate < todayISO();
-                  return (
-                    <div key={h.tx.id} className={`row-card ${overdue ? "overdue" : ""}`}>
-                      <div>
-                        <div className="title">{h.student.name}</div>
-                        <div className="meta">{h.student.className || "Unassigned"}{h.student.roll ? ` · Roll ${h.student.roll}` : ""}</div>
+              <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: "0.9rem" }}>
+                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>All students</h2>
+                <input type="search" value={studentListQuery} onChange={(e) => setStudentListQuery(e.target.value)} placeholder="Search name or roll..." style={{ marginBottom: "0.6rem" }} />
+                <div className="row-list" style={{ maxHeight: 280, overflowY: "auto" }}>
+                  {studentListForManage.length === 0 && <div className="empty">No students yet.</div>}
+                  {studentListForManage.map((s) =>
+                    editingStudentId === s.id ? (
+                      <form key={s.id} onSubmit={saveEditStudent} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}>
+                        <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+                        <div className="form-grid" style={{ marginBottom: 0 }}>
+                          <select value={editForm.className} onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}>
+                            <option value="">Unassigned</option>
+                            {classes.map((c) => (<option key={c} value={c}>{c}</option>))}
+                          </select>
+                          <input type="text" value={editForm.roll} onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })} placeholder="Roll (optional)" />
+                        </div>
+                        <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Phone (optional)" />
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                          <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
+                          <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditStudent}><X size={14} /> Cancel</button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div key={s.id} className="row-card">
+                        <div>
+                          <div className="title">{s.name}</div>
+                          <div className="meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem" }}>
+                          <button className="btn secondary" onClick={() => startEditStudent(s)}><Pencil size={13} /> Edit</button>
+                          <button className="btn secondary" onClick={() => deleteStudent(s)} aria-label="Remove student"><Trash2 size={13} /></button>
+                        </div>
                       </div>
-                      <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(h.tx.dueDate)}</div>
+                    )
+                  )}
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          {sheet === "bookCategories" && (
+            <Modal title="Book Categories" onClose={() => setSheet(null)}>
+              <form onSubmit={addCategory} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label>New category name</label>
+                  <input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Fiqh" />
+                </div>
+                <button type="submit" className="btn"><Plus size={16} /> Add</button>
+              </form>
+              <div className="row-list">
+                {categories.map((c) => {
+                  const count = books.filter((b) => b.category === c).length;
+                  return editingCategoryOld === c ? (
+                    <form key={c} onSubmit={saveEditCategory} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}>
+                      <input type="text" value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} required />
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
+                        <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditCategory}><X size={14} /> Cancel</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div key={c} className="row-card">
+                      <div>
+                        <div className="title">{c}</div>
+                        <div className="meta">{count} book{count === 1 ? "" : "s"}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        <button className="btn secondary" onClick={() => startEditCategory(c)} aria-label="Rename category"><Pencil size={13} /></button>
+                        <button className="btn secondary" onClick={() => deleteCategory(c)} aria-label="Remove category"><Trash2 size={13} /></button>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            )}
+            </Modal>
+          )}
 
-            <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>
-              Full issue history
-            </h2>
-            {bookHistory.length === 0 ? (
-              <div className="empty">This book has never been issued.</div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Student</th>
-                      <th>Issued</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookHistory.map((t, i) => {
-                      const st = studentById(t.studentId);
-                      const overdue = !t.returnDate && t.dueDate < todayISO();
-                      return (
-                        <tr key={t.id}>
-                          <td className="mono">{i + 1}</td>
-                          <td>{st ? st.name : "—"}</td>
-                          <td className="mono">{formatDate(t.issueDate)}</td>
-                          <td>
-                            {t.returnDate ? (
-                              <span style={{ color: "#1F8A5E", fontWeight: 700 }}>
-                                Returned {formatDate(t.returnDate)}
-                              </span>
-                            ) : overdue ? (
-                              <span style={{ color: "var(--danger)", fontWeight: 700 }}>
-                                Overdue · due {formatDate(t.dueDate)}
-                              </span>
-                            ) : (
-                              <span style={{ color: "var(--indigo)", fontWeight: 700 }}>
-                                Out · due {formatDate(t.dueDate)}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          {sheet === "catalog" && (
+            <Modal title="Book Catalog" onClose={() => setSheet(null)}>
+              <div className="field">
+                <input type="search" value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)} placeholder="Search books..." />
               </div>
-            )}
-          </Modal>
-        );
-      })()}
-
-      {sheet === "idCard" && detailStudentId && (() => {
-        const cStudent = studentById(detailStudentId);
-        if (!cStudent) return null;
-        return (
-          <Modal title="Digital Library Card" onClose={() => setSheet(null)}>
-            <div className="id-card-wrap">
-              <div className="lib-card" ref={cardRef}>
-                <div className="lib-card-top">
-                  <div className="lib-card-brand-name">NMMI ISLAMIC LIBRARY</div>
-                  <div className="lib-card-brand-sub">Nandiyil Muhammed Musliyar Memorial</div>
-                </div>
-                <div className="lib-card-body">
-                  <Avatar name={cStudent.name} photoUrl={cStudent.photoUrl} size={64} />
-                  <div className="lib-card-info">
-                    <div className="lib-card-name">{cStudent.name}</div>
-                    <div className="lib-card-meta">
-                      {cStudent.className || "Unassigned"}
-                      {cStudent.roll ? ` · Roll ${cStudent.roll}` : ""}
+              <div style={{ maxHeight: 340, overflowY: "auto", marginBottom: "1rem" }}>
+                {catalogGrouped.length === 0 ? (
+                  <div className="empty">No books found.</div>
+                ) : (
+                  catalogGrouped.map(([cat, list]) => (
+                    <div key={cat} style={{ marginBottom: "0.9rem" }}>
+                      <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.88rem", color: "var(--navy)", margin: "0 0 0.4rem", borderBottom: "1px solid #EEE", paddingBottom: "0.25rem" }}>
+                        {cat} <span style={{ color: "var(--text-soft)", fontWeight: 400, fontSize: "0.75rem" }}>({list.length})</span>
+                      </h3>
+                      <div className="row-list">
+                        {list.map((b) =>
+                          editingBookId === b.id ? (
+                            <form key={b.id} onSubmit={saveEditBook} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}>
+                              <input type="text" value={editBookForm.title} onChange={(e) => setEditBookForm({ ...editBookForm, title: e.target.value })} placeholder="Title" required />
+                              <input type="text" value={editBookForm.author} onChange={(e) => setEditBookForm({ ...editBookForm, author: e.target.value })} placeholder="Author" />
+                              <div className="form-grid" style={{ marginBottom: 0 }}>
+                                <select value={editBookForm.category} onChange={(e) => setEditBookForm({ ...editBookForm, category: e.target.value })}>
+                                  <option value="">Uncategorized</option>
+                                  {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
+                                </select>
+                                <input type="number" min="1" value={editBookForm.copies} onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })} />
+                              </div>
+                              <div className="meta" style={{ fontSize: "0.72rem" }}>Code: {b.code} (fixed)</div>
+                              <div style={{ display: "flex", gap: "0.5rem" }}>
+                                <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
+                                <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditBook}><X size={14} /> Cancel</button>
+                              </div>
+                            </form>
+                          ) : (
+                            <div key={b.id} className="row-card">
+                              <div>
+                                <div className="title">{b.title}</div>
+                                <div className="meta">{b.author} · {b.code} · {b.availableCopies}/{b.totalCopies}</div>
+                              </div>
+                              <div style={{ display: "flex", gap: "0.4rem" }}>
+                                <button className="btn secondary" onClick={() => openBookDetail(b.id)} aria-label="View book details"><QrCode size={13} /></button>
+                                <button className="btn secondary" onClick={() => startEditBook(b)} aria-label="Edit book"><Pencil size={13} /></button>
+                                <button className="btn secondary" onClick={() => deleteBook(b)} aria-label="Remove book"><Trash2 size={13} /></button>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <div className="lib-card-bottom">
-                  <div className="lib-card-id-label">LIBRARY MEMBER</div>
-                  {cStudent.roll ? (
-                    <div className="lib-card-qr-wrap">
-                      <QRCodeCanvas value={cStudent.roll} size={66} />
-                    </div>
-                  ) : (
-                    <div className="lib-card-id-label" style={{ color: "var(--danger)" }}>
-                      Add a roll no. for QR
-                    </div>
-                  )}
-                </div>
+                  ))
+                )}
               </div>
-            </div>
-            <button
-              className="btn full"
-              style={{ marginTop: "1.1rem" }}
-              onClick={() => downloadCard(cStudent)}
-              disabled={cardDownloading}
-            >
-              <Download size={16} /> {cardDownloading ? "Preparing..." : "Download as Image"}
-            </button>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", textAlign: "center", marginTop: "0.6rem" }}>
-              Save this to the student's phone, or print it out.
-            </p>
-          </Modal>
-        );
-      })()}
-
-      {sheet === "promotion" && (() => {
-        const countFor = (c) => students.filter((s) => s.className === c).length;
-        const movingCount = classes.reduce((n, c) => n + ((promoMap[c] ?? c) !== c ? countFor(c) : 0), 0);
-        return (
-          <Modal title="Class Promotion" onClose={() => setSheet(null)}>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-soft)", marginBottom: "0.8rem", lineHeight: 1.5 }}>
-              Year-end: move every class up in one go. For each class, pick where its students go (default: the
-              next class). Students of the last class become "Unassigned" — remove them later from the student
-              list if they have left. Nothing changes until you tap Apply, and the last promotion can be undone.
-            </p>
-            <div className="row-list">
-              {classes.map((c) => (
-                <div key={c} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.4rem" }}>
-                  <div>
-                    <div className="title">{c}</div>
-                    <div className="meta">{countFor(c)} student{countFor(c) === 1 ? "" : "s"}</div>
-                  </div>
-                  <select value={promoMap[c] ?? c} onChange={(e) => setPromoMap({ ...promoMap, [c]: e.target.value })}>
-                    <option value="">→ Unassigned (passed out)</option>
-                    {classes.map((t) => (
-                      <option key={t} value={t}>{t === c ? `Stay in ${t}` : `→ Move to ${t}`}</option>
-                    ))}
+              <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", color: "var(--navy)" }}>Add New Book</h2>
+              <form onSubmit={addBook}>
+                <div className="field">
+                  <label>Title</label>
+                  <input type="text" value={bookForm.title} onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })} required />
+                </div>
+                <div className="field">
+                  <label>Author</label>
+                  <input type="text" value={bookForm.author} onChange={(e) => setBookForm({ ...bookForm, author: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label>Category</label>
+                  <select value={bookForm.category} onChange={(e) => setBookForm({ ...bookForm, category: e.target.value })}>
+                    <option value="">Uncategorized</option>
+                    {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
                   </select>
                 </div>
-              ))}
-            </div>
-            {promoMsg && (
-              <div
-                style={{
-                  margin: "0.8rem 0 0",
-                  fontSize: "0.84rem",
-                  fontWeight: 700,
-                  color: promoMsg.startsWith("✅") || promoMsg.startsWith("↩️") ? "#1F8A5E" : "var(--danger)",
-                }}
-              >
-                {promoMsg}
-              </div>
-            )}
-            <button
-              className="btn full"
-              style={{ marginTop: "1rem" }}
-              disabled={promoBusy || movingCount === 0}
-              onClick={applyPromotion}
-            >
-              <GraduationCap size={16} /> {promoBusy ? "Working..." : `Apply Promotion (${movingCount} students)`}
-            </button>
-            {lastPromotion && Array.isArray(lastPromotion.moves) && (
-              <button
-                className="btn secondary full"
-                style={{ marginTop: "0.6rem" }}
-                disabled={promoBusy}
-                onClick={undoPromotion}
-              >
-                <RotateCcw size={15} /> Undo last promotion ({lastPromotion.moves.length} students, {formatDate(lastPromotion.date)})
-              </button>
-            )}
-          </Modal>
-        );
-      })()}
+                <div className="form-grid">
+                  <div>
+                    <label>Code</label>
+                    <input type="text" value={bookForm.code} onChange={(e) => setBookForm({ ...bookForm, code: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label>Copies</label>
+                    <input type="number" min="1" value={bookForm.copies} onChange={(e) => setBookForm({ ...bookForm, copies: e.target.value })} />
+                  </div>
+                </div>
+                <button type="submit" className="btn full"><Plus size={16} /> Add Book</button>
+              </form>
 
-      {sheet === "certificate" && (
-        <Modal title="Monthly Certificate" onClose={() => setSheet(null)}>
-          <div className="no-print">
-            <div className="form-grid">
-              <div>
-                <label>Month</label>
-                <input
-                  type="month"
-                  value={certMonth}
-                  onChange={(e) => {
-                    setCertMonth(e.target.value);
-                    setCertStudentId("");
-                  }}
-                />
+              <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: "0.9rem" }}>
+                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>Add many at once</h2>
+                <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "0.6rem" }}>
+                  Pick a category below and every book in this paste gets that category — so for a whole
+                  stack from one category, just paste "Code, Title, Author, Copies" lines (no need to
+                  repeat the category each line). To mix categories in one paste, add a 5th column per
+                  line ("Code, Title, Author, Copies, Category") — that overrides the default for just
+                  that line. A book with the same code already in the catalog gets overwritten with
+                  these details.
+                </p>
+                <form onSubmit={addBooksBulk}>
+                  <div className="field">
+                    <label>Category for this batch</label>
+                    <select value={bulkBookCategory} onChange={(e) => setBulkBookCategory(e.target.value)}>
+                      <option value="">Uncategorized</option>
+                      {categories.map((c) => (<option key={c} value={c}>{c}</option>))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Books — one per line</label>
+                    <textarea
+                      rows={6}
+                      value={bulkBooksText}
+                      onChange={(e) => setBulkBooksText(e.target.value)}
+                      placeholder={"SH21, ദേശഭക്തി, എ ബി സി, 2\nHW50, ഒരു കഥ, എക്സ് വൈ ഇസഡ്\nSM11, പുതിയ പുസ്തകം"}
+                      style={{ resize: "vertical" }}
+                    />
+                  </div>
+                  <button type="submit" className="btn full secondary"><Plus size={16} /> Add All Books</button>
+                </form>
               </div>
-              <div>
-                <label>Student (defaults to top reader)</label>
-                <select value={certStudentId} onChange={(e) => setCertStudentId(e.target.value)}>
-                  <option value="">
-                    {monthlyTopReaders[0] ? `Top reader: ${monthlyTopReaders[0].student.name}` : "No activity yet"}
-                  </option>
-                  {[...students]
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                </select>
-              </div>
-            </div>
-            {monthlyTopReaders.length > 1 && (
-              <p style={{ fontSize: "0.76rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
-                Runners-up this month: {monthlyTopReaders.slice(1, 4).map((x) => `${x.student.name} (${x.count})`).join(", ")}
-              </p>
-            )}
-          </div>
+            </Modal>
+          )}
 
-          {!certStudent ? (
-            <div className="empty">No borrowing activity for this month yet — pick a student above to still generate a certificate.</div>
-          ) : (
-            <>
-              <div className="id-card-wrap">
-                <div className="certificate" ref={certRef}>
-                  <div className="cert-badge">🏆</div>
-                  <div className="cert-title">Certificate of Achievement</div>
-                  <div className="cert-sub">NMMI Islamic Library</div>
-                  <div className="cert-presented">This certifies that</div>
-                  <div className="cert-name">{certStudent.name}</div>
-                  <div className="cert-desc">
-                    has been recognized as the <b>Top Reader</b> of{" "}
-                    <span className="cert-month">{formatMonthLabel(certMonth)}</span>
-                    {certCount > 0 ? (
-                      <>, having borrowed <b>{certCount}</b> book{certCount === 1 ? "" : "s"} this month.</>
-                    ) : (
-                      "."
+          {sheet === "classes" && (
+            <Modal title="Manage Classes" onClose={() => setSheet(null)}>
+              <form onSubmit={addClass} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
+                <div style={{ flex: 1 }}>
+                  <label>New class name</label>
+                  <input type="text" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g. CLASS-7" />
+                </div>
+                <button type="submit" className="btn"><Plus size={16} /> Add</button>
+              </form>
+              <div className="row-list">
+                {classes.map((c) => {
+                  const count = students.filter((s) => s.className === c).length;
+                  return editingClassOld === c ? (
+                    <form key={c} onSubmit={saveEditClass} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem" }}>
+                      <input type="text" value={editClassName} onChange={(e) => setEditClassName(e.target.value)} required />
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
+                        <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditClass}><X size={14} /> Cancel</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div key={c} className="row-card">
+                      <div>
+                        <div className="title">{c}</div>
+                        <div className="meta">{count} student{count === 1 ? "" : "s"}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        <button className="btn secondary" onClick={() => startEditClass(c)} aria-label="Rename class"><Pencil size={13} /></button>
+                        <button className="btn secondary" onClick={() => deleteClass(c)} aria-label="Remove class"><Trash2 size={13} /></button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Modal>
+          )}
+
+          {sheet === "dashboard" && (
+            <Modal title="Dashboard" onClose={() => setSheet(null)}>
+              <div className="grid-stats">
+                <div className="stat-card"><div className="num">{totalCopies}</div><div className="label">Total Books</div></div>
+                <div className="stat-card"><div className="num">{availableCopies}</div><div className="label">Available</div></div>
+                <div className="stat-card"><div className="num">{activeTx.length}</div><div className="label">Currently Issued</div></div>
+                <div className={`stat-card ${overdueTx.length > 0 ? "warn" : ""}`}><div className="num">{overdueTx.length}</div><div className="label">Overdue</div></div>
+              </div>
+              <div className="stat-card">
+                <div className="label" style={{ marginBottom: "0.4rem" }}>Students</div>
+                <div className="num" style={{ fontSize: "1.1rem" }}>{students.length}</div>
+              </div>
+
+              <h3 className="dash-heading">📚 Most Borrowed Books</h3>
+              {dashboardStats.mostBorrowed.length === 0 ? (
+                <div className="empty">No borrowing activity yet.</div>
+              ) : (
+                <div className="row-list">
+                  {dashboardStats.mostBorrowed.map((x, i) => (
+                    <div key={x.book.id} className="row-card">
+                      <div className="dash-row">
+                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                        <div>
+                          <div className="title">{x.book.title}</div>
+                          <div className="meta">{x.book.code}</div>
+                        </div>
+                      </div>
+                      <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <h3 className="dash-heading">🏆 Top Readers <span className="dash-sub">all-time</span></h3>
+              {dashboardStats.topReaders.length === 0 ? (
+                <div className="empty">No borrowing activity yet.</div>
+              ) : (
+                <div className="row-list">
+                  {dashboardStats.topReaders.map((x, i) => (
+                    <div key={x.student.id} className="row-card">
+                      <div className="dash-row">
+                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                        <div>
+                          <div className="title">{x.student.name}</div>
+                          <div className="meta">{x.student.className || "Unassigned"}</div>
+                        </div>
+                      </div>
+                      <div className="due" style={{ fontWeight: 700 }}>{x.count} book{x.count === 1 ? "" : "s"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <h3 className="dash-heading">🎓 Most Active Class</h3>
+              {dashboardStats.topClasses.length === 0 ? (
+                <div className="empty">No borrowing activity yet.</div>
+              ) : (
+                <div className="row-list">
+                  {dashboardStats.topClasses.map(([cls, count], i) => (
+                    <div key={cls} className="row-card">
+                      <div className="dash-row">
+                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                        <div className="title">{cls}</div>
+                      </div>
+                      <div className="due" style={{ fontWeight: 700 }}>{count} book{count === 1 ? "" : "s"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <h3 className="dash-heading">
+                📦 Never Borrowed
+                <span className="dash-sub">{dashboardStats.neverBorrowed.length} of {books.length} book{books.length === 1 ? "" : "s"}</span>
+              </h3>
+              {dashboardStats.neverBorrowed.length === 0 ? (
+                <div className="empty">Every book has been borrowed at least once 🎉</div>
+              ) : (
+                <div className="row-list">
+                  {dashboardStats.neverBorrowed.slice(0, 8).map((b) => (
+                    <div key={b.id} className="row-card">
+                      <div>
+                        <div className="title">{b.title}</div>
+                        <div className="meta">{b.code}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {dashboardStats.neverBorrowed.length > 8 && (
+                    <div className="empty" style={{ padding: "0.6rem" }}>+{dashboardStats.neverBorrowed.length - 8} more</div>
+                  )}
+                </div>
+              )}
+            </Modal>
+          )}
+
+          {sheet === "overdue" && (
+            <Modal title="Overdue Books" onClose={() => setSheet(null)}>
+              {overdueList.length === 0 ? (
+                <div className="empty">Nothing overdue right now.</div>
+              ) : (
+                <div className="row-list">
+                  {overdueList.map((r) => (
+                    <div key={r.tx.id} className="row-card overdue">
+                      <div>
+                        <div className="title">{r.book.title}</div>
+                        <div className="meta">{r.student.name} ({r.student.className || "Unassigned"}){r.student.roll ? ` · Roll ${r.student.roll}` : ""}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <div className="due">
+                          <Clock size={12} style={{ verticalAlign: "-2px" }} /> {daysBetween(r.tx.dueDate, todayISO())}d late
+                        </div>
+                        {r.student.phone && (
+                          <a
+                            href={waLink(
+                              r.student.phone,
+                              `നമസ്കാരം ${r.student.name}, "${r.book.title}" (${r.book.code}) എന്ന പുസ്തകം തിരികെ നൽകേണ്ട തീയതി ${formatDate(r.tx.dueDate)} ആയിരുന്നു. ദയവായി എത്രയും വേഗം ലൈബ്രറിയിൽ തിരികെ ഏൽപ്പിക്കാൻ അഭ്യർത്ഥിക്കുന്നു. നന്ദി.`
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn secondary"
+                            style={{ padding: "0.4rem 0.5rem" }}
+                            aria-label={`WhatsApp reminder to ${r.student.name}`}
+                          >
+                            <MessageCircle size={13} />
+                          </a>
+                        )}
+                        <button className="btn secondary" onClick={() => returnBook(r.tx.id)}>
+                          <RotateCcw size={13} /> Return
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Modal>
+          )}
+
+          {sheet === "studentDetail" && detailStudentId && (() => {
+            const dStudent = studentById(detailStudentId);
+            if (!dStudent) return null;
+            const dTx = transactions
+              .filter((t) => t.studentId === detailStudentId)
+              .sort((a, b) => (a.issueDate < b.issueDate ? 1 : -1));
+            return (
+              <Modal title={dStudent.name} onClose={() => setSheet(null)}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "0.9rem" }}>
+                  <Avatar name={dStudent.name} photoUrl={dStudent.photoUrl} size={84} />
+                  <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem" }}>
+                    <label className="btn secondary" style={{ cursor: "pointer", fontSize: "0.8rem", padding: "0.4rem 0.8rem" }}>
+                      <Camera size={14} />
+                      {photoUploading ? "Uploading..." : dStudent.photoUrl ? "Change Photo" : "Add Photo"}
+                      <input type="file" accept="image/*" style={{ display: "none" }} disabled={photoUploading} onChange={(e) => handlePhotoUpload(e, dStudent)} />
+                    </label>
+                    {dStudent.photoUrl && (
+                      <button type="button" className="btn secondary" style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem" }} onClick={() => handleRemovePhoto(dStudent)}>
+                        <X size={14} /> Remove
+                      </button>
                     )}
                   </div>
-                  <div className="cert-footer">
-                    <div className="cert-foot-item">
-                      <div className="cert-foot-line" />
-                      Date
+                  {photoError && <div className="lock-error" style={{ marginTop: "0.5rem" }}>{photoError}</div>}
+                </div>
+
+                <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
+                  <span>
+                    {dStudent.className || "Unassigned"}{dStudent.roll ? ` · Roll ${dStudent.roll}` : ""}
+                    {dStudent.phone ? ` · ${dStudent.phone}` : ""}
+                  </span>
+                  <div style={{ display: "flex", gap: "0.7rem" }}>
+                    <button onClick={() => startEditStudent(dStudent)}><Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit</button>
+                    <button onClick={() => deleteStudent(dStudent)}><Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove</button>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+                  <button
+                    className="btn"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => { setSelectedStudentId(dStudent.id); openIssue(); }}
+                  >
+                    <BookMarked size={15} /> Issue
+                  </button>
+                  <button
+                    className="btn secondary"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => { setSelectedStudentId(dStudent.id); openReturn(); }}
+                  >
+                    <RotateCcw size={15} /> Return
+                  </button>
+                </div>
+
+                <button className="btn secondary full" style={{ marginBottom: "1rem" }} onClick={() => openIdCard(dStudent.id)}>
+                  <CreditCard size={15} /> Digital Library Card
+                </button>
+
+                {editingStudentId === dStudent.id && (
+                  <form onSubmit={saveEditStudent} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.5rem", marginBottom: "1rem" }}>
+                    <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+                    <div className="form-grid" style={{ marginBottom: 0 }}>
+                      <select value={editForm.className} onChange={(e) => setEditForm({ ...editForm, className: e.target.value })}>
+                        <option value="">Unassigned</option>
+                        {classes.map((c) => (<option key={c} value={c}>{c}</option>))}
+                      </select>
+                      <input type="text" value={editForm.roll} onChange={(e) => setEditForm({ ...editForm, roll: e.target.value })} placeholder="Roll (optional)" />
                     </div>
-                    <div className="cert-foot-item">
-                      <div className="cert-foot-line" />
-                      Librarian
+                    <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Phone (optional)" />
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
+                      <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditStudent}><X size={14} /> Cancel</button>
+                    </div>
+                  </form>
+                )}
+
+                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>Book history</h2>
+                {dTx.length === 0 ? (
+                  <div className="empty">No books issued to this student yet.</div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table>
+                      <thead>
+                        <tr><th>#</th><th>Book</th><th>Code</th><th>Issued</th><th>Status</th></tr>
+                      </thead>
+                      <tbody>
+                        {dTx.map((t, i) => {
+                          const book = bookById(t.bookId);
+                          const overdue = !t.returnDate && t.dueDate < todayISO();
+                          return (
+                            <tr key={t.id}>
+                              <td className="mono">{i + 1}</td>
+                              <td>{book ? book.title : "—"}</td>
+                              <td className="mono">{book ? book.code : "—"}</td>
+                              <td className="mono">{formatDate(t.issueDate)}</td>
+                              <td>
+                                {t.returnDate ? (
+                                  <span style={{ color: "#1F8A5E", fontWeight: 700 }}>Returned {formatDate(t.returnDate)}</span>
+                                ) : overdue ? (
+                                  <span style={{ color: "var(--danger)", fontWeight: 700 }}>Overdue · due {formatDate(t.dueDate)}</span>
+                                ) : (
+                                  <span style={{ color: "var(--indigo)", fontWeight: 700 }}>Not returned · due {formatDate(t.dueDate)}</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Modal>
+            );
+          })()}
+
+          {sheet === "bookDetail" && detailBookId && (() => {
+            const dBook = bookById(detailBookId);
+            if (!dBook) return null;
+            const holders = activeTx
+              .filter((t) => t.bookId === dBook.id)
+              .map((t) => ({ tx: t, student: studentById(t.studentId) }))
+              .filter((h) => h.student);
+            const bookHistory = transactions
+              .filter((t) => t.bookId === dBook.id)
+              .sort((a, b) => (a.issueDate < b.issueDate ? 1 : -1));
+            return (
+              <Modal title={dBook.title} onClose={() => setSheet(null)}>
+                <div className="book-qr-wrap">
+                  <div className="book-qr-box">
+                    <QRCodeCanvas value={bookQrValue(dBook.code)} size={150} />
+                  </div>
+                </div>
+                <div style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+                  Scan this QR in Issue/Return to pick this book instantly.
+                </div>
+
+                <div className="current-pick" style={{ marginBottom: "0.9rem" }}>
+                  <span>
+                    <b>{dBook.code}</b>
+                    {dBook.author ? ` · ${dBook.author}` : ""}
+                    <br />
+                    <span style={{ fontSize: "0.78rem", color: "var(--text-soft)" }}>
+                      {dBook.category || UNCATEGORIZED} · {dBook.availableCopies}/{dBook.totalCopies} available
+                    </span>
+                  </span>
+                  <div style={{ display: "flex", gap: "0.7rem" }}>
+                    <button onClick={() => { setSheet("catalog"); startEditBook(dBook); }}>
+                      <Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit
+                    </button>
+                    <button onClick={() => { deleteBook(dBook); setSheet(null); }}>
+                      <Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove
+                    </button>
+                  </div>
+                </div>
+
+                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.4rem" }}>Currently issued to</h2>
+                {holders.length === 0 ? (
+                  <div className="empty" style={{ padding: "0.8rem" }}>Nobody — all copies on the shelf.</div>
+                ) : (
+                  <div className="row-list" style={{ marginBottom: "1rem" }}>
+                    {holders.map((h) => {
+                      const overdue = h.tx.dueDate < todayISO();
+                      return (
+                        <div key={h.tx.id} className={`row-card ${overdue ? "overdue" : ""}`}>
+                          <div>
+                            <div className="title">{h.student.name}</div>
+                            <div className="meta">{h.student.className || "Unassigned"}{h.student.roll ? ` · Roll ${h.student.roll}` : ""}</div>
+                          </div>
+                          <div className="due">{overdue ? "Overdue: " : "Due: "}{formatDate(h.tx.dueDate)}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "0.98rem", color: "var(--navy)", marginBottom: "0.5rem" }}>Full issue history</h2>
+                {bookHistory.length === 0 ? (
+                  <div className="empty">This book has never been issued.</div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table>
+                      <thead>
+                        <tr><th>#</th><th>Student</th><th>Issued</th><th>Status</th></tr>
+                      </thead>
+                      <tbody>
+                        {bookHistory.map((t, i) => {
+                          const st = studentById(t.studentId);
+                          const overdue = !t.returnDate && t.dueDate < todayISO();
+                          return (
+                            <tr key={t.id}>
+                              <td className="mono">{i + 1}</td>
+                              <td>{st ? st.name : "—"}</td>
+                              <td className="mono">{formatDate(t.issueDate)}</td>
+                              <td>
+                                {t.returnDate ? (
+                                  <span style={{ color: "#1F8A5E", fontWeight: 700 }}>Returned {formatDate(t.returnDate)}</span>
+                                ) : overdue ? (
+                                  <span style={{ color: "var(--danger)", fontWeight: 700 }}>Overdue · due {formatDate(t.dueDate)}</span>
+                                ) : (
+                                  <span style={{ color: "var(--indigo)", fontWeight: 700 }}>Out · due {formatDate(t.dueDate)}</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Modal>
+            );
+          })()}
+
+          {sheet === "idCard" && detailStudentId && (() => {
+            const cStudent = studentById(detailStudentId);
+            if (!cStudent) return null;
+            return (
+              <Modal title="Digital Library Card" onClose={() => setSheet(null)}>
+                <div className="id-card-wrap">
+                  <div className="lib-card" ref={cardRef}>
+                    <div className="lib-card-top">
+                      <div className="lib-card-brand-name">NMMI ISLAMIC LIBRARY</div>
+                      <div className="lib-card-brand-sub">Nandiyil Muhammed Musliyar Memorial</div>
+                    </div>
+                    <div className="lib-card-body">
+                      <Avatar name={cStudent.name} photoUrl={cStudent.photoUrl} size={64} />
+                      <div className="lib-card-info">
+                        <div className="lib-card-name">{cStudent.name}</div>
+                        <div className="lib-card-meta">
+                          {cStudent.className || "Unassigned"}
+                          {cStudent.roll ? ` · Roll ${cStudent.roll}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="lib-card-bottom">
+                      <div className="lib-card-id-label">LIBRARY MEMBER</div>
+                      {cStudent.roll ? (
+                        <div className="lib-card-qr-wrap">
+                          <QRCodeCanvas value={cStudent.roll} size={66} />
+                        </div>
+                      ) : (
+                        <div className="lib-card-id-label" style={{ color: "var(--danger)" }}>Add a roll no. for QR</div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-              <button
-                className="btn full no-print"
-                style={{ marginTop: "1.1rem" }}
-                onClick={() => downloadCertificate(certStudent, certMonth)}
-                disabled={certDownloading}
-              >
-                <Download size={16} /> {certDownloading ? "Preparing..." : "Download as Image"}
-              </button>
-            </>
-          )}
-        </Modal>
-      )}
+                <button className="btn full" style={{ marginTop: "1.1rem" }} onClick={() => downloadCard(cStudent)} disabled={cardDownloading}>
+                  <Download size={16} /> {cardDownloading ? "Preparing..." : "Download as Image"}
+                </button>
+                <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", textAlign: "center", marginTop: "0.6rem" }}>
+                  Save this to the student's phone, or print it out.
+                </p>
+              </Modal>
+            );
+          })()}
 
-      {scannerTarget && (
-        <Scanner onResult={handleScanResult} onClose={() => setScannerTarget(null)} feedback={scanFeedback} />
-      )}
+          {sheet === "promotion" && (() => {
+            const countFor = (c) => students.filter((s) => s.className === c).length;
+            const movingCount = classes.reduce((n, c) => n + ((promoMap[c] ?? c) !== c ? countFor(c) : 0), 0);
+            return (
+              <Modal title="Class Promotion" onClose={() => setSheet(null)}>
+                <p style={{ fontSize: "0.8rem", color: "var(--text-soft)", marginBottom: "0.8rem", lineHeight: 1.5 }}>
+                  Year-end: move every class up in one go. For each class, pick where its students go
+                  (default: the next class). Students of the last class become "Unassigned" — remove
+                  them later from the student list if they have left. Nothing changes until you tap
+                  Apply, and the last promotion can be undone.
+                </p>
+                <div className="row-list">
+                  {classes.map((c) => (
+                    <div key={c} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "0.4rem" }}>
+                      <div>
+                        <div className="title">{c}</div>
+                        <div className="meta">{countFor(c)} student{countFor(c) === 1 ? "" : "s"}</div>
+                      </div>
+                      <select value={promoMap[c] ?? c} onChange={(e) => setPromoMap({ ...promoMap, [c]: e.target.value })}>
+                        <option value="">→ Unassigned (passed out)</option>
+                        {classes.map((t) => (
+                          <option key={t} value={t}>{t === c ? `Stay in ${t}` : `→ Move to ${t}`}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                {promoMsg && (
+                  <div style={{ margin: "0.8rem 0 0", fontSize: "0.84rem", fontWeight: 700, color: promoMsg.startsWith("✅") || promoMsg.startsWith("↩️") ? "#1F8A5E" : "var(--danger)" }}>
+                    {promoMsg}
+                  </div>
+                )}
+                <button className="btn full" style={{ marginTop: "1rem" }} disabled={promoBusy || movingCount === 0} onClick={applyPromotion}>
+                  <GraduationCap size={16} /> {promoBusy ? "Working..." : `Apply Promotion (${movingCount} students)`}
+                </button>
+                {lastPromotion && Array.isArray(lastPromotion.moves) && (
+                  <button className="btn secondary full" style={{ marginTop: "0.6rem" }} disabled={promoBusy} onClick={undoPromotion}>
+                    <RotateCcw size={15} /> Undo last promotion ({lastPromotion.moves.length} students, {formatDate(lastPromotion.date)})
+                  </button>
+                )}
+              </Modal>
+            );
+          })()}
+
+          {sheet === "certificate" && (
+            <Modal title="Monthly Certificate" onClose={() => setSheet(null)}>
+              <div className="no-print">
+                <div className="form-grid">
+                  <div>
+                    <label>Month</label>
+                    <input type="month" value={certMonth} onChange={(e) => { setCertMonth(e.target.value); setCertStudentId(""); }} />
+                  </div>
+                  <div>
+                    <label>Student (defaults to top reader)</label>
+                    <select value={certStudentId} onChange={(e) => setCertStudentId(e.target.value)}>
+                      <option value="">{monthlyTopReaders[0] ? `Top reader: ${monthlyTopReaders[0].student.name}` : "No activity yet"}</option>
+                      {[...students].sort((a, b) => a.name.localeCompare(b.name)).map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {monthlyTopReaders.length > 1 && (
+                  <p style={{ fontSize: "0.76rem", color: "var(--text-soft)", marginBottom: "0.8rem" }}>
+                    Runners-up this month: {monthlyTopReaders.slice(1, 4).map((x) => `${x.student.name} (${x.count})`).join(", ")}
+                  </p>
+                )}
+              </div>
+
+              {!certStudent ? (
+                <div className="empty">No borrowing activity for this month yet — pick a student above to still generate a certificate.</div>
+              ) : (
+                <>
+                  <div className="id-card-wrap">
+                    <div className="certificate" ref={certRef}>
+                      <div className="cert-badge">🏆</div>
+                      <div className="cert-title">Certificate of Achievement</div>
+                      <div className="cert-sub">NMMI Islamic Library</div>
+                      <div className="cert-presented">This certifies that</div>
+                      <div className="cert-name">{certStudent.name}</div>
+                      <div className="cert-desc">
+                        has been recognized as the <b>Top Reader</b> of{" "}
+                        <span className="cert-month">{formatMonthLabel(certMonth)}</span>
+                        {certCount > 0 ? (
+                          <>, having borrowed <b>{certCount}</b> book{certCount === 1 ? "" : "s"} this month.</>
+                        ) : (".")}
+                      </div>
+                      <div className="cert-footer">
+                        <div className="cert-foot-item"><div className="cert-foot-line" />Date</div>
+                        <div className="cert-foot-item"><div className="cert-foot-line" />Librarian</div>
+                      </div>
+                    </div>
+                  </div>
+                  <button className="btn full no-print" style={{ marginTop: "1.1rem" }} onClick={() => downloadCertificate(certStudent, certMonth)} disabled={certDownloading}>
+                    <Download size={16} /> {certDownloading ? "Preparing..." : "Download as Image"}
+                  </button>
+                </>
+              )}
+            </Modal>
+          )}
+
+          {scannerTarget && (
+            <Scanner onResult={handleScanResult} onClose={() => setScannerTarget(null)} feedback={scanFeedback} />
+          )}
         </>
       )}
     </div>
