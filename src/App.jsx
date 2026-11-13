@@ -1549,26 +1549,34 @@ export default function App() {
         .lock-error { color:var(--danger);font-size:.82rem;font-weight:600;margin-bottom:.7rem;text-align:center; }
         .lock-hint { font-size:.76rem;color:var(--text-soft);margin-top:1rem;text-align:center; }
         .print-area { display:grid;grid-template-columns:1fr 1fr;gap:.6rem; }
-        .print-area.books-print { grid-template-columns: repeat(4, 1fr); }
+        
+        /* Book QR Labels styles */
+        .print-area.books-print { 
+          grid-template-columns: repeat(4, 1fr); 
+          gap: 0.5rem;
+        }
         .id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
-        .book-label-card {
-  padding: 0.2rem;
-  border: 1px dashed #ccc; /* പ്രിൻ്റ് ചെയ്ത് മുറിക്കാൻ വേണ്ടി */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.book-label-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 0.75rem;
-  margin-bottom: 0.1rem;
-  color: var(--text);
-}
         .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.25; }
         .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.25; }
         .id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
+        
+        .book-label-card {
+          padding: 0.2rem;
+          border: 1px dashed #ccc;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: auto;
+        }
+        .book-label-code {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 700;
+          font-size: 0.8rem;
+          margin-bottom: 0.1rem;
+          color: var(--text);
+        }
+
         .id-card-wrap { display:flex;justify-content:center;padding:.4rem 0 .2rem; }
         .lib-card {
           width:320px;max-width:100%;background:linear-gradient(135deg,#FDF8ED 0%,#FBF2D9 100%);
@@ -1698,17 +1706,27 @@ export default function App() {
             border-radius:0 !important;inset:auto !important;padding-left:0 !important;
           }
           .print-area { position:static !important;width:100% !important;grid-template-columns:repeat(4,1fr);page-break-inside:auto; }
+          
+          /* ബുക്കുകൾക്ക് ഒരു വരിയിൽ 5 എണ്ണം */
           .print-area.books-print { 
-  grid-template-columns: repeat(5, 1fr); 
-  gap: 0.2rem; 
-}
-.book-label-card {
-  border: none; 
-  padding: 0;
-}
-.book-label-code {
-  font-size: 9pt;
-}
+            grid-template-columns:repeat(5, 1fr) !important; 
+            gap: 0.2rem !important;
+          }
+          .book-label-card {
+            border: none !important; 
+            padding: 0 !important;
+            box-shadow: none !important;
+          }
+          .book-label-card canvas {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+          }
+          .book-label-code {
+            font-size: 8pt !important;
+            margin-bottom: 2px !important;
+          }
+
           .id-card { break-inside:avoid;page-break-inside:avoid; }
           .no-print,.modal-head,.header,.bottom-bar,.class-row,.search-wrap,.book-hint,.sidebar,.top-fixed,.desktop-title { display:none !important; }
         }
@@ -2121,11 +2139,14 @@ export default function App() {
                       </div>
                     ))
                   : books.map((b) => (
-    <div className="id-card book-label-card" key={b.id}>
-      <div className="book-label-code">{b.code}</div>
-      <QRCodeCanvas value={bookQrValue(b.code)} size={100} />
-    </div>
-  ))}
+                      <div className="id-card book-label-card" key={b.id}>
+                        <div className="book-label-code">{b.code}</div>
+                        <QRCodeCanvas value={bookQrValue(b.code)} size={110} />
+                      </div>
+                    ))}
+              </div>
+            </Modal>
+          )}
 
           {sheet === "issue" && (
             <Modal title="Issue Book" onClose={() => setSheet(null)}>
