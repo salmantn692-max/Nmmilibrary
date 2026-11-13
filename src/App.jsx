@@ -227,8 +227,8 @@ const NMMI_SEED_BOOKS = [
   { code: "HW42", title: "ഫാത്തിമ", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദർ" },
   { code: "HW43", title: "ആയിഷ", author: "മുഹമ്മദ് അജ്മൽ നൂറാനി" },
   { code: "HW44", title: "മാണിക്യ മലർ ബീവി ഖദീജ", author: "മുഹമ്മദ് പാറന്നൂർ" },
-  { code: "HW45", title: "അസ്മാഹ് ബിൻത് അബൂബക്കർ", author: "മുഹമ്മദ് പാറന്നൂർ" },
-  { code: "HW48", title: "ബീവി ഉമ്മു ഉമാറ", author: "മുഹമ്മദ് പാറന്നൂർ" },
+  { code: "HW45", title: "അസ്മാഹ് ബിൻത് അബൂബക്കർ", author: "മുഹമ്മദ് പറന്നൂർ" },
+  { code: "HW48", title: "ബീവി ഉമ്മു ഉമാറ", author: "മുഹമ്മദ് പറന്നൂർ" },
   { code: "HW49", title: "ബീവി ഫാത്തിമ", author: "മുഹമ്മദ് ഫാറൂഖ് ബുഖാരി" },
   { code: "SM1", title: "കണക്കിലെ എളുപ്പവഴികൾ", author: "ടി ശിവദാസ്" },
   { code: "SM2", title: "കണ്ടുപഠിച്ചാൽ കണക്ക് എളുപ്പം", author: "മാധവൻ പള്ളത്തേരി" },
@@ -1705,91 +1705,104 @@ export default function App() {
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
 
         @media print {
+          /* Hide everything not needed for print using display:none (fixes blank page bug) */
+          .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head, .modal-backdrop > .modal-panel > .modal-body > *:not(.print-area) {
+            display: none !important;
+          }
+          
           html, body {
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
-          }
-          
-          body * {
-            visibility: hidden;
+            height: auto !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
-          .print-area, .print-area * {
-            visibility: visible;
+          .app {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: none !important;
+            min-height: auto !important;
           }
 
           .modal-backdrop {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            background: transparent !important;
+            position: static !important;
             display: block !important;
+            background: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
+            animation: none !important;
+            inset: auto !important;
           }
 
           .modal-panel {
             position: static !important;
-            max-width: 100% !important;
+            display: block !important;
+            max-width: none !important;
             max-height: none !important;
+            overflow: visible !important;
             box-shadow: none !important;
             padding: 0 !important;
             margin: 0 !important;
             border: none !important;
             background: transparent !important;
-            overflow: visible !important;
+            animation: none !important;
           }
 
+          .modal-body {
+            padding: 0 !important;
+          }
+
+          /* Make the print area fill the page */
           .print-area {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
             display: grid !important;
+            width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            grid-template-columns: repeat(4, 1fr) !important;
+            position: static !important;
           }
-
-          .print-area.books-print { 
-            grid-template-columns: repeat(5, 1fr) !important; 
+          
+          .print-area.books-print {
+            grid-template-columns: repeat(5, 1fr) !important;
             gap: 0.2rem !important;
           }
           
-          .book-label-card {
-            border: none !important; 
-            padding: 0 !important;
-            box-shadow: none !important;
-            page-break-inside: avoid;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+          .print-area:not(.books-print) {
+            grid-template-columns: repeat(4, 1fr) !important;
           }
-          
-          .book-label-card canvas {
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
+
+          .book-label-card {
+            border: 1px dashed #ccc !important;
+            padding: 2px !important;
+            page-break-inside: avoid !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
           
           .book-label-code {
-            font-size: 8pt !important;
-            margin-bottom: 2px !important;
-          }
-
-          .id-card { 
-            border: 1px solid #eee !important;
-            padding: 4px !important;
-            page-break-inside: avoid; 
+            font-size: 10pt !important;
+            margin-bottom: 4px !important;
+            color: #000 !important;
           }
           
-          .no-print, .modal-head, .header, .bottom-bar, .class-row, 
-          .search-wrap, .book-hint, .sidebar, .top-fixed, .desktop-title {
-            display: none !important;
+          .id-card { 
+            border: 1px dashed #ccc !important;
+            padding: 4px !important;
+            page-break-inside: avoid !important; 
+          }
+
+          /* Force canvas to be visible */
+          .id-qrcode {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
           }
         }
 
