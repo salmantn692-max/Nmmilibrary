@@ -1698,7 +1698,17 @@ export default function App() {
             border-radius:0 !important;inset:auto !important;padding-left:0 !important;
           }
           .print-area { position:static !important;width:100% !important;grid-template-columns:repeat(4,1fr);page-break-inside:auto; }
-          .print-area.books-print { grid-template-columns:repeat(3,1fr); }
+          .print-area.books-print { 
+  grid-template-columns: repeat(5, 1fr); 
+  gap: 0.2rem; 
+}
+.book-label-card {
+  border: none; 
+  padding: 0;
+}
+.book-label-code {
+  font-size: 9pt;
+}
           .id-card { break-inside:avoid;page-break-inside:avoid; }
           .no-print,.modal-head,.header,.bottom-bar,.class-row,.search-wrap,.book-hint,.sidebar,.top-fixed,.desktop-title { display:none !important; }
         }
