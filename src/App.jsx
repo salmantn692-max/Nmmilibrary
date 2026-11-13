@@ -318,15 +318,23 @@ function Modal({ title, onClose, children, wide }) {
 
 function QRCodeCanvas({ value, size = 130 }) {
   const ref = useRef(null);
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
     if (ref.current && value) {
       QRCode.toCanvas(ref.current, String(value), { width: size, margin: 1 }, (err) => {
-        if (err) console.error(err);
+        if (err) {
+          console.error(err);
+        } else {
+          setReady(true);
+        }
       });
     }
   }, [value, size]);
+  
   if (!value) return null;
-  return <canvas ref={ref} className="id-qrcode" />;
+  
+  return <canvas ref={ref} className="id-qrcode" style={{ display: ready ? 'block' : 'none' }} />;
 }
 
 function Avatar({ name, photoUrl, size = 42, children }) {
@@ -1697,38 +1705,92 @@ export default function App() {
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
 
         @media print {
-          body * { visibility:hidden; }
-          .print-area,.print-area * { visibility:visible; }
-          html,body,.app,.modal-backdrop,.modal-panel {
-            position:static !important;overflow:visible !important;max-height:none !important;
-            height:auto !important;width:100% !important;background:#fff !important;
-            box-shadow:none !important;padding:0 !important;margin:0 !important;
-            border-radius:0 !important;inset:auto !important;padding-left:0 !important;
+          html, body {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
-          .print-area { position:static !important;width:100% !important;grid-template-columns:repeat(4,1fr);page-break-inside:auto; }
           
-          /* ബുക്കുകൾക്ക് ഒരു വരിയിൽ 5 എണ്ണം */
+          body * {
+            visibility: hidden;
+          }
+
+          .print-area, .print-area * {
+            visibility: visible;
+          }
+
+          .modal-backdrop {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            background: transparent !important;
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          .modal-panel {
+            position: static !important;
+            max-width: 100% !important;
+            max-height: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            overflow: visible !important;
+          }
+
+          .print-area {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            display: grid !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+          }
+
           .print-area.books-print { 
-            grid-template-columns:repeat(5, 1fr) !important; 
+            grid-template-columns: repeat(5, 1fr) !important; 
             gap: 0.2rem !important;
           }
+          
           .book-label-card {
             border: none !important; 
             padding: 0 !important;
             box-shadow: none !important;
+            page-break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
           }
+          
           .book-label-card canvas {
             width: 100% !important;
             max-width: 100% !important;
             height: auto !important;
           }
+          
           .book-label-code {
             font-size: 8pt !important;
             margin-bottom: 2px !important;
           }
 
-          .id-card { break-inside:avoid;page-break-inside:avoid; }
-          .no-print,.modal-head,.header,.bottom-bar,.class-row,.search-wrap,.book-hint,.sidebar,.top-fixed,.desktop-title { display:none !important; }
+          .id-card { 
+            border: 1px solid #eee !important;
+            padding: 4px !important;
+            page-break-inside: avoid; 
+          }
+          
+          .no-print, .modal-head, .header, .bottom-bar, .class-row, 
+          .search-wrap, .book-hint, .sidebar, .top-fixed, .desktop-title {
+            display: none !important;
+          }
         }
 
         /* ---- Dark mode ---- */
@@ -2127,7 +2189,9 @@ export default function App() {
                   Each QR code encodes the {printMode === "students" ? "student's roll number" : "book's code (prefixed with BOOK:)"} — scanning it in the app finds that {printMode === "students" ? "student" : "book"} automatically.
                   Tap Print, then choose "Save as PDF" to print or share.
                 </p>
-                <button className="btn full" onClick={() => window.print()}><Printer size={16} /> Print / Save as PDF</button>
+                <button className="btn full" onClick={() => {
+                  setTimeout(() => window.print(), 500);
+                }}><Printer size={16} /> Print / Save as PDF</button>
               </div>
               <div className={`print-area ${printMode === "books" ? "books-print" : ""}`} style={{ marginTop: ".8rem" }}>
                 {printMode === "students"
