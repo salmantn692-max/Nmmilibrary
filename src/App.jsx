@@ -425,7 +425,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
           ) : (
             <>
               <div className="pulse-icon"><QrCode size={56} /></div>
-              <h3 style={{ marginTop: "1.2rem", marginBottom: "0.4rem", fontFamily: "'Playfair Display', serif", color: "var(--navy)", fontSize: "1.05rem" }}>
+              <h3 style={{ marginTop: "1.2rem", marginBottom: "0.4rem", fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", color: "var(--navy)", fontSize: "1.05rem" }}>
                 Waiting for scan…
               </h3>
               <p style={{ color: "var(--text-soft)", fontSize: "0.86rem", margin: "0 0.5rem", lineHeight: 1.5 }}>
@@ -480,17 +480,17 @@ export function PublicCatalog() {
   return (
     <div className="pc-app">
       <style>{`
-        .pc-app { --navy:#1B4D3E;--maroon:#8B2E3C;--sky:#C9A227;--text:#2B2420;--text-soft:#7A6F5D;--line:#E8DCC0;--row-bg:#FBF2D9;font-family:'Inter',-apple-system,sans-serif;max-width:520px;margin:0 auto;min-height:100vh;background:#FDF8ED;padding-bottom:3rem; }
+        .pc-app { --navy:#1B4D3E;--maroon:#8B2E3C;--sky:#C9A227;--text:#2B2420;--text-soft:#7A6F5D;--line:#E8DCC0;--row-bg:#FBF2D9;font-family:'Inter', 'Noto Sans Malayalam', -apple-system,sans-serif;max-width:520px;margin:0 auto;min-height:100vh;background:#FDF8ED;padding-bottom:3rem; }
         .pc-header { padding:1.2rem 1.1rem .8rem;text-align:center;border-bottom:3px solid var(--sky); }
-        .pc-header h1 { font-family:'Playfair Display',serif;font-weight:800;font-size:1.35rem;color:var(--navy);margin:0; }
+        .pc-header h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.35rem;color:var(--navy);margin:0;line-height:1.3; }
         .pc-sub { font-size:.78rem;color:var(--maroon);margin-top:.2rem; }
         .pc-search { padding:.9rem 1.1rem .4rem; }
-        .pc-search input { width:100%;font-size:.95rem;padding:.65rem .9rem;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text); }
+        .pc-search input { width:100%;font-size:.95rem;padding:.65rem .9rem;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-family:inherit; }
         .pc-group { padding:.8rem 1.1rem 0; }
-        .pc-group h2 { font-family:'Playfair Display',serif;font-size:.92rem;color:var(--navy);margin:0 0 .5rem;border-bottom:1px solid var(--line);padding-bottom:.3rem; }
+        .pc-group h2 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.92rem;color:var(--navy);margin:0 0 .5rem;border-bottom:1px solid var(--line);padding-bottom:.3rem;line-height:1.4; }
         .pc-row { display:flex;justify-content:space-between;align-items:center;gap:.7rem;background:var(--row-bg);border-radius:10px;padding:.6rem .8rem;margin-bottom:.45rem;box-shadow:0 1px 3px rgba(43,36,32,.07); }
-        .pc-title { font-weight:700;font-size:.9rem;color:var(--text); }
-        .pc-meta { font-size:.75rem;color:var(--text-soft);margin-top:.1rem; }
+        .pc-title { font-weight:700;font-size:.9rem;color:var(--text);line-height:1.4; }
+        .pc-meta { font-size:.75rem;color:var(--text-soft);margin-top:.1rem;line-height:1.4; }
         .pc-badge { font-size:.72rem;font-weight:700;padding:.25rem .55rem;border-radius:999px;flex:0 0 auto;white-space:nowrap; }
         .pc-avail { background:#E1F0E6;color:#1F7A52; }
         .pc-out { background:#F3E1E0;color:#8B2E3C; }
@@ -1303,7 +1303,7 @@ export default function App() {
   return (
     <div className={`app ${appSettings.darkMode ? "dark" : ""}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         :root {
           --navy:#1B4D3E;--navy-deep:#0F3328;--maroon:#8B2E3C;--sky:#C9A227;--gold-soft:#E7C989;
           --green:#2F9E6E;--row-bg:#FBF2D9;--indigo:#2C6E5C;--page-bg:#FDF8ED;--text:#2B2420;
@@ -1313,7 +1313,7 @@ export default function App() {
         }
         * { box-sizing: border-box; }
         html,body { margin:0; padding:0; }
-        .app { font-family:'Inter',sans-serif;background:var(--page-bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:6rem;position:relative; }
+        .app { font-family:'Inter', 'Noto Sans Malayalam', sans-serif;background:var(--page-bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:6rem;position:relative;line-height:1.5; }
         .mono { font-family:'JetBrains Mono',monospace; }
         .top-fixed {
           position:sticky;top:0;z-index:20;background-color:var(--page-bg);
@@ -1327,10 +1327,10 @@ export default function App() {
           box-shadow:0 2px 8px rgba(27,77,62,0.08);border-bottom:2px solid var(--sky);
         }
         .header { display:flex;align-items:flex-start;justify-content:space-between;padding:1.1rem 1.1rem .7rem; }
-        .brand h1 { font-family:'Playfair Display',serif;font-weight:800;font-size:1.5rem;color:var(--navy);margin:0;line-height:1.1; }
-        .brand .sub { font-size:.72rem;color:var(--maroon);font-weight:500;margin-top:.15rem; }
+        .brand h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.5rem;color:var(--navy);margin:0;line-height:1.3; }
+        .brand .sub { font-size:.72rem;color:var(--maroon);font-weight:500;margin-top:.15rem;line-height:1.4; }
         .desktop-title { display:none; }
-        .desktop-title h1 { font-family:'Playfair Display',serif;font-weight:800;font-size:1.7rem;color:var(--navy);margin:0;line-height:1.15; }
+        .desktop-title h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.7rem;color:var(--navy);margin:0;line-height:1.3; }
         .desktop-title .sub { font-size:.82rem;color:var(--text-soft);margin-top:.25rem; }
         .sidebar { display:none; }
         .icon-btn { background:transparent;border:none;color:var(--text);cursor:pointer;padding:.3rem;border-radius:6px; }
@@ -1340,7 +1340,7 @@ export default function App() {
         .search-wrap .icon { position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--text-soft);z-index:1; }
         .search-wrap input {
           width:100%;background:var(--search-bg);border:none;border-radius:999px;
-          padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Inter',sans-serif;color:var(--text);
+          padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;color:var(--text);
           transition:box-shadow .15s ease;
         }
         .search-wrap input:focus-visible { outline:none;box-shadow:0 0 0 2px var(--indigo),var(--shadow-sm); }
@@ -1398,8 +1398,8 @@ export default function App() {
         }
         .search-result-item:hover { background:var(--row-bg); }
         .search-result-item:focus-visible { outline:2px solid var(--indigo);outline-offset:-2px; }
-        .sr-title { font-weight:600;font-size:.88rem;color:var(--text);line-height:1.3; }
-        .sr-meta { font-size:.72rem;color:var(--text-soft);margin-top:.08rem; }
+        .sr-title { font-weight:600;font-size:.88rem;color:var(--text);line-height:1.4; }
+        .sr-meta { font-size:.72rem;color:var(--text-soft);margin-top:.08rem;line-height:1.4; }
         .sr-icon { width:32px;height:32px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto; }
         .search-no-results { text-align:center;padding:1.2rem .8rem;color:var(--text-soft);font-size:.86rem; }
         .book-hint { margin:-.2rem 1.1rem .8rem;background:#EAF2FB;border:1px solid #C9DFF5;border-radius:8px;padding:.55rem .75rem;font-size:.8rem;color:var(--navy); }
@@ -1440,8 +1440,8 @@ export default function App() {
         .avatar .check-badge { position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--indigo);display:flex;align-items:center;justify-content:center;border:2px solid #fff; }
         .avatar-img { width:100%;height:100%;object-fit:cover;display:block;border-radius:50%; }
         .avatar-letter { line-height:1;user-select:none; }
-        .student-name { font-size:1.02rem;font-weight:600;color:var(--text); }
-        .student-meta { font-size:.76rem;color:var(--text-soft);margin-top:.1rem; }
+        .student-name { font-size:1.02rem;font-weight:600;color:var(--text);line-height:1.4; }
+        .student-meta { font-size:.76rem;color:var(--text-soft);margin-top:.1rem;line-height:1.4; }
         .empty { text-align:center;padding:2.2rem 1rem;color:var(--text-soft);font-size:.9rem; }
         .bottom-bar {
           position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);
@@ -1470,24 +1470,24 @@ export default function App() {
         @media (prefers-reduced-motion:reduce) { .modal-backdrop,.modal-panel { animation:none; } }
         @media (min-width:540px) { .modal-backdrop { align-items:center; } .modal-panel { border-radius:14px;max-height:80vh; } }
         .modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem; }
-        .modal-head h2 { font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--navy);margin:0; }
+        .modal-head h2 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:1.15rem;color:var(--navy);margin:0;line-height:1.3; }
         .menu-list { display:flex;flex-direction:column;gap:.4rem; }
         .menu-row {
           display:flex;align-items:center;gap:.7rem;padding:.75rem .5rem;border-radius:8px;
           background:#F7F7F7;border:none;cursor:pointer;font-size:.92rem;font-weight:600;color:var(--text);
-          width:100%;text-align:left;
+          width:100%;text-align:left;font-family:inherit;
         }
         .menu-row:hover { background:#EFEFEF; }
         label { display:block;font-size:.8rem;color:var(--text-soft);margin-bottom:.3rem; }
         input[type="text"],input[type="number"],input[type="search"],input[type="month"],input[type="email"],input[type="password"],input[type="tel"],select,textarea {
-          width:100%;font-family:'Inter',sans-serif;font-size:.92rem;padding:.55rem .7rem;
+          width:100%;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-size:.92rem;padding:.55rem .7rem;
           border:1px solid #DDD;border-radius:6px;background:#FAFAFA;color:var(--text);
         }
         input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--indigo);border-color:var(--indigo); }
         .field { margin-bottom:.7rem; }
         .form-grid { display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.7rem; }
         .btn {
-          font-family:'Inter',sans-serif;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;
+          font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;
           border:none;border-radius:9px;padding:.6rem 1.1rem;cursor:pointer;display:inline-flex;
           align-items:center;gap:.4rem;box-shadow:var(--shadow-sm);
           transition:transform .1s ease,box-shadow .15s ease,background .15s ease;
@@ -1501,10 +1501,11 @@ export default function App() {
         .pick-item {
           display:flex;justify-content:space-between;align-items:center;background:#FAFAFA;
           border:1px solid #E5E5E5;border-radius:7px;padding:.55rem .75rem;cursor:pointer;width:100%;text-align:left;
+          font-family:inherit;
         }
         .pick-item:hover,.pick-item.selected { border-color:var(--indigo);background:#EDEEFB; }
-        .pick-item .t-title { font-weight:700;font-size:.88rem; }
-        .pick-item .t-meta { font-size:.74rem;color:var(--text-soft); }
+        .pick-item .t-title { font-weight:700;font-size:.88rem;line-height:1.4; }
+        .pick-item .t-meta { font-size:.74rem;color:var(--text-soft);line-height:1.4; }
         .pick-item .badge { font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--navy);background:#E4EFFB;padding:.15rem .4rem;border-radius:4px; }
         .current-pick {
           display:flex;justify-content:space-between;align-items:center;background:#EDEEFB;
@@ -1529,13 +1530,13 @@ export default function App() {
           transition:box-shadow .15s ease,transform .15s ease;
         }
         .row-card.overdue { border-color:var(--danger);background:#F8E9E7; }
-        .row-card .title { font-weight:700;font-size:.88rem; }
-        .row-card .meta { font-size:.74rem;color:var(--text-soft); }
+        .row-card .title { font-weight:700;font-size:.88rem;line-height:1.4; }
+        .row-card .meta { font-size:.74rem;color:var(--text-soft);line-height:1.4; }
         .row-card .due { font-family:'JetBrains Mono',monospace;font-size:.78rem; }
         .row-card.overdue .due { color:var(--danger);font-weight:700; }
         .returned-flash { font-size:.78rem;color:#1F8A5E;font-weight:700;display:flex;align-items:center;gap:.25rem; }
         table { width:100%;border-collapse:collapse; }
-        th,td { text-align:left;padding:.5rem .35rem;border-bottom:1px solid #EEE;font-size:.82rem; }
+        th,td { text-align:left;padding:.5rem .35rem;border-bottom:1px solid #EEE;font-size:.82rem;line-height:1.4; }
         th { color:var(--text-soft);font-weight:700;font-size:.72rem; }
         .grid-stats { display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:1rem; }
         .stat-card { background:#FAF6EC;border:1px solid var(--line);border-top:3px solid var(--sky);border-radius:10px;padding:.75rem .85rem;box-shadow:var(--shadow-sm); }
@@ -1543,14 +1544,14 @@ export default function App() {
         .stat-card .num { font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--navy); }
         .stat-card.warn .num { color:var(--danger); }
         .stat-card .label { font-size:.78rem;color:var(--text-soft);margin-top:.1rem; }
-        .dash-heading { font-family:'Playfair Display',serif;font-size:.95rem;color:var(--navy);margin:1.1rem 0 .5rem;display:flex;align-items:baseline;gap:.4rem; }
+        .dash-heading { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:1.1rem 0 .5rem;display:flex;align-items:baseline;gap:.4rem;line-height:1.4; }
         .dash-heading:first-of-type { margin-top:.2rem; }
-        .dash-heading .dash-sub { font-family:'Inter',sans-serif;font-weight:400;font-size:.74rem;color:var(--text-soft); }
+        .dash-heading .dash-sub { font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-weight:400;font-size:.74rem;color:var(--text-soft); }
         .rank { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--navy);width:26px;flex:0 0 auto;text-align:center;font-size:.88rem; }
         .dash-row { display:flex;align-items:center;gap:.6rem; }
         .lock-screen { position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.3rem;text-align:center;overflow-y:auto;background:var(--page-bg); }
         .lock-icon { width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:1rem; }
-        .lock-screen h1 { font-family:'Playfair Display',serif;font-weight:800;font-size:1.3rem;color:var(--navy);margin:0 0 .15rem; }
+        .lock-screen h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.3rem;color:var(--navy);margin:0 0 .15rem;line-height:1.3; }
         .lock-screen .sub { font-size:.74rem;color:var(--maroon);margin-bottom:1.6rem; }
         .lock-form { width:100%;max-width:320px;text-align:left; }
         .lock-form .field { margin-bottom:.8rem; }
@@ -1564,8 +1565,8 @@ export default function App() {
           gap: 0.5rem;
         }
         .id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
-        .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.25; }
-        .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.25; }
+        .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
+        .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
         .id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
         
         .book-label-card {
@@ -1592,12 +1593,12 @@ export default function App() {
           display:flex;flex-direction:column;
         }
         .lib-card-top { background:var(--navy);background-image:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);padding:.65rem .9rem;color:#fff; }
-        .lib-card-brand-name { font-family:'Playfair Display',serif;font-weight:800;font-size:.95rem;letter-spacing:.02em; }
-        .lib-card-brand-sub { font-size:.6rem;color:var(--gold-soft);margin-top:.15rem; }
+        .lib-card-brand-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:.95rem;letter-spacing:.02em;line-height:1.3; }
+        .lib-card-brand-sub { font-size:.6rem;color:var(--gold-soft);margin-top:.15rem;line-height:1.3; }
         .lib-card-body { display:flex;align-items:center;gap:.8rem;padding:.9rem;flex:1; }
         .lib-card-info { flex:1;min-width:0; }
-        .lib-card-name { font-family:'Playfair Display',serif;font-weight:700;font-size:1.05rem;color:var(--navy-deep);line-height:1.25; }
-        .lib-card-meta { font-size:.78rem;color:var(--text-soft);margin-top:.2rem; }
+        .lib-card-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:700;font-size:1.05rem;color:var(--navy-deep);line-height:1.3; }
+        .lib-card-meta { font-size:.78rem;color:var(--text-soft);margin-top:.2rem;line-height:1.3; }
         .lib-card-bottom { display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem .8rem;border-top:1px dashed var(--line); }
         .lib-card-id-label { font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;color:var(--text-soft);font-weight:700; }
         .lib-card-qr-wrap { background:#fff;padding:4px;border-radius:6px;box-shadow:var(--shadow-sm);line-height:0; }
@@ -1613,11 +1614,11 @@ export default function App() {
           box-shadow:var(--shadow-md);
         }
         .cert-badge { font-size:1.9rem;margin-bottom:.1rem; }
-        .cert-title { font-family:'Playfair Display',serif;font-weight:800;font-size:1.02rem;color:var(--navy-deep);letter-spacing:.03em;text-transform:uppercase; }
+        .cert-title { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.02rem;color:var(--navy-deep);letter-spacing:.03em;text-transform:uppercase;line-height:1.3; }
         .cert-sub { font-size:.64rem;color:var(--maroon);margin-top:.1rem;margin-bottom:.55rem; }
         .cert-presented { font-size:.7rem;color:var(--text-soft); }
-        .cert-name { font-family:'Playfair Display',serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:.3rem 0;border-bottom:2px solid var(--gold-soft);padding-bottom:.2rem; }
-        .cert-desc { font-size:.72rem;color:var(--text);line-height:1.45;max-width:92%;margin-top:.25rem; }
+        .cert-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:.3rem 0;border-bottom:2px solid var(--gold-soft);padding-bottom:.2rem;line-height:1.3; }
+        .cert-desc { font-size:.72rem;color:var(--text);line-height:1.5;max-width:92%;margin-top:.25rem; }
         .cert-month { font-weight:700;color:var(--maroon); }
         .cert-footer { display:flex;justify-content:space-between;width:100%;margin-top:auto;padding-top:.7rem; }
         .cert-foot-item { font-size:.62rem;color:var(--text-soft);text-align:center; }
@@ -1626,7 +1627,7 @@ export default function App() {
         /* ---- Settings ---- */
         .settings-sections { display:flex;flex-direction:column;gap:1rem; }
         .settings-section { background:#FAF6EC;border:1px solid var(--line);border-radius:10px;padding:.95rem 1.05rem; }
-        .settings-section h3 { font-family:'Playfair Display',serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem; }
+        .settings-section h3 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
         .settings-section .field:last-child { margin-bottom:0; }
         .settings-section .form-grid:last-child { margin-bottom:0; }
         .settings-footer {
@@ -1645,12 +1646,12 @@ export default function App() {
             box-shadow:2px 0 12px rgba(0,0,0,.12);overflow-y:auto;
           }
           .sidebar-brand { padding:.4rem 1.2rem 1rem;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:.8rem; }
-          .sidebar-brand-logo { font-family:'Playfair Display',serif;font-weight:800;font-size:1.3rem;line-height:1.15;color:#fff; }
-          .sidebar-brand-sub { font-size:.68rem;color:var(--gold-soft);margin-top:.25rem;line-height:1.3; }
+          .sidebar-brand-logo { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.3rem;line-height:1.3;color:#fff; }
+          .sidebar-brand-sub { font-size:.68rem;color:var(--gold-soft);margin-top:.25rem;line-height:1.4; }
           .sidebar-actions { display:flex;flex-direction:column;gap:.4rem;padding:0 .7rem .9rem;margin-bottom:.6rem;border-bottom:1px solid rgba(255,255,255,.12); }
           .sidebar-action-btn {
             display:flex;align-items:center;gap:.6rem;background:var(--sky);color:var(--navy-deep);
-            border:none;border-radius:8px;padding:.62rem .85rem;font-family:'Inter',sans-serif;
+            border:none;border-radius:8px;padding:.62rem .85rem;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
             font-weight:700;font-size:.85rem;cursor:pointer;text-align:left;
             transition:background .15s ease,transform .1s ease;
           }
@@ -1660,7 +1661,7 @@ export default function App() {
           .sidebar-nav { display:flex;flex-direction:column;gap:.12rem;padding:0 .7rem;flex:1; }
           .sidebar-nav button {
             display:flex;align-items:center;gap:.7rem;background:transparent;color:rgba(255,255,255,.82);
-            border:none;padding:.6rem .8rem;border-radius:8px;font-family:'Inter',sans-serif;
+            border:none;padding:.6rem .8rem;border-radius:8px;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
             font-size:.86rem;font-weight:500;cursor:pointer;text-align:left;position:relative;
             transition:background .15s ease,color .15s ease;
           }
@@ -1674,7 +1675,7 @@ export default function App() {
           .sidebar-footer { padding:.8rem .7rem 0;border-top:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;gap:.12rem; }
           .sidebar-footer button {
             display:flex;align-items:center;gap:.7rem;background:transparent;color:rgba(255,255,255,.65);
-            border:none;padding:.55rem .8rem;border-radius:8px;font-family:'Inter',sans-serif;
+            border:none;padding:.55rem .8rem;border-radius:8px;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
             font-size:.82rem;cursor:pointer;text-align:left;
             transition:background .15s ease,color .15s ease;
           }
@@ -2368,7 +2369,7 @@ export default function App() {
                 <button type="submit" className="btn full"><Plus size={16} /> Add Student</button>
               </form>
               <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: ".9rem" }}>
-                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Add many at once</h2>
+                <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Add many at once</h2>
                 <p style={{ fontSize: ".78rem", color: "var(--text-soft)", marginBottom: ".6rem" }}>
                   Paste one student per line. Either just a name, or "Name, Class, Roll, Phone" per line.
                 </p>
@@ -2391,7 +2392,7 @@ export default function App() {
                 </form>
               </div>
               <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: ".9rem" }}>
-                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>All students</h2>
+                <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>All students</h2>
                 <input type="search" value={studentListQuery} onChange={(e) => setStudentListQuery(e.target.value)} placeholder="Search name or roll..." style={{ marginBottom: ".6rem" }} />
                 <div className="row-list" style={{ maxHeight: 280, overflowY: "auto" }}>
                   {studentListForManage.length === 0 && <div className="empty">No students yet.</div>}
@@ -2467,7 +2468,7 @@ export default function App() {
                 ) : (
                   catalogGrouped.map(([cat, list]) => (
                     <div key={cat} style={{ marginBottom: ".9rem" }}>
-                      <h3 style={{ fontFamily: "Playfair Display, serif", fontSize: ".88rem", color: "var(--navy)", margin: "0 0 .4rem", borderBottom: "1px solid #EEE", paddingBottom: ".25rem" }}>
+                      <h3 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".88rem", color: "var(--navy)", margin: "0 0 .4rem", borderBottom: "1px solid #EEE", paddingBottom: ".25rem" }}>
                         {cat} <span style={{ color: "var(--text-soft)", fontWeight: 400, fontSize: ".75rem" }}>({list.length})</span>
                       </h3>
                       <div className="row-list">
@@ -2505,7 +2506,7 @@ export default function App() {
                   ))
                 )}
               </div>
-              <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: "1rem", color: "var(--navy)" }}>Add New Book</h2>
+              <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: "1rem", color: "var(--navy)" }}>Add New Book</h2>
               <form onSubmit={addBook}>
                 <div className="field"><label>Title</label><input type="text" value={bookForm.title} onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })} required /></div>
                 <div className="field"><label>Author</label><input type="text" value={bookForm.author} onChange={(e) => setBookForm({ ...bookForm, author: e.target.value })} /></div>
@@ -2523,7 +2524,7 @@ export default function App() {
                 <button type="submit" className="btn full"><Plus size={16} /> Add Book</button>
               </form>
               <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: ".9rem" }}>
-                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Add many at once</h2>
+                <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Add many at once</h2>
                 <p style={{ fontSize: ".78rem", color: "var(--text-soft)", marginBottom: ".6rem" }}>
                   Pick a category below and every book in this paste gets that category. Or add a 5th column per line for per-line category. Same code overwrites existing book.
                 </p>
@@ -2725,7 +2726,7 @@ export default function App() {
                     </div>
                   </form>
                 )}
-                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Book history</h2>
+                <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Book history</h2>
                 {dTx.length === 0 ? <div className="empty">No books issued to this student yet.</div> : (
                   <div style={{ overflowX: "auto" }}>
                     <table>
@@ -2777,7 +2778,7 @@ export default function App() {
                     <button onClick={() => { deleteBook(dBook); setSheet(null); }}><Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove</button>
                   </div>
                 </div>
-                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".4rem" }}>Currently issued to</h2>
+                <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".4rem" }}>Currently issued to</h2>
                 {holders.length === 0 ? <div className="empty" style={{ padding: ".8rem" }}>Nobody — all copies on the shelf.</div> : (
                   <div className="row-list" style={{ marginBottom: "1rem" }}>
                     {holders.map((h) => {
@@ -2791,7 +2792,7 @@ export default function App() {
                     })}
                   </div>
                 )}
-                <h2 style={{ fontFamily: "Playfair Display, serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Full issue history</h2>
+                <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".5rem" }}>Full issue history</h2>
                 {bookHistory.length === 0 ? <div className="empty">This book has never been issued.</div> : (
                   <div style={{ overflowX: "auto" }}>
                     <table>
