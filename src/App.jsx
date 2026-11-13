@@ -1549,8 +1549,23 @@ export default function App() {
         .lock-error { color:var(--danger);font-size:.82rem;font-weight:600;margin-bottom:.7rem;text-align:center; }
         .lock-hint { font-size:.76rem;color:var(--text-soft);margin-top:1rem;text-align:center; }
         .print-area { display:grid;grid-template-columns:1fr 1fr;gap:.6rem; }
-        .print-area.books-print { grid-template-columns:1fr 1fr 1fr; }
+        .print-area.books-print { grid-template-columns: repeat(4, 1fr); }
         .id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
+        .book-label-card {
+  padding: 0.2rem;
+  border: 1px dashed #ccc; /* പ്രിൻ്റ് ചെയ്ത് മുറിക്കാൻ വേണ്ടി */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.book-label-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.75rem;
+  margin-bottom: 0.1rem;
+  color: var(--text);
+}
         .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.25; }
         .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.25; }
         .id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
@@ -2096,15 +2111,11 @@ export default function App() {
                       </div>
                     ))
                   : books.map((b) => (
-                      <div className="id-card" key={b.id}>
-                        <div className="id-card-name">{b.title}</div>
-                        <div className="id-card-meta">{b.category || UNCATEGORIZED} · {b.code}</div>
-                        <QRCodeCanvas value={bookQrValue(b.code)} size={110} />
-                      </div>
-                    ))}
-              </div>
-            </Modal>
-          )}
+    <div className="id-card book-label-card" key={b.id}>
+      <div className="book-label-code">{b.code}</div>
+      <QRCodeCanvas value={bookQrValue(b.code)} size={100} />
+    </div>
+  ))}
 
           {sheet === "issue" && (
             <Modal title="Issue Book" onClose={() => setSheet(null)}>
