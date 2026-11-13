@@ -4,12 +4,15 @@ import {
   BookMarked, RotateCcw, UserPlus, MoreVertical, X, Layers, Pencil,
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
+  Settings, Save, Palette, FileDown,
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
 import html2canvas from "html2canvas";
 import { auth, db } from "./firebaseClient";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword } from "firebase/auth";
+import {
+  onAuthStateChanged, signInWithEmailAndPassword, signOut, updatePassword,
+} from "firebase/auth";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc, addDoc,
   query, where, getDocs, deleteDoc, writeBatch,
@@ -22,6 +25,19 @@ const DEFAULT_CATEGORIES = [
 ];
 const UNCATEGORIZED = "Uncategorized";
 const BOOK_QR_PREFIX = "BOOK:";
+const SETTINGS_DEFAULTS = {
+  libraryName: "NMMI ISLAMIC LIBRARY",
+  librarySubtitle: "Nandiyil Muhammed Musliyar Memorial Islamic Library",
+  librarianName: "",
+  phone: "",
+  email: "",
+  defaultLoanDays: 14,
+  maxBooksPerStudent: 3,
+  finePerDay: 0,
+  graceDays: 0,
+  reminderDaysBefore: 2,
+  darkMode: false,
+};
 
 function bookQrValue(code) { return BOOK_QR_PREFIX + stripSpaces(code); }
 function parseBookQrValue(text) {
@@ -113,6 +129,7 @@ function playTone(freq, dur, type, vol, delay) {
 }
 function playScanSound(kind) {
   if (kind === "success") { playTone(1047, 90, "sine", 0.22, 0); playTone(1568, 140, "sine", 0.2, 70); }
+  else if (kind === "returnSuccess") { playTone(784, 100, "sine", 0.2, 0); playTone(523, 150, "sine", 0.18, 90); }
   else if (kind === "error") playTone(220, 170, "square", 0.16, 0);
   else if (kind === "warning") { playTone(440, 90, "triangle", 0.2, 0); playTone(440, 90, "triangle", 0.2, 140); }
 }
@@ -120,7 +137,7 @@ function playScanSound(kind) {
 const SEED_BOOKS = [
   { title: "Gitanjali", author: "Rabindranath Tagore", code: "B001" },
   { title: "The Discovery of India", author: "Jawaharlal Nehru", code: "B002" },
-  { title: "An Autobiography", author: "Mahatma Gandhi", code: "B003" },
+  { title: "An Autobiography / The Story of My Experiments with Truth", author: "Mahatma Gandhi", code: "B003" },
   { title: "Godaan", author: "Munshi Premchand", code: "B004" },
   { title: "Aarogya Niketan", author: "Tarashankar Bandopadhyay", code: "B005" },
   { title: "Rashmirathi", author: "Ramdhari Singh Dinkar", code: "B006" },
@@ -141,7 +158,7 @@ const SEED_BOOKS = [
   { title: "Aadujeevitham", author: "Benyamin", code: "B021" },
   { title: "Mrichchakatika", author: "Shudraka", code: "B022" },
   { title: "Meghaduta", author: "Kalidasa", code: "B023" },
-  { title: "Arthashastra", author: "Kautilya", code: "B024" },
+  { title: "Arthashastra", author: "Kautilya (Chanakya)", code: "B024" },
   { title: "The Palace of Illusions", author: "Chitra Banerjee Divakaruni", code: "B025" },
 ].map((b) => ({ id: uid(), totalCopies: 1, availableCopies: 1, ...b }));
 
@@ -176,13 +193,98 @@ const NMMI_SEED_BOOKS = [
   { code: "HW8", title: "നന്മയുടെ ഉമ്മ റാബിയത്തുൽ അദവിയ", author: "എ എച്ച് കോട്ടപ്പുഴ" },
   { code: "HW9", title: "ബീവി സുബൈദ", author: "അഹ്മദ് ചെമ്മാട്" },
   { code: "HW10", title: "നാലു പൂക്കൾ", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദർ" },
+  { code: "HW11", title: "സ്വർഗ്ഗം തേടിയ ഒരു വനിതയുടെ യാത്ര", author: "സ്വഫുവാൻ സുഹൈൽ" },
+  { code: "HW12", title: "ട്രൈഗ്രീസിന്റെ പുത്രി", author: "ഹുസൈൻ രണ്ടത്താണി" },
+  { code: "HW13", title: "ബീവി റാബിയത്തുൽ അദബിയ", author: "അഹ്മദ് മുസ്ലിയാർ" },
+  { code: "HW14", title: "ഇവൾ സൗഭാഗ്യവതി", author: "ഡോ ആയിദ് അൽകർണി" },
+  { code: "HW15", title: "പർദ്ദയണിഞ്ഞ കലാകാരികൾ", author: "ഹൈദരലി ശാന്തപുരം" },
+  { code: "HW16", title: "അസ്മാ ബീവി റളിയള്ളാഹു അൻഹ", author: "കെ കുഞ്ഞാമു" },
+  { code: "HW17", title: "ആസിയ ബീവി", author: "പി എം കെ ഫൈസി" },
+  { code: "HW18", title: "സുറാഖയുടെ മകൾ", author: "ഉസ്മാൻ നിസാമി കക്കാട്" },
+  { code: "HW19", title: "നഫീസത്തുൽ മിസ്രിയ", author: "ഇല്യാസ് ചെറിയ മുണ്ടം" },
+  { code: "HW20", title: "ഉമ്മു ഐമൻ", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദിർ" },
+  { code: "HW21", title: "സൗദ സൗഭാഗ്യം", author: "കെ വി കെ ബുഖാരി" },
+  { code: "HW22", title: "ഉമ്മഹാത്തുൽ മുഅ്മിനീൻ", author: "മുഹമ്മദ് ബുഹാരി" },
+  { code: "HW23", title: "നഫീസത്തുൽ മിസിരിയ", author: "മോയിൻ ഹുദവി" },
+  { code: "HW24", title: "ഉമ്മുൽ മുഅമിനീൻ ആയിഷ", author: "സുലൈമാൻ നദ്വി" },
+  { code: "HW25", title: "സ്വഹാബി വനിതകൾ", author: "അബ്ദുൽ കരീം" },
+  { code: "HW26", title: "നിലാവൊഴുകുന്ന മരക്കാടുകൾ", author: "" },
+  { code: "HW27", title: "ബീവി ഖദീജ", author: "മുജീബ് റഹ്മാൻ" },
+  { code: "HW28", title: "ബീവി ആസിയ", author: "മോയിൻ" },
+  { code: "HW29", title: "ഹിന്ദ്", author: "അബ്ദുൽ ഖാദിർ കൊടുവള്ളി" },
+  { code: "HW30", title: "നഫീസത്തുൽ മിസിരിയ", author: "അബ്ദുൽ മജീദ്" },
+  { code: "HW31", title: "ഉമ്മുകുൽസും", author: "മുജീബ് റഹ്മാൻ" },
+  { code: "HW32", title: "ഫാത്തിമ", author: "അക്ബർ വഹബി" },
+  { code: "HW33", title: "ഹലീമ", author: "മുഹമ്മദ്" },
+  { code: "HW34", title: "ആയിഷ", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദർ" },
+  { code: "HW35", title: "മഹിളാ മുത്തുകൾ", author: "സ്വാദിഖ് അൻവരി" },
+  { code: "HW36", title: "ബീവി ഫാത്തിമ", author: "ഫാറൂഖ് ബുഖാരി" },
+  { code: "HW37", title: "മാതൃ രത്നങ്ങൾ", author: "ഇബിനു മൂസ" },
+  { code: "HW38", title: "ഹാജറ ബീവി", author: "സാലിം നദ്‌വി" },
+  { code: "HW39", title: "ഞാൻ ഹലീമ", author: "മുഹമ്മദ്" },
+  { code: "HW40", title: "മറിയം ബീവി", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദർ" },
+  { code: "HW41", title: "മാതൃ രത്നങ്ങൾ", author: "വിപിനും മൂസ" },
+  { code: "HW42", title: "ഫാത്തിമ", author: "കൊടുവള്ളി അബ്ദുൽ ഖാദർ" },
+  { code: "HW43", title: "ആയിഷ", author: "മുഹമ്മദ് അജ്മൽ നൂറാനി" },
+  { code: "HW44", title: "മാണിക്യ മലർ ബീവി ഖദീജ", author: "മുഹമ്മദ് പാറന്നൂർ" },
+  { code: "HW45", title: "അസ്മാഹ് ബിൻത് അബൂബക്കർ", author: "മുഹമ്മദ് പാറന്നൂർ" },
+  { code: "HW48", title: "ബീവി ഉമ്മു ഉമാറ", author: "മുഹമ്മദ് പാറന്നൂർ" },
+  { code: "HW49", title: "ബീവി ഫാത്തിമ", author: "മുഹമ്മദ് ഫാറൂഖ് ബുഖാരി" },
   { code: "SM1", title: "കണക്കിലെ എളുപ്പവഴികൾ", author: "ടി ശിവദാസ്" },
   { code: "SM2", title: "കണ്ടുപഠിച്ചാൽ കണക്ക് എളുപ്പം", author: "മാധവൻ പള്ളത്തേരി" },
-  { code: "SM3", title: "ഭാരതീയ ഗണിതം", author: "രാമചന്ദ്രമേനോൻ" },
+  { code: "SM3", title: "ഭാരതീയ ഗണിതം", author: "പ്രൊഫൈൽ രാമചന്ദ്രമേനോൻ" },
+  { code: "SM4", title: "കുസൃതി കണക്കുകൾ", author: "എൻ ആർ രാജീവ് കുമാർ" },
+  { code: "SM5", title: "മനക്കണക്ക്", author: "കെ കെ വാസു" },
+  { code: "SM6", title: "ഗണിതം ലളിതം", author: "പള്ളിയറ ശ്രീധരൻ" },
+  { code: "SM7", title: "കണക്ക് വരയും കുറിയും", author: "പി കെ കൊച്ചു നാരായണൻ" },
+  { code: "SM8", title: "ഗണിതം എന്റെളുപ്പം", author: "എം എസ് ഖാൻ" },
+  { code: "SM9", title: "ഒന്നുമില്ലായ്മയുടെ ശ്യാമ സൗന്ദര്യം", author: "ഗണിതം എന്റെളുപ്പം" },
+  { code: "SM10", title: "ഗണിതം ലളിതം", author: "പള്ളിയറ ശ്രീധരൻ" },
   { code: "SPY1", title: "ജീവിത ഗാനം", author: "പി എൻ ദാസ്" },
   { code: "SPY2", title: "സത്സംഗ പിയൂഷം", author: "ബാലകൃഷ്ണൻ നായർ" },
+  { code: "SPY3", title: "റൂമിയുടെ ആകാശം", author: "സൂഫി" },
+  { code: "SPY4", title: "മിസ്റ്റിക് റോസ്", author: "സിദ്ധീഖ്" },
+  { code: "SPY5", title: "സൂക്തി സമാഹാരം", author: "ചാക്കോ" },
+  { code: "SPY6", title: "യാത്ര ബാഷ്പം", author: "സൂഫി" },
+  { code: "SPY7", title: "അകക്കാഴ്ച", author: "സദ്ഗുരു" },
+  { code: "SPY8", title: "ബൃഹദാരണ്യ കോപനിഷത്ത്", author: "ശിവശങ്കരൻ നായർ" },
+  { code: "SPY9", title: "അഷ്ടാംഗ യോഗ", author: "നരസിംഹൻ" },
+  { code: "SPY10", title: "ചാണക്യ നീതി സാരം", author: "കാമാക്ഷി കുട്ടി" },
+  { code: "SPY11", title: "ആത്മവെളിച്ചം", author: "അബ്ദുൽ മജീദ്" },
+  { code: "SPY12", title: "ദൈവത്തിൻറെ ചുംബനങ്ങൾ", author: "ഖലീൽ ജിബ്രാൻ" },
+  { code: "SPY13", title: "മുസ്ലിമിന്റെ ഒരു ദിവസം", author: "ഇസ്മായിൽ മുജദിനി" },
+  { code: "SPY14", title: "ഇസ്ലാമിക തത്വചിന്ത", author: "സിദ്ധീഖ്" },
   { code: "SHR1", title: "മനുഷ്യാവകാശങ്ങൾ", author: "ജി ജോ കെ മാനുവൽ" },
   { code: "SHR2", title: "വംശവൃക്ഷത്തിന്റെ വേരുകൾ", author: "സിപി അബൂബക്കർ" },
+  { code: "SHR3", title: "പീഡനത്തിന് മനശാസ്ത്രം രാഷ്ട്രീയം", author: "കലിം" },
+  { code: "SHR4", title: "ഭോപാലിൽ അന്ന് സംഭവിച്ചത്", author: "ഡൊമിനിക് ലാപ്പിയർ ജാവിർ മോറോ" },
+  { code: "SHR5", title: "കർക്കരയേ കൊന്നതാര്", author: "മുശിരിഫ്" },
+  { code: "SHR6", title: "ചരിത്രത്തിന് സംഭവിക്കുന്നത്", author: "കെ എൻ പണിക്കർ" },
+  { code: "SHR7", title: "പീഡനത്തിന് എതിരെ ഒരു മാർഗ്ഗരേഖ", author: "മുഹമ്മദ് ശരീഫ്" },
+  { code: "SHR8", title: "ഇരകളുടെ മാനിഫെസ്റ്റോ", author: "കെ ഇ എൻ" },
+  { code: "SHR9", title: "സംവരണം", author: "അബൂബക്കർ" },
+  { code: "SHR10", title: "ആദിവാസി", author: "സോമൻ കടലൂർ" },
+  { code: "SHR11", title: "ജലയുദ്ധങ്ങൾ", author: "വന്ദന ശിവ" },
+  { code: "SHR12", title: "സുഭാഷ് ചന്ദ്രബോസിന്റെ തിരോധാനം", author: "പി എസ് രാകേഷ്" },
+  { code: "SHR13", title: "ഫലസ്തീൻ", author: "ആലിക്കുട്ടി മുസ്ലിയാർ" },
+  { code: "SHR14", title: "മനുഷ്യാവകാശ സാമ്രാജ്യത്വം ഭീകരത", author: "തഫ്സൽ ഇജാസ്" },
+  { code: "SHR15", title: "പാരിസ്ഥിതിയും സോഷ്യലിസവും", author: "ക്രിസ് വില്യംസ്" },
+  { code: "SHR16", title: "ബാബരി മസ്ജിദ് രാമജന്മഭൂമിയോ", author: "ഹാരിസ്" },
+  { code: "SHR17", title: "ബാബരി മസ്ജിദിന്റെ പതനവും മതേതര പ്രതിസന്ധിയും", author: "ഹുസൈൻ" },
+  { code: "SHR18", title: "ആഗോളവൽക്കരണവും ആദിവാസികളും", author: "ഡോ മാത്യു ഐയർത്തയിൽ എസ് ജെ" },
+  { code: "SHR19", title: "സാമ്രാജ്യത്തെ ഭീകരത ചരിത്ര വർത്തമാനം", author: "വിനിൻപെര ജർമ്മനി സിബ്ബുക്ക്" },
+  { code: "SHR20", title: "വിദ്വേഷത്തിന്റെ വിളവെടുപ്പ്", author: "കെ എം ഷാജി" },
+  { code: "SHR21", title: "കുട്ടികളുടെ അവകാശങ്ങൾ", author: "അധ്യ കാളീശ്വരം രാജ്" },
+  { code: "SHR22", title: "ഗുജറാത്ത്", author: "ആർ ബി ശ്രീകുമാർ" },
+  { code: "SHR23", title: "മനുഷ്യാവകാശങ്ങൾ", author: "സിജോ കെ മാനുവൽ" },
+  { code: "SHR24", title: "മനുഷ്യാവകാശ പ്രവർത്തകർക്ക്", author: "അധ്യ എം എം അലിയാർ" },
+  { code: "SHR25", title: "പാരിസ്ഥിതിക പരിപ്രേക്ഷ്യം", author: "എ എൻ സത്യദാസ്" },
+  { code: "SHR26", title: "സംവരണം", author: "ഡോ പി എ അബൂബക്കർ" },
+  { code: "SHR27", title: "കാടുകളും ആദിവാസികളും മുളങ്കാടുകളും", author: "കെ ആർ സതീശൻ നായർ" },
+  { code: "SHR28", title: "ബഹുസ്വരദയും ഇന്ത്യൻ മുസ്ലിങ്ങളും", author: "ഡോ എഫ് ആർ പരിധി" },
+  { code: "SHR29", title: "ശ്രീലങ്ക", author: "ജയ്സൺ പാനികുളങ്ങര" },
+  { code: "SHR30", title: "ശ്രീലങ്ക കണ്ണീരിന്റെ ഭൂപടം", author: "തോപ്പിൽ മുഹമ്മദ് ബീരാൻ" },
+  { code: "SHR31", title: "മനുഷ്യാവകാശ പ്രവർത്തകർക്ക്", author: "അധ്യ എം എം അലിയാർ" },
 ].map((b) => ({ id: uid(), totalCopies: 1, availableCopies: 1, ...b }));
 
 const SEED_STUDENTS = [
@@ -192,12 +294,18 @@ const SEED_STUDENTS = [
   { name: "അബ്ദുൽ ബാസിത്", className: "CLASS-2", roll: "D4" },
   { name: "ഖദീജ നസ്രിൻ", className: "CLASS-3", roll: "D5" },
   { name: "മുഹമ്മദ് ഫൈസൽ", className: "CLASS-3", roll: "D6" },
+  { name: "സൈനബ റഹ്മത്ത്", className: "CLASS-4", roll: "D7" },
+  { name: "യൂസുഫ് നിയാസ്", className: "CLASS-4", roll: "D8" },
+  { name: "ഹാജറ സന", className: "CLASS-5", roll: "D9" },
+  { name: "ഇസ്മായിൽ ഹംസ", className: "CLASS-5", roll: "D10" },
+  { name: "മറിയം ഫിദ", className: "CLASS-6", roll: "D11" },
+  { name: "അഹ്മദ് റാഷിദ്", className: "CLASS-6", roll: "D12" },
 ].map((s) => ({ id: uid(), ...s }));
 
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, children, wide }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+      <div className={`modal-panel ${wide ? "modal-wide" : ""}`} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>{title}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={18} /></button>
@@ -233,7 +341,6 @@ function Avatar({ name, photoUrl, size = 42, children }) {
   );
 }
 
-// Camera-based scanner — used on mobile and as desktop fallback
 function Scanner({ onResult, onClose, feedback }) {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
@@ -259,10 +366,7 @@ function Scanner({ onResult, onClose, feedback }) {
         }
       }
     })();
-    return () => {
-      active = false;
-      try { readerRef.current?.reset(); } catch {}
-    };
+    return () => { active = false; try { readerRef.current?.reset(); } catch {} };
   }, []);
 
   return (
@@ -294,7 +398,6 @@ function Scanner({ onResult, onClose, feedback }) {
   );
 }
 
-// Desktop hardware-scanner waiting screen
 function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -322,11 +425,9 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
               </p>
               <p style={{ color: "var(--text-soft)", fontSize: "0.76rem", marginTop: "1.2rem" }}>
                 No scanner?{" "}
-                <button
-                  type="button"
-                  style={{ background: "none", border: "none", color: "var(--indigo)", textDecoration: "underline", cursor: "pointer", padding: 0, fontSize: "inherit", fontWeight: 600 }}
-                  onClick={onUseCamera}
-                >Use camera instead</button>
+                <button type="button" style={{ background: "none", border: "none", color: "var(--indigo)", textDecoration: "underline", cursor: "pointer", padding: 0, fontSize: "inherit", fontWeight: 600 }} onClick={onUseCamera}>
+                  Use camera instead
+                </button>
               </p>
             </>
           )}
@@ -371,9 +472,8 @@ export function PublicCatalog() {
   return (
     <div className="pc-app">
       <style>{`
-        .pc-app { --navy:#1B4D3E;--maroon:#8B2E3C;--sky:#C9A227;--text:#2B2420;--text-soft:#7A6F5D;--line:#E8DCC0;--row-bg:#FBF2D9;
-          font-family:'Inter',-apple-system,sans-serif;max-width:520px;margin:0 auto;min-height:100vh;background:#FDF8ED;padding-bottom:3rem; }
-        .pc-header { padding:1.2rem 1.1rem 0.8rem;text-align:center;border-bottom:3px solid var(--sky); }
+        .pc-app { --navy:#1B4D3E;--maroon:#8B2E3C;--sky:#C9A227;--text:#2B2420;--text-soft:#7A6F5D;--line:#E8DCC0;--row-bg:#FBF2D9;font-family:'Inter',-apple-system,sans-serif;max-width:520px;margin:0 auto;min-height:100vh;background:#FDF8ED;padding-bottom:3rem; }
+        .pc-header { padding:1.2rem 1.1rem .8rem;text-align:center;border-bottom:3px solid var(--sky); }
         .pc-header h1 { font-family:'Playfair Display',serif;font-weight:800;font-size:1.35rem;color:var(--navy);margin:0; }
         .pc-sub { font-size:.78rem;color:var(--maroon);margin-top:.2rem; }
         .pc-search { padding:.9rem 1.1rem .4rem; }
@@ -490,16 +590,21 @@ export default function App() {
   const [bulkStartRoll, setBulkStartRoll] = useState("");
   const [studentListQuery, setStudentListQuery] = useState("");
 
-  // ---- Scanner / camera mode state ----
   const [scannerTarget, setScannerTarget] = useState(null);
   const [scanFeedback, setScanFeedback] = useState(null);
-  // Detect desktop (>==1024px AND no primary touch) → hardware scanner mode
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.innerWidth >= 1024;
-  });
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   const [desktopForceCamera, setDesktopForceCamera] = useState(false);
   const scanLockRef = useRef(false);
+
+  // Search dropdown state
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const searchWrapRef = useRef(null);
+
+  // Settings state
+  const [appSettings, setAppSettings] = useState(SETTINGS_DEFAULTS);
+  const [settingsDraft, setSettingsDraft] = useState(SETTINGS_DEFAULTS);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSavedMsg, setSettingsSavedMsg] = useState("");
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -507,10 +612,24 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
+        setShowSearchResults(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, []);
+
   async function handleSignIn(e) {
     e.preventDefault();
-    setPwError("");
-    setSigningIn(true);
+    setPwError(""); setSigningIn(true);
     try {
       await signInWithEmailAndPassword(auth, signInEmail.trim(), signInPassword);
       setSignInPassword("");
@@ -531,6 +650,57 @@ export default function App() {
         setChangeError("For security, please sign out and sign in again before changing your password.");
       } else setChangeError("Couldn't update password. Try again.");
     }
+  }
+
+  async function saveSettings() {
+    setSettingsSaving(true); setSettingsSavedMsg("");
+    try {
+      await setDoc(doc(db, "settings", "app"), settingsDraft, { merge: true });
+      setAppSettings(settingsDraft);
+      setSettingsSavedMsg("✅ Settings saved.");
+      setTimeout(() => setSettingsSavedMsg(""), 2500);
+    } catch (e) {
+      setSettingsSavedMsg("❌ Couldn't save. Check your connection.");
+    }
+    setSettingsSaving(false);
+  }
+
+  function downloadCSV(filename, rows) {
+    const csv = rows.map((r) =>
+      r.map((cell) => {
+        const s = String(cell ?? "");
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      }).join(",")
+    ).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = filename; link.click();
+    URL.revokeObjectURL(url);
+  }
+  function exportBooksCSV() {
+    const rows = [["Code", "Title", "Author", "Category", "Total", "Available"]];
+    books.forEach((b) => rows.push([b.code, b.title, b.author || "", b.category || "", b.totalCopies, b.availableCopies]));
+    downloadCSV(`books_${todayISO()}.csv`, rows);
+  }
+  function exportStudentsCSV() {
+    const rows = [["Name", "Class", "Roll", "Phone", "Books held"]];
+    students.forEach((s) => rows.push([s.name, s.className || "", s.roll || "", s.phone || "", studentActiveTx(s.id).length]));
+    downloadCSV(`students_${todayISO()}.csv`, rows);
+  }
+  function exportTransactionsCSV() {
+    const rows = [["Book", "Code", "Student", "Class", "Issued", "Due", "Returned", "Status"]];
+    transactions.forEach((t) => {
+      const book = bookById(t.bookId);
+      const st = studentById(t.studentId);
+      rows.push([
+        book?.title || "", book?.code || "",
+        st?.name || "", st?.className || "",
+        t.issueDate, t.dueDate, t.returnDate || "",
+        t.returnDate ? "Returned" : (t.dueDate < todayISO() ? "Overdue" : "Out"),
+      ]);
+    });
+    downloadCSV(`transactions_${todayISO()}.csv`, rows);
   }
 
   useEffect(() => {
@@ -556,6 +726,13 @@ export default function App() {
       else {
         setCategories(DEFAULT_CATEGORIES);
         try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {}
+      }
+    }));
+    unsubs.push(onSnapshot(doc(db, "settings", "app"), (snap) => {
+      if (snap.exists()) {
+        const merged = { ...SETTINGS_DEFAULTS, ...snap.data() };
+        setAppSettings(merged);
+        setSettingsDraft(merged);
       }
     }));
     unsubs.push(onSnapshot(collection(db, "books"), async (qsnap) => {
@@ -598,23 +775,17 @@ export default function App() {
     return () => unsubs.forEach((u) => u && u());
   }, [user]);
 
-  // ---- Global keyboard listener for hardware scanner (desktop only) ----
-  // Active ONLY when a scan is expected (scannerTarget is set) and we're NOT
-  // in the forced-camera fallback. This prevents interfering with normal typing.
+  // Hardware scanner keyboard listener (desktop only, when scan expected)
   useEffect(() => {
     if (!isDesktop || !scannerTarget || desktopForceCamera) return;
-    let buffer = "";
-    let lastKeyTime = 0;
-    let resetTimer = null;
+    let buffer = "", lastKeyTime = 0, resetTimer = null;
 
     const onKeyDown = (e) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
-
       if (e.key === "Enter") {
         if (buffer.length > 0) {
           e.preventDefault();
-          const code = buffer.trim();
-          buffer = "";
+          const code = buffer.trim(); buffer = "";
           if (code && !scanLockRef.current) {
             scanLockRef.current = true;
             handleScanResult(code);
@@ -623,10 +794,8 @@ export default function App() {
         }
         return;
       }
-
       if (e.key.length === 1) {
         const now = Date.now();
-        // Reset buffer if user pauses >100ms (human typing) — scanner sends fast
         if (now - lastKeyTime > 100) buffer = "";
         lastKeyTime = now;
         buffer += e.key;
@@ -634,13 +803,11 @@ export default function App() {
         resetTimer = setTimeout(() => { buffer = ""; }, 1500);
       }
     };
-
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       clearTimeout(resetTimer);
     };
-    // handleScanResult is re-created each render; the deps below are what matter
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDesktop, scannerTarget, desktopForceCamera]);
 
@@ -797,10 +964,8 @@ export default function App() {
   }
   async function handlePhotoUpload(e, student) {
     const file = e.target.files && e.target.files[0];
-    e.target.value = "";
-    if (!file) return;
-    setPhotoError("");
-    setPhotoUploading(true);
+    e.target.value = ""; if (!file) return;
+    setPhotoError(""); setPhotoUploading(true);
     try {
       const dataUrl = await resizeImageToDataURL(file);
       await updateDoc(doc(db, "students", student.id), { photoUrl: dataUrl });
@@ -852,8 +1017,18 @@ export default function App() {
   }
   async function issueBook() {
     if (!selectedStudentId || !selectedBook || selectedBook.availableCopies < 1) return;
+    const maxBooks = appSettings.maxBooksPerStudent || 0;
+    if (maxBooks > 0) {
+      const held = studentActiveTx(selectedStudentId).length;
+      if (held >= maxBooks) {
+        const st = studentById(selectedStudentId);
+        alert(`${st?.name || "This student"} already has ${held} book(s) — the limit is ${maxBooks}.`);
+        return;
+      }
+    }
     const issueDate = todayISO();
-    const dueDate = addDays(issueDate, Math.max(1, parseInt(days) || 14));
+    const loanDays = appSettings.defaultLoanDays || 14;
+    const dueDate = addDays(issueDate, Math.max(1, parseInt(days) || loanDays));
     try {
       await addDoc(collection(db, "transactions"), {
         bookId: selectedBook.id, studentId: selectedStudentId, issueDate, dueDate, returnDate: null,
@@ -886,6 +1061,18 @@ export default function App() {
     const q = normCode(homeQuery);
     if (!q) return null;
     return books.find((b) => normCode(b.code) === q || normCode(b.code).includes(q)) || null;
+  }, [homeQuery, books]);
+
+  const searchStudentMatches = useMemo(() => {
+    const q = homeQuery.trim().toLowerCase();
+    if (!q) return [];
+    return students.filter((s) => s.name.toLowerCase().includes(q) || (s.roll || "").toLowerCase().includes(q)).slice(0, 5);
+  }, [homeQuery, students]);
+
+  const searchBookMatches = useMemo(() => {
+    const q = homeQuery.trim().toLowerCase();
+    if (!q) return [];
+    return books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 5);
   }, [homeQuery, books]);
 
   const filteredStudents = useMemo(() => {
@@ -972,12 +1159,12 @@ export default function App() {
   const selectedStudent = selectedStudentId ? studentById(selectedStudentId) : null;
 
   function openIssue() {
-    setIssueStudentQuery(""); setBookQuery(""); setSelectedBook(null); setLastIssued(null); setSheet("issue");
+    setIssueStudentQuery(""); setBookQuery(""); setSelectedBook(null); setLastIssued(null);
+    setDays(appSettings.defaultLoanDays || 14);
+    setSheet("issue");
   }
   function openReturn() { setReturnQuery(""); setSheet("return"); }
 
-  // Opens the appropriate scanner (camera on mobile, hardware on desktop).
-  // Resets any previous "force camera" choice so the desktop defaults to scanner.
   function openScanner(target) {
     setDesktopForceCamera(false);
     setScannerTarget(target);
@@ -1069,6 +1256,7 @@ export default function App() {
   function openStudentDetail(id) { setDetailStudentId(id); setSheet("studentDetail"); }
   function openIdCard(id) { setDetailStudentId(id); setSheet("idCard"); }
   function openBookDetail(id) { setDetailBookId(id); setSheet("bookDetail"); }
+
   async function downloadCard(student) {
     if (!cardRef.current) return;
     setCardDownloading(true);
@@ -1105,7 +1293,7 @@ export default function App() {
   }, [students, studentListQuery]);
 
   return (
-    <div className="app">
+    <div className={`app ${appSettings.darkMode ? "dark" : ""}`}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         :root {
@@ -1141,7 +1329,7 @@ export default function App() {
         .icon-btn:hover { background:#F0F0F0; }
         .icon-btn:focus-visible { outline:2px solid var(--indigo);outline-offset:1px; }
         .search-wrap { margin:0 1.1rem .8rem;position:relative; }
-        .search-wrap .icon { position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--text-soft); }
+        .search-wrap .icon { position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--text-soft);z-index:1; }
         .search-wrap input {
           width:100%;background:var(--search-bg);border:none;border-radius:999px;
           padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Inter',sans-serif;color:var(--text);
@@ -1172,26 +1360,40 @@ export default function App() {
         .scan-flash-msg { color:#fff;font-weight:700;font-size:.92rem;text-align:center;padding:0 1.2rem; }
         @keyframes scanFlashPop { 0%{opacity:0;transform:scale(.92);}100%{opacity:1;transform:scale(1);} }
         @media (prefers-reduced-motion:reduce) { .scan-flash { animation:none; } }
-
-        /* ---- Desktop scanner waiting screen ---- */
         .pulse-icon {
           display:inline-flex;align-items:center;justify-content:center;
           width:110px;height:110px;border-radius:50%;
-          background:linear-gradient(135deg,#EAF2FB 0%,#C9DFF5 100%);
-          color:var(--navy);
+          background:linear-gradient(135deg,#EAF2FB 0%,#C9DFF5 100%);color:var(--navy);
           animation:pulseRing 1.8s ease-in-out infinite;
         }
-        @keyframes pulseRing {
-          0%,100% { box-shadow:0 0 0 0 rgba(44,110,92,.45); }
-          50% { box-shadow:0 0 0 22px rgba(44,110,92,0); }
-        }
+        @keyframes pulseRing { 0%,100%{box-shadow:0 0 0 0 rgba(44,110,92,.45);}50%{box-shadow:0 0 0 22px rgba(44,110,92,0);} }
         @media (prefers-reduced-motion:reduce) { .pulse-icon { animation:none; } }
         .scan-feedback-inline { display:flex;flex-direction:column;align-items:center;gap:.6rem;padding:1.4rem .5rem;animation:scanFlashPop .22s ease-out; }
         .scan-feedback-success { color:#1F8A5E; }
         .scan-feedback-warning { color:#D99513; }
         .scan-feedback-error { color:var(--danger); }
         .scan-feedback-msg { font-weight:700;font-size:.92rem; }
-
+        .search-results {
+          position:absolute;top:calc(100% + .4rem);left:0;right:0;background:#fff;
+          border-radius:12px;box-shadow:0 8px 30px rgba(27,77,62,.2);
+          max-height:60vh;overflow-y:auto;z-index:40;padding:.4rem;border:1px solid var(--line);
+        }
+        .search-section { margin-bottom:.4rem; }
+        .search-section:last-child { margin-bottom:0; }
+        .search-section-title {
+          font-size:.68rem;font-weight:700;color:var(--text-soft);text-transform:uppercase;
+          letter-spacing:.05em;padding:.5rem .6rem .3rem;display:flex;align-items:center;gap:.35rem;
+        }
+        .search-result-item {
+          display:flex;align-items:center;gap:.6rem;width:100%;padding:.55rem .6rem;
+          border:none;background:transparent;border-radius:8px;cursor:pointer;text-align:left;transition:background .12s ease;
+        }
+        .search-result-item:hover { background:var(--row-bg); }
+        .search-result-item:focus-visible { outline:2px solid var(--indigo);outline-offset:-2px; }
+        .sr-title { font-weight:600;font-size:.88rem;color:var(--text);line-height:1.3; }
+        .sr-meta { font-size:.72rem;color:var(--text-soft);margin-top:.08rem; }
+        .sr-icon { width:32px;height:32px;border-radius:8px;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto; }
+        .search-no-results { text-align:center;padding:1.2rem .8rem;color:var(--text-soft);font-size:.86rem; }
         .book-hint { margin:-.2rem 1.1rem .8rem;background:#EAF2FB;border:1px solid #C9DFF5;border-radius:8px;padding:.55rem .75rem;font-size:.8rem;color:var(--navy); }
         .class-row { display:flex;gap:.5rem;overflow-x:auto;margin:0 1.1rem 1rem;padding:.4rem .5rem;border:1px solid var(--line);border-radius:999px;background:#FFF; }
         .class-chip {
@@ -1390,6 +1592,17 @@ export default function App() {
         .cert-foot-item { font-size:.62rem;color:var(--text-soft);text-align:center; }
         .cert-foot-line { border-top:1px solid var(--text-soft);width:80px;margin:0 auto .2rem; }
 
+        /* ---- Settings ---- */
+        .settings-sections { display:flex;flex-direction:column;gap:1rem; }
+        .settings-section { background:#FAF6EC;border:1px solid var(--line);border-radius:10px;padding:.95rem 1.05rem; }
+        .settings-section h3 { font-family:'Playfair Display',serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem; }
+        .settings-section .field:last-child { margin-bottom:0; }
+        .settings-section .form-grid:last-child { margin-bottom:0; }
+        .settings-footer {
+          position:sticky;bottom:-1.4rem;background:#fff;margin:1rem -1.1rem -1.4rem;
+          padding:.85rem 1.1rem;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:.35rem;
+        }
+
         @media (min-width:640px) and (max-width:1023px) { .app { max-width:640px; } }
 
         @media (min-width:1024px) {
@@ -1446,7 +1659,16 @@ export default function App() {
           .student-list { padding:0 2rem 2rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.7rem; }
           .bottom-bar { display:none; }
           .modal-backdrop { align-items:center;justify-content:center;padding:1rem; }
-          .modal-panel { max-width:720px;max-height:88vh;border-radius:14px;padding:1.3rem 1.6rem 1.6rem;animation:modalFadeIn .18s ease; }
+          .modal-panel { max-width:900px;max-height:90vh;border-radius:14px;padding:1.4rem 1.8rem 1.8rem;animation:modalFadeIn .18s ease; }
+          .modal-panel.modal-wide { max-width:1200px; }
+          .modal-body { font-size:.95rem; }
+          .modal-panel .row-card { padding:.75rem .9rem; }
+          .modal-panel .row-card .title { font-size:.94rem; }
+          .modal-panel .row-card .meta { font-size:.78rem; }
+          .modal-panel th,.modal-panel td { padding:.65rem .4rem;font-size:.86rem; }
+          .settings-footer { bottom:-1.8rem;margin:1.2rem -1.8rem -1.8rem;padding:1rem 1.8rem; }
+          .settings-sections { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
+          .settings-section:first-child,.settings-section:nth-child(5) { grid-column:1 / -1; }
           .empty { padding:3rem 1rem; }
         }
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
@@ -1465,6 +1687,57 @@ export default function App() {
           .id-card { break-inside:avoid;page-break-inside:avoid; }
           .no-print,.modal-head,.header,.bottom-bar,.class-row,.search-wrap,.book-hint,.sidebar,.top-fixed,.desktop-title { display:none !important; }
         }
+
+        /* ---- Dark mode ---- */
+        .app.dark {
+          --page-bg:#15171a;--text:#e8e3d8;--text-soft:#a89b7f;--row-bg:#232528;
+          --line:#34373c;--search-bg:#1f2124;
+          --shadow-sm:0 1px 3px rgba(0,0,0,0.35);
+          --shadow-md:0 4px 12px rgba(0,0,0,0.45);
+        }
+        .app.dark .top-fixed {
+          background-color:#15171a;
+          background-image:
+            linear-gradient(45deg,rgba(201,162,39,0.05) 25%,transparent 25%),
+            linear-gradient(-45deg,rgba(201,162,39,0.05) 25%,transparent 25%),
+            linear-gradient(45deg,transparent 75%,rgba(201,162,39,0.05) 75%),
+            linear-gradient(-45deg,transparent 75%,rgba(201,162,39,0.05) 75%);
+        }
+        .app.dark .brand h1,.app.dark .desktop-title h1 { color:#e8e3d8; }
+        .app.dark .search-wrap input { background:#1f2124;color:var(--text); }
+        .app.dark .class-row { background:#1f2124; }
+        .app.dark .student-row { background:#232528; }
+        .app.dark .modal-panel { background:#1a1c1f;color:var(--text); }
+        .app.dark .modal-head h2 { color:#e8e3d8; }
+        .app.dark .menu-row { background:#232528;color:var(--text); }
+        .app.dark .menu-row:hover { background:#2a2d31; }
+        .app.dark .search-results { background:#1a1c1f;border-color:#34373c; }
+        .app.dark .search-result-item:hover { background:#232528; }
+        .app.dark .settings-section { background:#232528; }
+        .app.dark .settings-section h3 { color:#e8e3d8; }
+        .app.dark .settings-footer { background:#1a1c1f; }
+        .app.dark input[type="text"],.app.dark input[type="number"],.app.dark input[type="search"],
+        .app.dark input[type="month"],.app.dark input[type="email"],.app.dark input[type="password"],
+        .app.dark input[type="tel"],.app.dark select,.app.dark textarea {
+          background:#1f2124;color:var(--text);border-color:#34373c;
+        }
+        .app.dark .row-card { background:#232528; }
+        .app.dark .row-card.overdue { background:#3a1f1f; }
+        .app.dark .stat-card { background:#232528; }
+        .app.dark .stat-card .num { color:#c9a227; }
+        .app.dark .pick-item { background:#1f2124;border-color:#34373c; }
+        .app.dark .pick-item.selected { background:#2a3a2e; }
+        .app.dark .current-pick { background:#2a3a2e; }
+        .app.dark .stamp-card { background:#1a1c1f; }
+        .app.dark .bottom-bar { background:#1a1c1f; }
+        .app.dark .book-hint { background:#1e2a35;border-color:#2a3a45;color:#a8c5d8; }
+        .app.dark .empty { color:var(--text-soft); }
+        .app.dark th { color:var(--text-soft); }
+        .app.dark td { border-bottom-color:#34373c; }
+        .app.dark .lock-screen { background:#15171a; }
+        .app.dark .lock-screen h1 { color:#e8e3d8; }
+        .app.dark .search-section-title { color:#8a7f68; }
+        .app.dark .sidebar { background:linear-gradient(180deg,#0a1512 0%,#0f1f19 100%); }
       `}</style>
 
       {!authReady ? (
@@ -1472,8 +1745,8 @@ export default function App() {
       ) : !user ? (
         <div className="lock-screen">
           <div className="lock-icon"><Lock size={26} /></div>
-          <h1>NMMI ISLAMIC LIBRARY</h1>
-          <div className="sub">Nandiyil Muhammed Musliyar Memorial Islamic Library</div>
+          <h1>{appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}</h1>
+          <div className="sub">{appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial Islamic Library"}</div>
           <form className="lock-form" onSubmit={handleSignIn}>
             <p style={{ fontSize: ".86rem", color: "var(--text-soft)", marginBottom: ".9rem", textAlign: "center" }}>
               Sign in with the staff account created for you in Firebase.
@@ -1489,8 +1762,11 @@ export default function App() {
         <>
           <aside className="sidebar">
             <div className="sidebar-brand">
-              <div className="sidebar-brand-logo">NMMI</div>
-              <div className="sidebar-brand-sub">Islamic Library<br />Nandiyil Muhammed Musliyar Memorial</div>
+              <div className="sidebar-brand-logo">{(appSettings.libraryName || "NMMI").split(" ")[0]}</div>
+              <div className="sidebar-brand-sub">
+                {appSettings.libraryName || "Islamic Library"}<br />
+                {appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial"}
+              </div>
             </div>
             <div className="sidebar-actions">
               <button className="sidebar-action-btn" onClick={openIssue}><BookMarked size={18} /><span>Issue Book</span></button>
@@ -1511,6 +1787,9 @@ export default function App() {
                 <Award size={18} /> Certificate
               </button>
               <button onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
+              <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
+                <Settings size={18} /> Settings
+              </button>
             </nav>
             <div className="sidebar-footer">
               <button onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
@@ -1523,8 +1802,8 @@ export default function App() {
           <div className="top-fixed">
             <div className="header">
               <div className="brand">
-                <h1>NMMI ISLAMIC LIBRARY</h1>
-                <div className="sub">Nandiyil Muhammed Musliyar Memorial Islamic Library</div>
+                <h1>{appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}</h1>
+                <div className="sub">{appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial Islamic Library"}</div>
               </div>
               <div className="desktop-title">
                 <h1>Students</h1>
@@ -1535,11 +1814,59 @@ export default function App() {
               </div>
               <button className="icon-btn" onClick={() => setSheet("menu")} aria-label="Menu"><MoreVertical size={22} /></button>
             </div>
-            <div className="search-wrap">
+
+            <div className="search-wrap" ref={searchWrapRef}>
               <Search size={16} className="icon" />
-              <input type="search" className="with-scan" placeholder="Search student id/ Book id" value={homeQuery} onChange={(e) => setHomeQuery(e.target.value)} />
+              <input
+                type="search"
+                className="with-scan"
+                placeholder="Search students, books, or codes..."
+                value={homeQuery}
+                onChange={(e) => {
+                  setHomeQuery(e.target.value);
+                  setShowSearchResults(e.target.value.trim().length > 0);
+                }}
+                onFocus={() => { if (homeQuery.trim().length > 0) setShowSearchResults(true); }}
+              />
               <button type="button" className="scan-btn" onClick={() => openScanner("home")} aria-label="Scan QR code"><Camera size={15} /></button>
+
+              {showSearchResults && homeQuery.trim().length > 0 && (
+                <div className="search-results">
+                  {searchStudentMatches.length > 0 && (
+                    <div className="search-section">
+                      <div className="search-section-title"><UserPlus size={12} /> Students ({searchStudentMatches.length})</div>
+                      {searchStudentMatches.map((s) => (
+                        <button key={s.id} className="search-result-item" onClick={() => { setShowSearchResults(false); setHomeQuery(""); openStudentDetail(s.id); }}>
+                          <Avatar name={s.name} photoUrl={s.photoUrl} size={32} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="sr-title">{s.name}</div>
+                            <div className="sr-meta">{s.className || "Unassigned"}{s.roll ? ` · Roll ${s.roll}` : ""}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchBookMatches.length > 0 && (
+                    <div className="search-section">
+                      <div className="search-section-title"><Library size={12} /> Books ({searchBookMatches.length})</div>
+                      {searchBookMatches.map((b) => (
+                        <button key={b.id} className="search-result-item" onClick={() => { setShowSearchResults(false); setHomeQuery(""); openBookDetail(b.id); }}>
+                          <div className="sr-icon"><Library size={16} /></div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div className="sr-title">{b.title}</div>
+                            <div className="sr-meta">{b.author ? `${b.author} · ` : ""}{b.code} · {b.availableCopies}/{b.totalCopies}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {searchStudentMatches.length === 0 && searchBookMatches.length === 0 && (
+                    <div className="search-no-results">No matches for "{homeQuery}"</div>
+                  )}
+                </div>
+              )}
             </div>
+
             <div className="class-row">
               <button className={`class-chip ${selectedClass === "ALL" ? "active" : ""}`} onClick={() => setSelectedClass("ALL")}>ALL</button>
               {students.some((s) => !s.className) && (
@@ -1551,7 +1878,7 @@ export default function App() {
             </div>
           </div>
 
-          {bookMatchForSearch && (
+          {!showSearchResults && bookMatchForSearch && (
             <div className="book-hint">
               <b>{bookMatchForSearch.title}</b> ({bookMatchForSearch.code}) — {bookMatchForSearch.availableCopies}/
               {bookMatchForSearch.totalCopies} available
@@ -1606,7 +1933,7 @@ export default function App() {
             <button className="bottom-item" onClick={openAddStudent}><span className="bottom-dot"><UserPlus size={16} /></span><span className="label">ADD STUDENT</span></button>
           </div>
 
-          {/* ---- Modals ---- */}
+          {/* ==================== MODALS ==================== */}
           {sheet === "menu" && (
             <Modal title="More" onClose={() => setSheet(null)}>
               <div className="menu-list">
@@ -1623,6 +1950,9 @@ export default function App() {
                   <Award size={18} /> Monthly Certificate
                 </button>
                 <button className="menu-row" onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
+                <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
+                  <Settings size={18} /> Settings
+                </button>
                 <button className="menu-row" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
                   <Lock size={18} /> Change Password
                 </button>
@@ -1646,8 +1976,99 @@ export default function App() {
             </Modal>
           )}
 
+          {sheet === "settings" && (
+            <Modal title="Settings" onClose={() => setSheet(null)} wide>
+              <div className="settings-sections">
+                <div className="settings-section">
+                  <h3><Library size={16} /> Library Info</h3>
+                  <div className="field">
+                    <label>Library name</label>
+                    <input type="text" value={settingsDraft.libraryName} onChange={(e) => setSettingsDraft({ ...settingsDraft, libraryName: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label>Subtitle</label>
+                    <input type="text" value={settingsDraft.librarySubtitle} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarySubtitle: e.target.value })} />
+                  </div>
+                  <div className="form-grid">
+                    <div>
+                      <label>Librarian name</label>
+                      <input type="text" value={settingsDraft.librarianName} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarianName: e.target.value })} placeholder="For certificates" />
+                    </div>
+                    <div>
+                      <label>Phone</label>
+                      <input type="tel" value={settingsDraft.phone} onChange={(e) => setSettingsDraft({ ...settingsDraft, phone: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3><Clock size={16} /> Loan Rules</h3>
+                  <div className="form-grid">
+                    <div>
+                      <label>Default loan days</label>
+                      <input type="number" min="1" value={settingsDraft.defaultLoanDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, defaultLoanDays: parseInt(e.target.value) || 14 })} />
+                    </div>
+                    <div>
+                      <label>Max books per student (0 = unlimited)</label>
+                      <input type="number" min="0" value={settingsDraft.maxBooksPerStudent} onChange={(e) => setSettingsDraft({ ...settingsDraft, maxBooksPerStudent: parseInt(e.target.value) || 0 })} />
+                    </div>
+                  </div>
+                  <div className="form-grid">
+                    <div>
+                      <label>Fine per day (₹)</label>
+                      <input type="number" min="0" value={settingsDraft.finePerDay} onChange={(e) => setSettingsDraft({ ...settingsDraft, finePerDay: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label>Grace days before fine</label>
+                      <input type="number" min="0" value={settingsDraft.graceDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, graceDays: parseInt(e.target.value) || 0 })} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3><Palette size={16} /> Appearance</h3>
+                  <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: 0 }}>
+                    <input type="checkbox" checked={settingsDraft.darkMode} onChange={(e) => setSettingsDraft({ ...settingsDraft, darkMode: e.target.checked })} style={{ width: "auto", margin: 0 }} />
+                    Dark mode
+                  </label>
+                </div>
+
+                <div className="settings-section">
+                  <h3><FileDown size={16} /> Data & Backup</h3>
+                  <p style={{ fontSize: ".8rem", color: "var(--text-soft)", margin: "0 0 .7rem" }}>
+                    Download a snapshot of your library data as CSV. Safe to open in Excel or Google Sheets.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                    <button type="button" className="btn secondary" onClick={exportBooksCSV}><FileDown size={14} /> Books</button>
+                    <button type="button" className="btn secondary" onClick={exportStudentsCSV}><FileDown size={14} /> Students</button>
+                    <button type="button" className="btn secondary" onClick={exportTransactionsCSV}><FileDown size={14} /> Transactions</button>
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3><Lock size={16} /> Account</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                    <button type="button" className="btn secondary" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
+                      <Lock size={14} /> Change Password
+                    </button>
+                    <button type="button" className="btn secondary" onClick={handleSignOut}><LogOut size={14} /> Sign Out</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="settings-footer">
+                {settingsSavedMsg && (
+                  <div style={{ color: settingsSavedMsg.startsWith("✅") ? "#1F8A5E" : "var(--danger)", fontSize: ".84rem", fontWeight: 700 }}>{settingsSavedMsg}</div>
+                )}
+                <button className="btn full" onClick={saveSettings} disabled={settingsSaving}>
+                  <Save size={16} /> {settingsSaving ? "Saving..." : "Save Settings"}
+                </button>
+              </div>
+            </Modal>
+          )}
+
           {sheet === "printCards" && (
-            <Modal title="Print QR Labels" onClose={() => setSheet(null)}>
+            <Modal title="Print QR Labels" onClose={() => setSheet(null)} wide>
               <div className="no-print">
                 <div style={{ display: "flex", gap: ".5rem", marginBottom: ".7rem" }}>
                   <button className={`btn ${printMode === "students" ? "" : "secondary"}`} style={{ flex: 1, justifyContent: "center" }} onClick={() => setPrintMode("students")}>Students</button>
@@ -1811,7 +2232,7 @@ export default function App() {
           )}
 
           {sheet === "addStudent" && (
-            <Modal title="Students" onClose={() => setSheet(null)}>
+            <Modal title="Students" onClose={() => setSheet(null)} wide>
               <form onSubmit={addStudent}>
                 <div className="field"><label>Name</label><input type="text" value={studentForm.name} onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })} required /></div>
                 <div className="form-grid">
@@ -1888,7 +2309,7 @@ export default function App() {
           )}
 
           {sheet === "bookCategories" && (
-            <Modal title="Book Categories" onClose={() => setSheet(null)}>
+            <Modal title="Book Categories" onClose={() => setSheet(null)} wide>
               <form onSubmit={addCategory} style={{ display: "flex", gap: ".5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
                 <div style={{ flex: 1 }}><label>New category name</label><input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Fiqh" /></div>
                 <button type="submit" className="btn"><Plus size={16} /> Add</button>
@@ -1919,9 +2340,9 @@ export default function App() {
           )}
 
           {sheet === "catalog" && (
-            <Modal title="Book Catalog" onClose={() => setSheet(null)}>
+            <Modal title="Book Catalog" onClose={() => setSheet(null)} wide>
               <div className="field"><input type="search" value={catalogQuery} onChange={(e) => setCatalogQuery(e.target.value)} placeholder="Search books..." /></div>
-              <div style={{ maxHeight: 340, overflowY: "auto", marginBottom: "1rem" }}>
+              <div style={{ maxHeight: 400, overflowY: "auto", marginBottom: "1rem" }}>
                 {catalogGrouped.length === 0 ? (
                   <div className="empty">No books found.</div>
                 ) : (
@@ -2006,7 +2427,7 @@ export default function App() {
           )}
 
           {sheet === "classes" && (
-            <Modal title="Manage Classes" onClose={() => setSheet(null)}>
+            <Modal title="Manage Classes" onClose={() => setSheet(null)} wide>
               <form onSubmit={addClass} style={{ display: "flex", gap: ".5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
                 <div style={{ flex: 1 }}><label>New class name</label><input type="text" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="e.g. CLASS-7" /></div>
                 <button type="submit" className="btn"><Plus size={16} /> Add</button>
@@ -2037,7 +2458,7 @@ export default function App() {
           )}
 
           {sheet === "dashboard" && (
-            <Modal title="Dashboard" onClose={() => setSheet(null)}>
+            <Modal title="Dashboard" onClose={() => setSheet(null)} wide>
               <div className="grid-stats">
                 <div className="stat-card"><div className="num">{totalCopies}</div><div className="label">Total Books</div></div>
                 <div className="stat-card"><div className="num">{availableCopies}</div><div className="label">Available</div></div>
@@ -2103,24 +2524,32 @@ export default function App() {
           )}
 
           {sheet === "overdue" && (
-            <Modal title="Overdue Books" onClose={() => setSheet(null)}>
+            <Modal title="Overdue Books" onClose={() => setSheet(null)} wide>
               {overdueList.length === 0 ? <div className="empty">Nothing overdue right now.</div> : (
                 <div className="row-list">
-                  {overdueList.map((r) => (
-                    <div key={r.tx.id} className="row-card overdue">
-                      <div><div className="title">{r.book.title}</div><div className="meta">{r.student.name} ({r.student.className || "Unassigned"}){r.student.roll ? ` · Roll ${r.student.roll}` : ""}</div></div>
-                      <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
-                        <div className="due"><Clock size={12} style={{ verticalAlign: "-2px" }} /> {daysBetween(r.tx.dueDate, todayISO())}d late</div>
-                        {r.student.phone && (
-                          <a href={waLink(r.student.phone, `നമസ്കാരം ${r.student.name}, "${r.book.title}" (${r.book.code}) എന്ന പുസ്തകം തിരികെ നൽകേണ്ട തീയതി ${formatDate(r.tx.dueDate)} ആയിരുന്നു. നന്ദി.`)}
-                            target="_blank" rel="noopener noreferrer" className="btn secondary" style={{ padding: ".4rem .5rem" }}
-                            aria-label={`WhatsApp reminder to ${r.student.name}`}
-                          ><MessageCircle size={13} /></a>
-                        )}
-                        <button className="btn secondary" onClick={() => returnBook(r.tx.id)}><RotateCcw size={13} /> Return</button>
+                  {overdueList.map((r) => {
+                    const daysLate = daysBetween(r.tx.dueDate, todayISO()) - (appSettings.graceDays || 0);
+                    const fine = Math.max(0, daysLate * (appSettings.finePerDay || 0));
+                    return (
+                      <div key={r.tx.id} className="row-card overdue">
+                        <div>
+                          <div className="title">{r.book.title}</div>
+                          <div className="meta">{r.student.name} ({r.student.className || "Unassigned"}){r.student.roll ? ` · Roll ${r.student.roll}` : ""}</div>
+                          {fine > 0 && <div style={{ color: "var(--danger)", fontSize: ".72rem", fontWeight: 700, marginTop: ".2rem" }}>₹{fine} fine</div>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+                          <div className="due"><Clock size={12} style={{ verticalAlign: "-2px" }} /> {daysBetween(r.tx.dueDate, todayISO())}d late</div>
+                          {r.student.phone && (
+                            <a href={waLink(r.student.phone, `നമസ്കാരം ${r.student.name}, "${r.book.title}" (${r.book.code}) എന്ന പുസ്തകം തിരികെ നൽകേണ്ട തീയതി ${formatDate(r.tx.dueDate)} ആയിരുന്നു. നന്ദി.`)}
+                              target="_blank" rel="noopener noreferrer" className="btn secondary" style={{ padding: ".4rem .5rem" }}
+                              aria-label={`WhatsApp reminder to ${r.student.name}`}
+                            ><MessageCircle size={13} /></a>
+                          )}
+                          <button className="btn secondary" onClick={() => returnBook(r.tx.id)}><RotateCcw size={13} /> Return</button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Modal>
@@ -2281,8 +2710,8 @@ export default function App() {
                 <div className="id-card-wrap">
                   <div className="lib-card" ref={cardRef}>
                     <div className="lib-card-top">
-                      <div className="lib-card-brand-name">NMMI ISLAMIC LIBRARY</div>
-                      <div className="lib-card-brand-sub">Nandiyil Muhammed Musliyar Memorial</div>
+                      <div className="lib-card-brand-name">{appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}</div>
+                      <div className="lib-card-brand-sub">{appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial"}</div>
                     </div>
                     <div className="lib-card-body">
                       <Avatar name={cStudent.name} photoUrl={cStudent.photoUrl} size={64} />
@@ -2310,7 +2739,7 @@ export default function App() {
             const countFor = (c) => students.filter((s) => s.className === c).length;
             const movingCount = classes.reduce((n, c) => n + ((promoMap[c] ?? c) !== c ? countFor(c) : 0), 0);
             return (
-              <Modal title="Class Promotion" onClose={() => setSheet(null)}>
+              <Modal title="Class Promotion" onClose={() => setSheet(null)} wide>
                 <p style={{ fontSize: ".8rem", color: "var(--text-soft)", marginBottom: ".8rem", lineHeight: 1.5 }}>
                   Year-end: move every class up in one go. Nothing changes until you tap Apply, and the last promotion can be undone.
                 </p>
@@ -2367,7 +2796,7 @@ export default function App() {
                     <div className="certificate" ref={certRef}>
                       <div className="cert-badge">🏆</div>
                       <div className="cert-title">Certificate of Achievement</div>
-                      <div className="cert-sub">NMMI Islamic Library</div>
+                      <div className="cert-sub">{appSettings.libraryName || "NMMI Islamic Library"}</div>
                       <div className="cert-presented">This certifies that</div>
                       <div className="cert-name">{certStudent.name}</div>
                       <div className="cert-desc">
@@ -2376,7 +2805,7 @@ export default function App() {
                       </div>
                       <div className="cert-footer">
                         <div className="cert-foot-item"><div className="cert-foot-line" />Date</div>
-                        <div className="cert-foot-item"><div className="cert-foot-line" />Librarian</div>
+                        <div className="cert-foot-item"><div className="cert-foot-line" />{appSettings.librarianName || "Librarian"}</div>
                       </div>
                     </div>
                   </div>
@@ -2388,20 +2817,11 @@ export default function App() {
             </Modal>
           )}
 
-          {/* ---- SCANNER MODAL: auto-switches between camera and hardware ---- */}
           {scannerTarget && (
             isDesktop && !desktopForceCamera ? (
-              <DesktopScannerWaiting
-                onClose={() => setScannerTarget(null)}
-                onUseCamera={() => setDesktopForceCamera(true)}
-                feedback={scanFeedback}
-              />
+              <DesktopScannerWaiting onClose={() => setScannerTarget(null)} onUseCamera={() => setDesktopForceCamera(true)} feedback={scanFeedback} />
             ) : (
-              <Scanner
-                onResult={handleScanResult}
-                onClose={() => setScannerTarget(null)}
-                feedback={scanFeedback}
-              />
+              <Scanner onResult={handleScanResult} onClose={() => setScannerTarget(null)} feedback={scanFeedback} />
             )
           )}
         </>
