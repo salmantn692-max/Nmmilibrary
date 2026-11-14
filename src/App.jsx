@@ -442,7 +442,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW)
+// PUBLIC CATALOG (STUDENT VIEW) - UPDATED
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
