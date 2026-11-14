@@ -442,7 +442,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW) - UPDATED
+// PUBLIC CATALOG (STUDENT VIEW) - UPDATED WITH ANEK MALAYALAM
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
@@ -482,27 +482,27 @@ export function PublicCatalog() {
   return (
     <div className="pc-app">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
         
         .pc-app { 
           --navy:#1B4D3E; --maroon:#8B2E3C; --sky:#C9A227; --text:#2B2420; --text-soft:#7A6F5D; 
           --line:#E8DCC0; --row-bg:#FBF2D9; --bg:#FDF8ED;
-          font-family:'Inter', 'Noto Sans Malayalam', -apple-system, sans-serif;
+          font-family: 'Anek Malayalam', 'Inter', -apple-system, sans-serif;
           min-height:100vh; background:var(--bg); color:var(--text);
           padding-bottom:3rem;
         }
         
         .pc-header { padding:1.5rem 1.1rem 1rem; text-align:center; border-bottom:3px solid var(--sky); background:#fff; position:sticky; top:0; z-index:10; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
         .pc-header h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-weight:800; font-size:1.4rem; color:var(--navy); margin:0; line-height:1.3; }
-        .pc-sub { font-size:.8rem; color:var(--maroon); margin-top:.2rem; font-weight:500; }
+        .pc-sub { font-size:.85rem; color:var(--maroon); margin-top:.2rem; font-weight:500; }
         
         .pc-search-wrap { padding:1rem 1.1rem .5rem; max-width:900px; margin:0 auto; }
-        .pc-search { width:100%; font-size:1rem; padding:.75rem 1rem; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); box-shadow:0 2px 5px rgba(0,0,0,0.02); font-family:inherit; }
+        .pc-search { width:100%; font-size:1rem; padding:.75rem 1rem; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); box-shadow:0 2px 5px rgba(0,0,0,0.02); font-family:'Anek Malayalam', inherit; }
         .pc-search:focus { outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(201,162,39,0.2); }
         
         .pc-cat-scroll { display:flex; gap:.5rem; overflow-x:auto; padding:.5rem 1.1rem; max-width:900px; margin:0 auto; scrollbar-width:none; }
         .pc-cat-scroll::-webkit-scrollbar { display:none; }
-        .pc-cat-btn { white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); padding:.4rem .9rem; border-radius:999px; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .2s; font-family:inherit; }
+        .pc-cat-btn { white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); padding:.4rem .9rem; border-radius:999px; font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; font-family:'Anek Malayalam', inherit; }
         .pc-cat-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
         
         .pc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:1rem; padding:1rem 1.1rem 3rem; max-width:900px; margin:0 auto; }
@@ -516,10 +516,10 @@ export function PublicCatalog() {
         .pc-cover-fallback { color:#ccc; display:flex; flex-direction:column; align-items:center; gap:.5rem; }
         
         .pc-card-info { padding:.8rem; display:flex; flex-direction:column; flex:1; }
-        .pc-title { font-weight:700; font-size:.9rem; color:var(--text); line-height:1.3; margin-bottom:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-        .pc-author { font-size:.75rem; color:var(--text-soft); margin-bottom:.5rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pc-title { font-family: 'Anek Malayalam', sans-serif; font-weight:700; font-size:1rem; color:var(--text); line-height:1.4; margin-bottom:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .pc-author { font-size:.8rem; color:var(--text-soft); margin-bottom:.5rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         
-        .pc-badge { font-size:.65rem; font-weight:700; padding:.2rem .4rem; border-radius:4px; display:inline-block; margin-top:auto; align-self:flex-start; }
+        .pc-badge { font-size:.7rem; font-weight:700; padding:.2rem .4rem; border-radius:4px; display:inline-block; margin-top:auto; align-self:flex-start; }
         .pc-avail { background:#E1F0E6; color:#1F7A52; }
         .pc-out { background:#F3E1E0; color:#8B2E3C; }
         
@@ -536,13 +536,13 @@ export function PublicCatalog() {
         .pc-modal-cover img { width:100%; height:100%; object-fit:contain; background:#f8f8f8; }
         
         .pc-modal-body { padding:1.5rem; }
-        .pc-modal-title { font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-size:1.3rem; font-weight:800; color:var(--navy); margin:0 0 .2rem; line-height:1.3; }
-        .pc-modal-author { font-size:.9rem; color:var(--maroon); font-weight:600; margin-bottom:1rem; }
+        .pc-modal-title { font-family:'Anek Malayalam', 'Playfair Display', serif; font-size:1.5rem; font-weight:800; color:var(--navy); margin:0 0 .2rem; line-height:1.4; }
+        .pc-modal-author { font-size:.95rem; color:var(--maroon); font-weight:600; margin-bottom:1rem; }
         
         .pc-modal-meta { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem; }
-        .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.3rem .6rem; border-radius:6px; font-size:.75rem; color:var(--text-soft); font-weight:600; }
+        .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.3rem .6rem; border-radius:6px; font-size:.8rem; color:var(--text-soft); font-weight:600; }
         
-        .pc-modal-desc { font-size:.92rem; line-height:1.6; color:var(--text); margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); white-space:pre-wrap; }
+        .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:1rem; line-height:1.6; color:var(--text); margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); white-space:pre-wrap; }
       `}</style>
 
       <div className="pc-header">
@@ -1303,7 +1303,7 @@ export default function App() {
   return (
     <div className={`app ${appSettings.darkMode ? "dark" : ""}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         :root {
           --navy:#1B4D3E;--navy-deep:#0F3328;--maroon:#8B2E3C;--sky:#C9A227;--gold-soft:#E7C989;
           --green:#2F9E6E;--row-bg:#FBF2D9;--indigo:#2C6E5C;--page-bg:#FDF8ED;--text:#2B2420;
