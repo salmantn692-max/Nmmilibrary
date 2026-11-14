@@ -4,7 +4,7 @@ import {
   BookMarked, RotateCcw, UserPlus, MoreVertical, X, Layers, Pencil,
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
-  Settings, Save, Palette, FileDown,
+  Settings, Save, Palette, FileDown, BookOpen
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -323,17 +323,13 @@ function QRCodeCanvas({ value, size = 130 }) {
   useEffect(() => {
     if (ref.current && value) {
       QRCode.toCanvas(ref.current, String(value), { width: size, margin: 1 }, (err) => {
-        if (err) {
-          console.error(err);
-        } else {
-          setReady(true);
-        }
+        if (err) console.error(err);
+        else setReady(true);
       });
     }
   }, [value, size]);
   
   if (!value) return null;
-  
   return <canvas ref={ref} className="id-qrcode" style={{ display: ready ? 'block' : 'none' }} />;
 }
 
@@ -445,10 +441,15 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
   );
 }
 
+// ==========================================
+// PUBLIC CATALOG (STUDENT VIEW)
+// ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
+  const [selectedBook, setSelectedBook] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "books"),
@@ -458,74 +459,178 @@ export function PublicCatalog() {
     return unsub;
   }, []);
 
+  const categoriesList = useMemo(() => {
+    const cats = new Set();
+    books.forEach((b) => { if (b.category) cats.add(b.category); });
+    return Array.from(cats).sort();
+  }, [books]);
+
   const filtered = useMemo(() => {
+    let list = books;
+    if (selectedCategory !== "ALL") {
+      list = list.filter((b) => (b.category || UNCATEGORIZED) === selectedCategory);
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return books;
-    return books.filter((b) =>
+    if (!q) return list;
+    return list.filter((b) =>
       (b.title || "").toLowerCase().includes(q) ||
       (b.author || "").toLowerCase().includes(q) ||
       normCode(b.code).includes(normCode(q))
     );
-  }, [query, books]);
-
-  const grouped = useMemo(() => {
-    const groups = {};
-    filtered.forEach((b) => {
-      const cat = b.category && b.category.trim() ? b.category : "General";
-      (groups[cat] = groups[cat] || []).push(b);
-    });
-    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered]);
+  }, [query, books, selectedCategory]);
 
   return (
     <div className="pc-app">
       <style>{`
-        .pc-app { --navy:#1B4D3E;--maroon:#8B2E3C;--sky:#C9A227;--text:#2B2420;--text-soft:#7A6F5D;--line:#E8DCC0;--row-bg:#FBF2D9;font-family:'Inter', 'Noto Sans Malayalam', -apple-system,sans-serif;max-width:520px;margin:0 auto;min-height:100vh;background:#FDF8ED;padding-bottom:3rem; }
-        .pc-header { padding:1.2rem 1.1rem .8rem;text-align:center;border-bottom:3px solid var(--sky); }
-        .pc-header h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.35rem;color:var(--navy);margin:0;line-height:1.3; }
-        .pc-sub { font-size:.78rem;color:var(--maroon);margin-top:.2rem; }
-        .pc-search { padding:.9rem 1.1rem .4rem; }
-        .pc-search input { width:100%;font-size:.95rem;padding:.65rem .9rem;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--text);font-family:inherit; }
-        .pc-group { padding:.8rem 1.1rem 0; }
-        .pc-group h2 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.92rem;color:var(--navy);margin:0 0 .5rem;border-bottom:1px solid var(--line);padding-bottom:.3rem;line-height:1.4; }
-        .pc-row { display:flex;justify-content:space-between;align-items:center;gap:.7rem;background:var(--row-bg);border-radius:10px;padding:.6rem .8rem;margin-bottom:.45rem;box-shadow:0 1px 3px rgba(43,36,32,.07); }
-        .pc-title { font-weight:700;font-size:.9rem;color:var(--text);line-height:1.4; }
-        .pc-meta { font-size:.75rem;color:var(--text-soft);margin-top:.1rem;line-height:1.4; }
-        .pc-badge { font-size:.72rem;font-weight:700;padding:.25rem .55rem;border-radius:999px;flex:0 0 auto;white-space:nowrap; }
-        .pc-avail { background:#E1F0E6;color:#1F7A52; }
-        .pc-out { background:#F3E1E0;color:#8B2E3C; }
-        .pc-empty { text-align:center;padding:2.5rem 1rem;color:var(--text-soft);font-size:.9rem; }
-        .pc-footer { text-align:center;padding:1.5rem 1rem .5rem; }
-        .pc-footer a { color:var(--navy);font-size:.82rem;text-decoration:underline; }
-        @media (min-width:1024px){ .pc-app{max-width:900px;} .pc-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.5rem;} .pc-group h2{grid-column:1/-1;} }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
+        
+        .pc-app { 
+          --navy:#1B4D3E; --maroon:#8B2E3C; --sky:#C9A227; --text:#2B2420; --text-soft:#7A6F5D; 
+          --line:#E8DCC0; --row-bg:#FBF2D9; --bg:#FDF8ED;
+          font-family:'Inter', 'Noto Sans Malayalam', -apple-system, sans-serif;
+          min-height:100vh; background:var(--bg); color:var(--text);
+          padding-bottom:3rem;
+        }
+        
+        .pc-header { padding:1.5rem 1.1rem 1rem; text-align:center; border-bottom:3px solid var(--sky); background:#fff; position:sticky; top:0; z-index:10; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .pc-header h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-weight:800; font-size:1.4rem; color:var(--navy); margin:0; line-height:1.3; }
+        .pc-sub { font-size:.8rem; color:var(--maroon); margin-top:.2rem; font-weight:500; }
+        
+        .pc-search-wrap { padding:1rem 1.1rem .5rem; max-width:900px; margin:0 auto; }
+        .pc-search { width:100%; font-size:1rem; padding:.75rem 1rem; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); box-shadow:0 2px 5px rgba(0,0,0,0.02); font-family:inherit; }
+        .pc-search:focus { outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(201,162,39,0.2); }
+        
+        .pc-cat-scroll { display:flex; gap:.5rem; overflow-x:auto; padding:.5rem 1.1rem; max-width:900px; margin:0 auto; scrollbar-width:none; }
+        .pc-cat-scroll::-webkit-scrollbar { display:none; }
+        .pc-cat-btn { white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); padding:.4rem .9rem; border-radius:999px; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .2s; font-family:inherit; }
+        .pc-cat-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+        
+        .pc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:1rem; padding:1rem 1.1rem 3rem; max-width:900px; margin:0 auto; }
+        @media(min-width: 600px) { .pc-grid { grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:1.5rem; } }
+        
+        .pc-card { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(43,36,32,0.06); cursor:pointer; transition:transform .2s ease, box-shadow .2s ease; display:flex; flex-direction:column; border:1px solid var(--line); }
+        .pc-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(43,36,32,0.12); }
+        
+        .pc-cover-wrap { width:100%; aspect-ratio:2/3; background:#f0f0f0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .pc-cover-img { width:100%; height:100%; object-fit:cover; }
+        .pc-cover-fallback { color:#ccc; display:flex; flex-direction:column; align-items:center; gap:.5rem; }
+        
+        .pc-card-info { padding:.8rem; display:flex; flex-direction:column; flex:1; }
+        .pc-title { font-weight:700; font-size:.9rem; color:var(--text); line-height:1.3; margin-bottom:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .pc-author { font-size:.75rem; color:var(--text-soft); margin-bottom:.5rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        
+        .pc-badge { font-size:.65rem; font-weight:700; padding:.2rem .4rem; border-radius:4px; display:inline-block; margin-top:auto; align-self:flex-start; }
+        .pc-avail { background:#E1F0E6; color:#1F7A52; }
+        .pc-out { background:#F3E1E0; color:#8B2E3C; }
+        
+        .pc-empty { text-align:center; padding:3rem 1rem; color:var(--text-soft); font-size:1rem; grid-column:1/-1; }
+        
+        /* Modal styles */
+        .pc-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(3px); }
+        .pc-modal { background:#fff; width:100%; max-width:500px; max-height:90vh; border-radius:16px; overflow-y:auto; position:relative; animation:modalPop .3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalPop { from{opacity:0; transform:scale(.95) translateY(20px);} to{opacity:1; transform:scale(1) translateY(0);} }
+        
+        .pc-modal-close { position:absolute; top:1rem; right:1rem; background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; backdrop-filter:blur(4px); }
+        
+        .pc-modal-cover { width:100%; aspect-ratio:4/3; background:#f0f0f0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .pc-modal-cover img { width:100%; height:100%; object-fit:contain; background:#f8f8f8; }
+        
+        .pc-modal-body { padding:1.5rem; }
+        .pc-modal-title { font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-size:1.3rem; font-weight:800; color:var(--navy); margin:0 0 .2rem; line-height:1.3; }
+        .pc-modal-author { font-size:.9rem; color:var(--maroon); font-weight:600; margin-bottom:1rem; }
+        
+        .pc-modal-meta { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+        .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.3rem .6rem; border-radius:6px; font-size:.75rem; color:var(--text-soft); font-weight:600; }
+        
+        .pc-modal-desc { font-size:.92rem; line-height:1.6; color:var(--text); margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); white-space:pre-wrap; }
       `}</style>
+
       <div className="pc-header">
         <h1>NMMI ISLAMIC LIBRARY</h1>
-        <div className="pc-sub">Book Catalog — Search (no login needed)</div>
+        <div className="pc-sub">Digital Book Catalog</div>
       </div>
-      <div className="pc-search">
-        <input type="search" placeholder="Search by title, author or code..." value={query} onChange={(e) => setQuery(e.target.value)} />
+      
+      <div className="pc-search-wrap">
+        <input 
+          type="search" 
+          className="pc-search" 
+          placeholder="Search by book name, author or code..." 
+          value={query} 
+          onChange={(e) => setQuery(e.target.value)} 
+        />
       </div>
-      {loading ? <div className="pc-empty">Loading...</div> : grouped.length === 0 ? <div className="pc-empty">No books found.</div> : grouped.map(([cat, list]) => (
-        <div key={cat} className="pc-group">
-          <h2>{cat}</h2>
-          {list.map((b) => (
-            <div key={b.id} className="pc-row">
-              <div>
-                <div className="pc-title">{b.title}</div>
-                <div className="pc-meta">{b.author ? `${b.author} · ` : ""}{b.code}</div>
+
+      <div className="pc-cat-scroll">
+        <button className={`pc-cat-btn ${selectedCategory === "ALL" ? "active" : ""}`} onClick={() => setSelectedCategory("ALL")}>All Books</button>
+        {categoriesList.map((c) => (
+          <button key={c} className={`pc-cat-btn ${selectedCategory === c ? "active" : ""}`} onClick={() => setSelectedCategory(c)}>{c}</button>
+        ))}
+      </div>
+
+      <div className="pc-grid">
+        {loading ? (
+          <div className="pc-empty">Loading books...</div>
+        ) : filtered.length === 0 ? (
+          <div className="pc-empty">No books found.</div>
+        ) : (
+          filtered.map((b) => (
+            <div key={b.id} className="pc-card" onClick={() => setSelectedBook(b)}>
+              <div className="pc-cover-wrap">
+                {b.coverUrl ? (
+                  <img src={b.coverUrl} alt={b.title} className="pc-cover-img" loading="lazy" />
+                ) : (
+                  <div className="pc-cover-fallback">
+                    <Library size={32} />
+                    <span style={{ fontSize: "0.7rem", fontWeight: "bold" }}>No Cover</span>
+                  </div>
+                )}
               </div>
-              <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
-                {b.availableCopies > 0 ? `${b.availableCopies} available` : "All issued"}
+              <div className="pc-card-info">
+                <div className="pc-title">{b.title}</div>
+                <div className="pc-author">{b.author || "Unknown Author"}</div>
+                <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
+                  {b.availableCopies > 0 ? "Available" : "All Issued"}
+                </div>
               </div>
             </div>
-          ))}
+          ))
+        )}
+      </div>
+
+      {selectedBook && (
+        <div className="pc-modal-backdrop" onClick={() => setSelectedBook(null)}>
+          <div className="pc-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="pc-modal-close" onClick={() => setSelectedBook(null)}><X size={18} /></button>
+            <div className="pc-modal-cover">
+              {selectedBook.coverUrl ? (
+                <img src={selectedBook.coverUrl} alt={selectedBook.title} />
+              ) : (
+                <Library size={64} color="#ccc" />
+              )}
+            </div>
+            <div className="pc-modal-body">
+              <h2 className="pc-modal-title">{selectedBook.title}</h2>
+              <div className="pc-modal-author">{selectedBook.author || "Unknown Author"}</div>
+              
+              <div className="pc-modal-meta">
+                <div className="pc-meta-chip">Code: {selectedBook.code}</div>
+                <div className="pc-meta-chip">Category: {selectedBook.category || UNCATEGORIZED}</div>
+                <div className={`pc-meta-chip ${selectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
+                  {selectedBook.availableCopies > 0 ? `${selectedBook.availableCopies} Copies Available` : "Currently Unavailable"}
+                </div>
+              </div>
+
+              <div className="pc-modal-desc">
+                {selectedBook.description || "No description available for this book yet."}
+              </div>
+            </div>
+          </div>
         </div>
-      ))}
-      <div className="pc-footer"><a href="/">Library staff sign in →</a></div>
+      )}
     </div>
   );
 }
+
 
 export default function App() {
   const [authReady, setAuthReady] = useState(false);
@@ -581,10 +686,10 @@ export default function App() {
   const [returnQuery, setReturnQuery] = useState("");
   const [justReturnedId, setJustReturnedId] = useState(null);
 
-  const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "" });
+  const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
   const [editingBookId, setEditingBookId] = useState(null);
-  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "" });
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "", coverUrl: "", description: "" });
 
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
@@ -604,11 +709,9 @@ export default function App() {
   const [desktopForceCamera, setDesktopForceCamera] = useState(false);
   const scanLockRef = useRef(false);
 
-  // Search dropdown state
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchWrapRef = useRef(null);
 
-  // Settings state
   const [appSettings, setAppSettings] = useState(SETTINGS_DEFAULTS);
   const [settingsDraft, setSettingsDraft] = useState(SETTINGS_DEFAULTS);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -620,19 +723,13 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Close search dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
-        setShowSearchResults(false);
-      }
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) setShowSearchResults(false);
     };
     document.addEventListener("mousedown", handler);
     document.addEventListener("touchstart", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
-    };
+    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("touchstart", handler); };
   }, []);
 
   async function handleSignIn(e) {
@@ -654,9 +751,8 @@ export default function App() {
       await updatePassword(auth.currentUser, changeNewPw);
       setChangeNewPw(""); setChangeNewPw2(""); setChangeSuccess(true);
     } catch (err) {
-      if (err?.code === "auth/requires-recent-login") {
-        setChangeError("For security, please sign out and sign in again before changing your password.");
-      } else setChangeError("Couldn't update password. Try again.");
+      if (err?.code === "auth/requires-recent-login") setChangeError("For security, please sign out and sign in again before changing your password.");
+      else setChangeError("Couldn't update password. Try again.");
     }
   }
 
@@ -667,19 +763,15 @@ export default function App() {
       setAppSettings(settingsDraft);
       setSettingsSavedMsg("✅ Settings saved.");
       setTimeout(() => setSettingsSavedMsg(""), 2500);
-    } catch (e) {
-      setSettingsSavedMsg("❌ Couldn't save. Check your connection.");
-    }
+    } catch (e) { setSettingsSavedMsg("❌ Couldn't save. Check your connection."); }
     setSettingsSaving(false);
   }
 
   function downloadCSV(filename, rows) {
-    const csv = rows.map((r) =>
-      r.map((cell) => {
+    const csv = rows.map((r) => r.map((cell) => {
         const s = String(cell ?? "");
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-      }).join(",")
-    ).join("\n");
+      }).join(",")).join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -699,14 +791,8 @@ export default function App() {
   function exportTransactionsCSV() {
     const rows = [["Book", "Code", "Student", "Class", "Issued", "Due", "Returned", "Status"]];
     transactions.forEach((t) => {
-      const book = bookById(t.bookId);
-      const st = studentById(t.studentId);
-      rows.push([
-        book?.title || "", book?.code || "",
-        st?.name || "", st?.className || "",
-        t.issueDate, t.dueDate, t.returnDate || "",
-        t.returnDate ? "Returned" : (t.dueDate < todayISO() ? "Overdue" : "Out"),
-      ]);
+      const book = bookById(t.bookId); const st = studentById(t.studentId);
+      rows.push([ book?.title || "", book?.code || "", st?.name || "", st?.className || "", t.issueDate, t.dueDate, t.returnDate || "", t.returnDate ? "Returned" : (t.dueDate < todayISO() ? "Overdue" : "Out") ]);
     });
     downloadCSV(`transactions_${todayISO()}.csv`, rows);
   }
@@ -723,34 +809,23 @@ export default function App() {
     unsubs.push(onSnapshot(doc(db, "settings", "classes"), async (snap) => {
       const list = snap.exists() ? snap.data().list : null;
       if (Array.isArray(list) && list.length > 0) setClasses(list);
-      else {
-        setClasses(DEFAULT_CLASSES);
-        try { await setDoc(doc(db, "settings", "classes"), { list: DEFAULT_CLASSES }); } catch {}
-      }
+      else { setClasses(DEFAULT_CLASSES); try { await setDoc(doc(db, "settings", "classes"), { list: DEFAULT_CLASSES }); } catch {} }
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
       const list = snap.exists() ? snap.data().list : null;
       if (Array.isArray(list) && list.length > 0) setCategories(list);
-      else {
-        setCategories(DEFAULT_CATEGORIES);
-        try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {}
-      }
+      else { setCategories(DEFAULT_CATEGORIES); try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {} }
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "app"), (snap) => {
-      if (snap.exists()) {
-        const merged = { ...SETTINGS_DEFAULTS, ...snap.data() };
-        setAppSettings(merged);
-        setSettingsDraft(merged);
-      }
+      if (snap.exists()) { const merged = { ...SETTINGS_DEFAULTS, ...snap.data() }; setAppSettings(merged); setSettingsDraft(merged); }
     }));
     unsubs.push(onSnapshot(collection(db, "books"), async (qsnap) => {
       if (qsnap.empty) {
         for (const b of [...SEED_BOOKS, ...NMMI_SEED_BOOKS]) {
           try {
             await setDoc(doc(db, "books", b.code), {
-              title: b.title, author: b.author, code: b.code,
-              totalCopies: 1, availableCopies: 1,
-              category: inferCategoryFromCode(b.code) || "",
+              title: b.title, author: b.author, code: b.code, totalCopies: 1, availableCopies: 1,
+              category: inferCategoryFromCode(b.code) || "", coverUrl: "", description: ""
             });
           } catch {}
         }
@@ -767,56 +842,36 @@ export default function App() {
     }));
     unsubs.push(onSnapshot(collection(db, "students"), async (qsnap) => {
       if (qsnap.empty) {
-        for (const s of SEED_STUDENTS) {
-          try { await addDoc(collection(db, "students"), { name: s.name, className: s.className, roll: s.roll }); } catch {}
-        }
+        for (const s of SEED_STUDENTS) { try { await addDoc(collection(db, "students"), { name: s.name, className: s.className, roll: s.roll }); } catch {} }
       } else setStudents(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     }));
-    unsubs.push(onSnapshot(collection(db, "transactions"), (qsnap) => {
-      setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }));
-    unsubs.push(onSnapshot(doc(db, "settings", "lastPromotion"), (snap) => {
-      setLastPromotion(snap.exists() ? snap.data() : null);
-    }));
+    unsubs.push(onSnapshot(collection(db, "transactions"), (qsnap) => { setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() }))); }));
+    unsubs.push(onSnapshot(doc(db, "settings", "lastPromotion"), (snap) => { setLastPromotion(snap.exists() ? snap.data() : null); }));
 
     setLoading(false);
     return () => unsubs.forEach((u) => u && u());
   }, [user]);
 
-  // Hardware scanner keyboard listener (desktop only, when scan expected)
   useEffect(() => {
     if (!isDesktop || !scannerTarget || desktopForceCamera) return;
     let buffer = "", lastKeyTime = 0, resetTimer = null;
-
     const onKeyDown = (e) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === "Enter") {
         if (buffer.length > 0) {
-          e.preventDefault();
-          const code = buffer.trim(); buffer = "";
-          if (code && !scanLockRef.current) {
-            scanLockRef.current = true;
-            handleScanResult(code);
-            setTimeout(() => { scanLockRef.current = false; }, 900);
-          }
+          e.preventDefault(); const code = buffer.trim(); buffer = "";
+          if (code && !scanLockRef.current) { scanLockRef.current = true; handleScanResult(code); setTimeout(() => { scanLockRef.current = false; }, 900); }
         }
         return;
       }
       if (e.key.length === 1) {
-        const now = Date.now();
-        if (now - lastKeyTime > 100) buffer = "";
-        lastKeyTime = now;
-        buffer += e.key;
-        clearTimeout(resetTimer);
-        resetTimer = setTimeout(() => { buffer = ""; }, 1500);
+        const now = Date.now(); if (now - lastKeyTime > 100) buffer = "";
+        lastKeyTime = now; buffer += e.key;
+        clearTimeout(resetTimer); resetTimer = setTimeout(() => { buffer = ""; }, 1500);
       }
     };
     document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      clearTimeout(resetTimer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { document.removeEventListener("keydown", onKeyDown); clearTimeout(resetTimer); };
   }, [isDesktop, scannerTarget, desktopForceCamera]);
 
   const activeTx = useMemo(() => transactions.filter((t) => !t.returnDate), [transactions]);
@@ -830,8 +885,7 @@ export default function App() {
   function studentHasOverdue(id) { return overdueTx.some((t) => t.studentId === id); }
 
   async function addClass(e) {
-    e.preventDefault();
-    const name = newClassName.trim(); if (!name) return;
+    e.preventDefault(); const name = newClassName.trim(); if (!name) return;
     if (classes.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewClassName(""); return; }
     try { await setDoc(doc(db, "settings", "classes"), { list: [...classes, name] }); } catch {}
     setNewClassName("");
@@ -839,8 +893,7 @@ export default function App() {
   function startEditClass(n) { setEditingClassOld(n); setEditClassName(n); }
   function cancelEditClass() { setEditingClassOld(null); }
   async function saveEditClass(e) {
-    e.preventDefault();
-    const oldName = editingClassOld, newName = editClassName.trim();
+    e.preventDefault(); const oldName = editingClassOld, newName = editClassName.trim();
     if (!newName || newName === oldName) { setEditingClassOld(null); return; }
     if (classes.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
     try {
@@ -853,13 +906,11 @@ export default function App() {
   }
   async function deleteClass(name) {
     const count = students.filter((s) => s.className === name).length;
-    const msg = count > 0 ? `${count} student(s) are in "${name}". Remove the class anyway?` : `Remove class "${name}"?`;
-    if (!window.confirm(msg)) return;
+    if (!window.confirm(count > 0 ? `${count} student(s) are in "${name}". Remove the class anyway?` : `Remove class "${name}"?`)) return;
     try { await setDoc(doc(db, "settings", "classes"), { list: classes.filter((c) => c !== name) }); } catch {}
   }
   async function addCategory(e) {
-    e.preventDefault();
-    const name = newCategoryName.trim(); if (!name) return;
+    e.preventDefault(); const name = newCategoryName.trim(); if (!name) return;
     if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewCategoryName(""); return; }
     try { await setDoc(doc(db, "settings", "bookCategories"), { list: [...categories, name] }); } catch {}
     setNewCategoryName("");
@@ -867,8 +918,7 @@ export default function App() {
   function startEditCategory(n) { setEditingCategoryOld(n); setEditCategoryName(n); }
   function cancelEditCategory() { setEditingCategoryOld(null); }
   async function saveEditCategory(e) {
-    e.preventDefault();
-    const oldName = editingCategoryOld, newName = editCategoryName.trim();
+    e.preventDefault(); const oldName = editingCategoryOld, newName = editCategoryName.trim();
     if (!newName || newName === oldName) { setEditingCategoryOld(null); return; }
     if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
     try {
@@ -881,8 +931,7 @@ export default function App() {
   }
   async function deleteCategory(name) {
     const count = books.filter((b) => b.category === name).length;
-    const msg = count > 0 ? `${count} book(s) are in "${name}". Remove the category anyway?` : `Remove category "${name}"?`;
-    if (!window.confirm(msg)) return;
+    if (!window.confirm(count > 0 ? `${count} book(s) are in "${name}". Remove the category anyway?` : `Remove category "${name}"?`)) return;
     try {
       await setDoc(doc(db, "settings", "bookCategories"), { list: categories.filter((c) => c !== name) });
       const q = query(collection(db, "books"), where("category", "==", name));
@@ -890,6 +939,7 @@ export default function App() {
       for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: "" }); } catch {} }
     } catch {}
   }
+
   async function addBook(e) {
     e.preventDefault();
     if (!bookForm.title.trim() || !bookForm.code.trim()) return;
@@ -899,15 +949,21 @@ export default function App() {
       await setDoc(doc(db, "books", code), {
         title: bookForm.title.trim(), author: bookForm.author.trim(), code,
         totalCopies: copies, availableCopies: copies, category: bookForm.category || "",
+        coverUrl: bookForm.coverUrl || "", description: bookForm.description || ""
       });
     } catch {}
-    setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category });
+    setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category, coverUrl: "", description: "" });
   }
+
   function startEditBook(b) {
     setEditingBookId(b.id);
-    setEditBookForm({ title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "" });
+    setEditBookForm({
+      title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "",
+      coverUrl: b.coverUrl || "", description: b.description || ""
+    });
   }
   function cancelEditBook() { setEditingBookId(null); }
+
   async function saveEditBook(e) {
     e.preventDefault();
     if (!editBookForm.title.trim()) return;
@@ -919,16 +975,15 @@ export default function App() {
       await updateDoc(doc(db, "books", editingBookId), {
         title: editBookForm.title.trim(), author: editBookForm.author.trim(),
         totalCopies: newTotal, availableCopies: newAvailable, category: editBookForm.category || "",
+        coverUrl: editBookForm.coverUrl || "", description: editBookForm.description || ""
       });
     } catch {}
     setEditingBookId(null);
   }
+
   async function deleteBook(book) {
     const activeCount = transactions.filter((t) => t.bookId === book.id && !t.returnDate).length;
-    if (activeCount > 0) {
-      alert(`"${book.title}" is currently issued to ${activeCount} student(s). Get it returned first, then remove it.`);
-      return;
-    }
+    if (activeCount > 0) { alert(`"${book.title}" is currently issued to ${activeCount} student(s). Get it returned first, then remove it.`); return; }
     if (!window.confirm(`Remove "${book.title}" (${book.code}) from the catalog?`)) return;
     try { await deleteDoc(doc(db, "books", book.id)); } catch {}
   }
@@ -944,8 +999,7 @@ export default function App() {
     setStudentForm({ name: "", className: studentForm.className, roll: "", phone: "" });
   }
   function startEditStudent(s) {
-    setEditingStudentId(s.id);
-    setEditForm({ name: s.name, className: s.className, roll: s.roll, phone: s.phone || "" });
+    setEditingStudentId(s.id); setEditForm({ name: s.name, className: s.className, roll: s.roll, phone: s.phone || "" });
   }
   function cancelEditStudent() { setEditingStudentId(null); }
   async function saveEditStudent(e) {
@@ -961,10 +1015,7 @@ export default function App() {
   }
   async function deleteStudent(student) {
     const activeCount = studentActiveTx(student.id).length;
-    if (activeCount > 0) {
-      alert(`${student.name} currently has ${activeCount} book(s) checked out. Get them returned first, then remove.`);
-      return;
-    }
+    if (activeCount > 0) { alert(`${student.name} currently has ${activeCount} book(s) checked out. Get them returned first, then remove.`); return; }
     if (!window.confirm(`Remove ${student.name} from the app?`)) return;
     try { await deleteDoc(doc(db, "students", student.id)); } catch {}
     if (detailStudentId === student.id) setSheet(null);
@@ -1016,9 +1067,7 @@ export default function App() {
       const copies = Math.max(1, parseInt(parts[3]) || 1);
       const category = parts[4] || bulkBookCategory || "";
       try {
-        await setDoc(doc(db, "books", code), {
-          title, author, code, totalCopies: copies, availableCopies: copies, category,
-        });
+        await setDoc(doc(db, "books", code), { title, author, code, totalCopies: copies, availableCopies: copies, category, coverUrl: "", description: "" });
       } catch {}
     }
     setBulkBooksText("");
@@ -1038,48 +1087,36 @@ export default function App() {
     const loanDays = appSettings.defaultLoanDays || 14;
     const dueDate = addDays(issueDate, Math.max(1, parseInt(days) || loanDays));
     try {
-      await addDoc(collection(db, "transactions"), {
-        bookId: selectedBook.id, studentId: selectedStudentId, issueDate, dueDate, returnDate: null,
-      });
-      await updateDoc(doc(db, "books", selectedBook.id), {
-        availableCopies: selectedBook.availableCopies - 1,
-      });
+      await addDoc(collection(db, "transactions"), { bookId: selectedBook.id, studentId: selectedStudentId, issueDate, dueDate, returnDate: null });
+      await updateDoc(doc(db, "books", selectedBook.id), { availableCopies: selectedBook.availableCopies - 1 });
     } catch {}
     const st = studentById(selectedStudentId);
     setLastIssued({ bookTitle: selectedBook.title, studentName: st ? st.name : "", dueDate });
     setSelectedBook(null); setBookQuery("");
   }
   async function returnBook(txId) {
-    const tx = transactions.find((t) => t.id === txId);
-    if (!tx) return;
+    const tx = transactions.find((t) => t.id === txId); if (!tx) return;
     const book = bookById(tx.bookId);
     try {
       await updateDoc(doc(db, "transactions", txId), { returnDate: todayISO() });
-      if (book) {
-        await updateDoc(doc(db, "books", tx.bookId), {
-          availableCopies: Math.min(book.totalCopies, book.availableCopies + 1),
-        });
-      }
+      if (book) { await updateDoc(doc(db, "books", tx.bookId), { availableCopies: Math.min(book.totalCopies, book.availableCopies + 1) }); }
     } catch {}
     setJustReturnedId(txId);
     setTimeout(() => setJustReturnedId((cur) => (cur === txId ? null : cur)), 1500);
   }
 
   const bookMatchForSearch = useMemo(() => {
-    const q = normCode(homeQuery);
-    if (!q) return null;
+    const q = normCode(homeQuery); if (!q) return null;
     return books.find((b) => normCode(b.code) === q || normCode(b.code).includes(q)) || null;
   }, [homeQuery, books]);
 
   const searchStudentMatches = useMemo(() => {
-    const q = homeQuery.trim().toLowerCase();
-    if (!q) return [];
+    const q = homeQuery.trim().toLowerCase(); if (!q) return [];
     return students.filter((s) => s.name.toLowerCase().includes(q) || (s.roll || "").toLowerCase().includes(q)).slice(0, 5);
   }, [homeQuery, students]);
 
   const searchBookMatches = useMemo(() => {
-    const q = homeQuery.trim().toLowerCase();
-    if (!q) return [];
+    const q = homeQuery.trim().toLowerCase(); if (!q) return [];
     return books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 5);
   }, [homeQuery, books]);
 
@@ -1092,14 +1129,12 @@ export default function App() {
   }, [students, selectedClass, homeQuery]);
 
   const issueBookMatches = useMemo(() => {
-    const q = bookQuery.trim().toLowerCase();
-    if (!q) return books.slice(0, 6);
+    const q = bookQuery.trim().toLowerCase(); if (!q) return books.slice(0, 6);
     return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 6);
   }, [bookQuery, books]);
 
   const issueStudentMatches = useMemo(() => {
-    const q = issueStudentQuery.trim().toLowerCase();
-    if (!q) return students.slice(0, 6);
+    const q = issueStudentQuery.trim().toLowerCase(); if (!q) return students.slice(0, 6);
     return students.filter((s) => s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q)).slice(0, 6);
   }, [issueStudentQuery, students]);
 
@@ -1111,8 +1146,7 @@ export default function App() {
   }, [returnQuery, activeTx, books, students]);
 
   const catalogMatches = useMemo(() => {
-    const q = catalogQuery.trim().toLowerCase();
-    if (!q) return books;
+    const q = catalogQuery.trim().toLowerCase(); if (!q) return books;
     return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
   }, [catalogQuery, books]);
 
@@ -1131,11 +1165,8 @@ export default function App() {
   const monthlyTopReaders = useMemo(() => {
     if (!certMonth) return [];
     const counts = {};
-    transactions.forEach((t) => {
-      if (t.issueDate && t.issueDate.startsWith(certMonth)) counts[t.studentId] = (counts[t.studentId] || 0) + 1;
-    });
-    return Object.entries(counts).map(([studentId, count]) => ({ student: studentById(studentId), count }))
-      .filter((x) => x.student).sort((a, b) => b.count - a.count);
+    transactions.forEach((t) => { if (t.issueDate && t.issueDate.startsWith(certMonth)) counts[t.studentId] = (counts[t.studentId] || 0) + 1; });
+    return Object.entries(counts).map(([studentId, count]) => ({ student: studentById(studentId), count })).filter((x) => x.student).sort((a, b) => b.count - a.count);
   }, [certMonth, transactions, students]);
 
   const certStudent = certStudentId ? studentById(certStudentId) : (monthlyTopReaders[0] ? monthlyTopReaders[0].student : null);
@@ -1143,10 +1174,7 @@ export default function App() {
 
   const dashboardStats = useMemo(() => {
     const bookCounts = {}; const studentCounts = {};
-    transactions.forEach((t) => {
-      bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1;
-      studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1;
-    });
+    transactions.forEach((t) => { bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1; studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1; });
     const mostBorrowed = books.map((b) => ({ book: b, count: bookCounts[b.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
     const neverBorrowed = books.filter((b) => !bookCounts[b.id]);
     const topReaders = students.map((s) => ({ student: s, count: studentCounts[s.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
@@ -1160,38 +1188,25 @@ export default function App() {
   }, [books, students, transactions]);
 
   const overdueList = useMemo(() => {
-    return overdueTx.map((t) => ({ tx: t, book: bookById(t.bookId), student: studentById(t.studentId) }))
-      .filter((r) => r.book && r.student).sort((a, b) => (a.tx.dueDate < b.tx.dueDate ? -1 : 1));
+    return overdueTx.map((t) => ({ tx: t, book: bookById(t.bookId), student: studentById(t.studentId) })).filter((r) => r.book && r.student).sort((a, b) => (a.tx.dueDate < b.tx.dueDate ? -1 : 1));
   }, [overdueTx, books, students]);
 
   const selectedStudent = selectedStudentId ? studentById(selectedStudentId) : null;
 
-  function openIssue() {
-    setIssueStudentQuery(""); setBookQuery(""); setSelectedBook(null); setLastIssued(null);
-    setDays(appSettings.defaultLoanDays || 14);
-    setSheet("issue");
-  }
+  function openIssue() { setIssueStudentQuery(""); setBookQuery(""); setSelectedBook(null); setLastIssued(null); setDays(appSettings.defaultLoanDays || 14); setSheet("issue"); }
   function openReturn() { setReturnQuery(""); setSheet("return"); }
-
-  function openScanner(target) {
-    setDesktopForceCamera(false);
-    setScannerTarget(target);
-  }
+  function openScanner(target) { setDesktopForceCamera(false); setScannerTarget(target); }
 
   function handleScanResult(text) {
-    const val = (text || "").trim();
-    const bookCode = parseBookQrValue(val);
+    const val = (text || "").trim(); const bookCode = parseBookQrValue(val);
     let feedback = { type: "error", message: "Not found" };
 
     if (scannerTarget === "home") {
       const studentMatch = students.find((s) => s.roll.toLowerCase() === val.toLowerCase());
       const bookMatch = books.find((b) => normCode(b.code) === normCode(bookCode));
-      if (studentMatch) {
-        feedback = { type: "success" }; setHomeQuery(""); openStudentDetail(studentMatch.id);
-      } else if (bookMatch) {
-        feedback = { type: "success" }; setHomeQuery(bookMatch.code);
-        setDetailBookId(bookMatch.id); setSheet("bookDetail");
-      } else setHomeQuery(val);
+      if (studentMatch) { feedback = { type: "success" }; setHomeQuery(""); openStudentDetail(studentMatch.id); }
+      else if (bookMatch) { feedback = { type: "success" }; setHomeQuery(bookMatch.code); setDetailBookId(bookMatch.id); setSheet("bookDetail"); }
+      else setHomeQuery(val);
     } else if (scannerTarget === "issueBook") {
       setBookQuery(bookCode);
       const match = books.find((b) => normCode(b.code) === normCode(bookCode));
@@ -1203,31 +1218,17 @@ export default function App() {
       if (match) { setSelectedStudentId(match.id); feedback = { type: "success" }; }
     } else if (scannerTarget === "return") {
       setReturnQuery(bookCode);
-      const hasMatch = books.some((b) => normCode(b.code) === normCode(bookCode)) ||
-        students.some((s) => s.roll.toLowerCase() === val.toLowerCase() || s.name.toLowerCase().includes(val.toLowerCase()));
+      const hasMatch = books.some((b) => normCode(b.code) === normCode(bookCode)) || students.some((s) => s.roll.toLowerCase() === val.toLowerCase() || s.name.toLowerCase().includes(val.toLowerCase()));
       if (hasMatch) feedback = { type: "success" };
     }
-
-    playScanSound(feedback.type);
-    setScanFeedback(feedback);
-    setTimeout(() => {
-      setScanFeedback(null);
-      setScannerTarget(null);
-    }, feedback.type === "success" ? 450 : 750);
+    playScanSound(feedback.type); setScanFeedback(feedback);
+    setTimeout(() => { setScanFeedback(null); setScannerTarget(null); }, feedback.type === "success" ? 450 : 750);
   }
 
-  function openPromotion() {
-    const m = {};
-    classes.forEach((c, i) => { m[c] = classes[i + 1] || ""; });
-    setPromoMap(m); setPromoMsg(""); setSheet("promotion");
-  }
+  function openPromotion() { const m = {}; classes.forEach((c, i) => { m[c] = classes[i + 1] || ""; }); setPromoMap(m); setPromoMsg(""); setSheet("promotion"); }
   async function applyPromotion() {
     const moves = [];
-    students.forEach((s) => {
-      if (!s.className || !(s.className in promoMap)) return;
-      const to = promoMap[s.className];
-      if (to !== s.className) moves.push({ id: s.id, from: s.className, to });
-    });
+    students.forEach((s) => { if (!s.className || !(s.className in promoMap)) return; const to = promoMap[s.className]; if (to !== s.className) moves.push({ id: s.id, from: s.className, to }); });
     if (moves.length === 0) { setPromoMsg("No student will change class."); return; }
     if (!window.confirm(`Move ${moves.length} students to their new classes?`)) return;
     setPromoBusy(true); setPromoMsg("");
@@ -1295,8 +1296,7 @@ export default function App() {
   }
 
   const studentListForManage = useMemo(() => {
-    const q = studentListQuery.trim().toLowerCase();
-    if (!q) return students;
+    const q = studentListQuery.trim().toLowerCase(); if (!q) return students;
     return students.filter((s) => s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q));
   }, [students, studentListQuery]);
 
@@ -1706,105 +1706,25 @@ export default function App() {
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
 
         @media print {
-          /* Hide everything not needed for print using display:none (fixes blank page bug) */
           .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head, .modal-backdrop > .modal-panel > .modal-body > *:not(.print-area) {
             display: none !important;
           }
-          
           html, body {
-            background: #fff !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            height: auto !important;
-            overflow: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
+            background: #fff !important; margin: 0 !important; padding: 0 !important;
+            height: auto !important; overflow: visible !important;
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
           }
-
-          .app {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: none !important;
-            min-height: auto !important;
-          }
-
-          .modal-backdrop {
-            position: static !important;
-            display: block !important;
-            background: transparent !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            animation: none !important;
-            inset: auto !important;
-          }
-
-          .modal-panel {
-            position: static !important;
-            display: block !important;
-            max-width: none !important;
-            max-height: none !important;
-            overflow: visible !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border: none !important;
-            background: transparent !important;
-            animation: none !important;
-          }
-
-          .modal-body {
-            padding: 0 !important;
-          }
-
-          /* Make the print area fill the page */
-          .print-area {
-            display: grid !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            position: static !important;
-          }
-          
-          .print-area.books-print {
-            grid-template-columns: repeat(5, 1fr) !important;
-            gap: 0.2rem !important;
-          }
-          
-          .print-area:not(.books-print) {
-            grid-template-columns: repeat(4, 1fr) !important;
-          }
-
-          .book-label-card {
-            border: 1px dashed #ccc !important;
-            padding: 2px !important;
-            page-break-inside: avoid !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
-          }
-          
-          .book-label-code {
-            font-size: 10pt !important;
-            margin-bottom: 4px !important;
-            color: #000 !important;
-          }
-          
-          .id-card { 
-            border: 1px dashed #ccc !important;
-            padding: 4px !important;
-            page-break-inside: avoid !important; 
-          }
-
-          /* Force canvas to be visible */
-          .id-qrcode {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
-          }
+          .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
+          .modal-backdrop { position: static !important; display: block !important; background: transparent !important; padding: 0 !important; margin: 0 !important; animation: none !important; inset: auto !important; }
+          .modal-panel { position: static !important; display: block !important; max-width: none !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border: none !important; background: transparent !important; animation: none !important; }
+          .modal-body { padding: 0 !important; }
+          .print-area { display: grid !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
+          .print-area.books-print { grid-template-columns: repeat(5, 1fr) !important; gap: 0.2rem !important; }
+          .print-area:not(.books-print) { grid-template-columns: repeat(4, 1fr) !important; }
+          .book-label-card { border: 1px dashed #ccc !important; padding: 2px !important; page-break-inside: avoid !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
+          .book-label-code { font-size: 10pt !important; margin-bottom: 4px !important; color: #000 !important; }
+          .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
+          .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
         }
 
         /* ---- Dark mode ---- */
@@ -2203,9 +2123,7 @@ export default function App() {
                   Each QR code encodes the {printMode === "students" ? "student's roll number" : "book's code (prefixed with BOOK:)"} — scanning it in the app finds that {printMode === "students" ? "student" : "book"} automatically.
                   Tap Print, then choose "Save as PDF" to print or share.
                 </p>
-                <button className="btn full" onClick={() => {
-                  setTimeout(() => window.print(), 500);
-                }}><Printer size={16} /> Print / Save as PDF</button>
+                <button className="btn full" onClick={() => { setTimeout(() => window.print(), 500); }}><Printer size={16} /> Print / Save as PDF</button>
               </div>
               <div className={`print-area ${printMode === "books" ? "books-print" : ""}`} style={{ marginTop: ".8rem" }}>
                 {printMode === "students"
@@ -2484,6 +2402,8 @@ export default function App() {
                                 </select>
                                 <input type="number" min="1" value={editBookForm.copies} onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })} />
                               </div>
+                              <input type="text" value={editBookForm.coverUrl} onChange={(e) => setEditBookForm({ ...editBookForm, coverUrl: e.target.value })} placeholder="Cover Image URL (https://...)" />
+                              <textarea value={editBookForm.description} onChange={(e) => setEditBookForm({ ...editBookForm, description: e.target.value })} placeholder="Short description" rows={2} style={{ resize: "vertical" }} />
                               <div className="meta" style={{ fontSize: ".72rem" }}>Code: {b.code} (fixed)</div>
                               <div style={{ display: "flex", gap: ".5rem" }}>
                                 <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
@@ -2521,6 +2441,8 @@ export default function App() {
                   <div><label>Code</label><input type="text" value={bookForm.code} onChange={(e) => setBookForm({ ...bookForm, code: e.target.value })} required /></div>
                   <div><label>Copies</label><input type="number" min="1" value={bookForm.copies} onChange={(e) => setBookForm({ ...bookForm, copies: e.target.value })} /></div>
                 </div>
+                <div className="field"><label>Cover Image URL (optional)</label><input type="text" value={bookForm.coverUrl} onChange={(e) => setBookForm({ ...bookForm, coverUrl: e.target.value })} placeholder="https://..." /></div>
+                <div className="field"><label>Description (optional)</label><textarea value={bookForm.description} onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })} rows={2} style={{ resize: "vertical" }} placeholder="Short book description" /></div>
                 <button type="submit" className="btn full"><Plus size={16} /> Add Book</button>
               </form>
               <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: ".9rem" }}>
