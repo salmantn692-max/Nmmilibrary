@@ -15,7 +15,7 @@ import {
 } from "firebase/auth";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc, addDoc,
-  query, where, getDocs, deleteDoc, writeBatch,
+  query, where, getDocs, deleteDoc, writeBatch, limit
 } from "firebase/firestore";
 
 const DEFAULT_CLASSES = ["CLASS-1", "CLASS-2", "CLASS-3", "CLASS-4", "CLASS-5", "CLASS-6"];
@@ -442,7 +442,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW)
+// PUBLIC CATALOG (STUDENT VIEW) - UPDATED WITH PAGINATION
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
@@ -450,6 +450,10 @@ export function PublicCatalog() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedBook, setSelectedBook] = useState(null);
+
+  // Pagination State
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = useRef(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "books"),
@@ -459,6 +463,7 @@ export function PublicCatalog() {
     return unsub;
   }, []);
 
+  // Category filtering logic
   const categoriesList = useMemo(() => {
     const cats = new Set();
     books.forEach((b) => { 
@@ -466,6 +471,7 @@ export function PublicCatalog() {
         cats.add(b.category.trim()); 
       }
     });
+    // Remove unnecessary categories (like those with commas or quotes)
     const validCats = Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("ടി എസ്"));
     return validCats.sort();
   }, [books]);
@@ -483,6 +489,31 @@ export function PublicCatalog() {
       normCode(b.code).includes(normCode(q))
     );
   }, [query, books, selectedCategory]);
+
+  // Reset visible count when filter changes
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [query, selectedCategory]);
+
+  // Infinite Scroll Logic
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filtered.length) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { threshold: 1 }
+    );
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [visibleCount, filtered.length]);
 
   return (
     <div className="pc-app">
@@ -529,6 +560,7 @@ export function PublicCatalog() {
         .pc-out { background:#F3E1E0; color:#8B2E3C; }
         
         .pc-empty { text-align:center; padding:3rem 1rem; color:var(--text-soft); font-size:1rem; grid-column:1/-1; }
+        .pc-loading-more { grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-soft); font-size:0.9rem; }
         
         /* Modal styles */
         .pc-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(3px); }
@@ -578,27 +610,37 @@ export function PublicCatalog() {
         ) : filtered.length === 0 ? (
           <div className="pc-empty">No books found.</div>
         ) : (
-          filtered.map((b) => (
-            <div key={b.id} className="pc-card" onClick={() => setSelectedBook(b)}>
-              <div className="pc-cover-wrap">
-                {b.coverUrl ? (
-                  <img src={b.coverUrl} alt={b.title} className="pc-cover-img" loading="lazy" />
-                ) : (
-                  <div className="pc-cover-fallback">
-                    <Library size={32} />
-                    <span style={{ fontSize: "0.7rem", fontWeight: "bold" }}>No Cover</span>
+          <>
+            {/* പേജിനേഷൻ - ആദ്യം 20 എണ്ണം മാത്രം കാണിക്കുന്നു */}
+            {filtered.slice(0, visibleCount).map((b) => (
+              <div key={b.id} className="pc-card" onClick={() => setSelectedBook(b)}>
+                <div className="pc-cover-wrap">
+                  {b.coverUrl ? (
+                    <img src={b.coverUrl} alt={b.title} className="pc-cover-img" loading="lazy" />
+                  ) : (
+                    <div className="pc-cover-fallback">
+                      <Library size={32} />
+                      <span style={{ fontSize: "0.7rem", fontWeight: "bold" }}>No Cover</span>
+                    </div>
+                  )}
+                </div>
+                <div className="pc-card-info">
+                  <div className="pc-title">{b.title}</div>
+                  <div className="pc-author">{b.author || "Unknown Author"}</div>
+                  <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
+                    {b.availableCopies > 0 ? "Available" : "All Issued"}
                   </div>
-                )}
-              </div>
-              <div className="pc-card-info">
-                <div className="pc-title">{b.title}</div>
-                <div className="pc-author">{b.author || "Unknown Author"}</div>
-                <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
-                  {b.availableCopies > 0 ? "Available" : "All Issued"}
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+            
+            {/* സ്ക്രോൾ ചെയ്യുമ്പോൾ കൂടുതൽ ലോഡ് ചെയ്യാനുള്ള ട്രിഗർ */}
+            {visibleCount < filtered.length && (
+              <div ref={observerTarget} className="pc-loading-more">
+                Loading more books...
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -824,6 +866,8 @@ export default function App() {
     unsubs.push(onSnapshot(doc(db, "settings", "app"), (snap) => {
       if (snap.exists()) { const merged = { ...SETTINGS_DEFAULTS, ...snap.data() }; setAppSettings(merged); setSettingsDraft(merged); }
     }));
+    
+    // Books - Load all for admin (or use limit if needed)
     unsubs.push(onSnapshot(collection(db, "books"), async (qsnap) => {
       if (qsnap.empty) {
         for (const b of [...SEED_BOOKS, ...NMMI_SEED_BOOKS]) {
@@ -845,12 +889,20 @@ export default function App() {
         }
       }
     }));
+    
+    // Students - Load all
     unsubs.push(onSnapshot(collection(db, "students"), async (qsnap) => {
       if (qsnap.empty) {
         for (const s of SEED_STUDENTS) { try { await addDoc(collection(db, "students"), { name: s.name, className: s.className, roll: s.roll }); } catch {} }
       } else setStudents(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     }));
-    unsubs.push(onSnapshot(collection(db, "transactions"), (qsnap) => { setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() }))); }));
+
+    // Transactions - LIMIT to 500 for performance
+    const tq = query(collection(db, "transactions"), limit(500));
+    unsubs.push(onSnapshot(tq, (qsnap) => { 
+      setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() }))); 
+    }));
+    
     unsubs.push(onSnapshot(doc(db, "settings", "lastPromotion"), (snap) => { setLastPromotion(snap.exists() ? snap.data() : null); }));
 
     setLoading(false);
