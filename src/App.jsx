@@ -4,7 +4,7 @@ import {
   BookMarked, RotateCcw, UserPlus, MoreVertical, X, Layers, Pencil,
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
-  Settings, Save, Palette, FileDown, BookOpen
+  Settings, Save, Palette, FileDown, BookOpen, Heart
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -15,7 +15,7 @@ import {
 } from "firebase/auth";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc, addDoc,
-  query, where, getDocs, deleteDoc, writeBatch, limit
+  query, where, getDocs, deleteDoc, writeBatch, limit, increment
 } from "firebase/firestore";
 
 const DEFAULT_CLASSES = ["CLASS-1", "CLASS-2", "CLASS-3", "CLASS-4", "CLASS-5", "CLASS-6"];
@@ -442,7 +442,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW) - UPDATED WITH PAGINATION
+// PUBLIC CATALOG (STUDENT VIEW) - WITH LIKES
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
@@ -451,7 +451,6 @@ export function PublicCatalog() {
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedBook, setSelectedBook] = useState(null);
 
-  // Pagination State
   const [visibleCount, setVisibleCount] = useState(20);
   const observerTarget = useRef(null);
 
@@ -463,7 +462,6 @@ export function PublicCatalog() {
     return unsub;
   }, []);
 
-  // Category filtering logic
   const categoriesList = useMemo(() => {
     const cats = new Set();
     books.forEach((b) => { 
@@ -471,7 +469,6 @@ export function PublicCatalog() {
         cats.add(b.category.trim()); 
       }
     });
-    // Remove unnecessary categories (like those with commas or quotes)
     const validCats = Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("ടി എസ്"));
     return validCats.sort();
   }, [books]);
@@ -490,12 +487,10 @@ export function PublicCatalog() {
     );
   }, [query, books, selectedCategory]);
 
-  // Reset visible count when filter changes
   useEffect(() => {
     setVisibleCount(20);
   }, [query, selectedCategory]);
 
-  // Infinite Scroll Logic
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -514,6 +509,38 @@ export function PublicCatalog() {
       }
     };
   }, [visibleCount, filtered.length]);
+
+  // Toggle Like Function
+  const handleLike = async (e, book) => {
+    e.stopPropagation(); 
+    
+    // Get liked books from local storage
+    let likedBooks = JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]");
+    const isCurrentlyLiked = likedBooks.includes(book.id);
+    
+    try {
+      if (isCurrentlyLiked) {
+        // Unlike
+        await updateDoc(doc(db, "books", book.id), { likes: increment(-1) });
+        likedBooks = likedBooks.filter(id => id !== book.id);
+        setBooks((prev) => prev.map(b => b.id === book.id ? { ...b, likes: Math.max(0, (b.likes || 0) - 1) } : b));
+      } else {
+        // Like
+        await updateDoc(doc(db, "books", book.id), { likes: increment(1) });
+        likedBooks.push(book.id);
+        setBooks((prev) => prev.map(b => b.id === book.id ? { ...b, likes: (b.likes || 0) + 1 } : b));
+      }
+      localStorage.setItem("nmmi_liked_books", JSON.stringify(likedBooks));
+    } catch (err) {
+      console.error(err);
+      alert("Error updating like. Please try again.");
+    }
+  };
+
+  const isLiked = (bookId) => {
+    const likedBooks = JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]");
+    return likedBooks.includes(bookId);
+  };
 
   return (
     <div className="pc-app">
@@ -555,7 +582,7 @@ export function PublicCatalog() {
         .pc-title { font-family: 'Anek Malayalam', sans-serif; font-weight:700; font-size:1rem; color:var(--text); line-height:1.4; margin-bottom:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
         .pc-author { font-size:.8rem; color:var(--text-soft); margin-bottom:.5rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         
-        .pc-badge { font-size:.7rem; font-weight:700; padding:.2rem .4rem; border-radius:4px; display:inline-block; margin-top:auto; align-self:flex-start; }
+        .pc-badge { font-size:.7rem; font-weight:700; padding:.2rem .4rem; border-radius:4px; display:inline-block; }
         .pc-avail { background:#E1F0E6; color:#1F7A52; }
         .pc-out { background:#F3E1E0; color:#8B2E3C; }
         
@@ -611,7 +638,6 @@ export function PublicCatalog() {
           <div className="pc-empty">No books found.</div>
         ) : (
           <>
-            {/* പേജിനേഷൻ - ആദ്യം 20 എണ്ണം മാത്രം കാണിക്കുന്നു */}
             {filtered.slice(0, visibleCount).map((b) => (
               <div key={b.id} className="pc-card" onClick={() => setSelectedBook(b)}>
                 <div className="pc-cover-wrap">
@@ -627,14 +653,30 @@ export function PublicCatalog() {
                 <div className="pc-card-info">
                   <div className="pc-title">{b.title}</div>
                   <div className="pc-author">{b.author || "Unknown Author"}</div>
-                  <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
-                    {b.availableCopies > 0 ? "Available" : "All Issued"}
+                  
+                  {/* Like Button and Badge */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+                    <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
+                      {b.availableCopies > 0 ? "Available" : "All Issued"}
+                    </div>
+                    <button 
+                      onClick={(e) => handleLike(e, b)} 
+                      style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", padding: "4px" }}
+                    >
+                      <Heart 
+                        size={16} 
+                        fill={isLiked(b.id) ? "#e11d48" : "none"} 
+                        color={isLiked(b.id) ? "#e11d48" : "#7A6F5D"} 
+                      />
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: isLiked(b.id) ? "#e11d48" : "#7A6F5D" }}>
+                        {b.likes || 0}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>
             ))}
             
-            {/* സ്ക്രോൾ ചെയ്യുമ്പോൾ കൂടുതൽ ലോഡ് ചെയ്യാനുള്ള ട്രിഗർ */}
             {visibleCount < filtered.length && (
               <div ref={observerTarget} className="pc-loading-more">
                 Loading more books...
@@ -659,12 +701,24 @@ export function PublicCatalog() {
               <h2 className="pc-modal-title">{selectedBook.title}</h2>
               <div className="pc-modal-author">{selectedBook.author || "Unknown Author"}</div>
               
-              <div className="pc-modal-meta">
-                <div className="pc-meta-chip">Code: {selectedBook.code}</div>
-                <div className="pc-meta-chip">Category: {selectedBook.category || UNCATEGORIZED}</div>
-                <div className={`pc-meta-chip ${selectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
-                  {selectedBook.availableCopies > 0 ? `${selectedBook.availableCopies} Copies Available` : "Currently Unavailable"}
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem" }}>
+                <div className="pc-modal-meta" style={{ marginBottom: 0 }}>
+                  <div className="pc-meta-chip">Code: {selectedBook.code}</div>
+                  <div className="pc-meta-chip">Category: {selectedBook.category || UNCATEGORIZED}</div>
                 </div>
+                <button 
+                  onClick={(e) => handleLike(e, selectedBook)} 
+                  style={{ display: "flex", alignItems: "center", gap: "6px", background: "#FFF", border: "1px solid var(--line)", padding: "6px 12px", borderRadius: "8px", cursor: "pointer" }}
+                >
+                  <Heart size={16} fill={isLiked(selectedBook.id) ? "#e11d48" : "none"} color={isLiked(selectedBook.id) ? "#e11d48" : "#7A6F5D"} />
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>
+                    {selectedBook.likes || 0}
+                  </span>
+                </button>
+              </div>
+
+              <div className={`pc-meta-chip ${selectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`} style={{ display: "inline-block", marginBottom: "1rem" }}>
+                {selectedBook.availableCopies > 0 ? `${selectedBook.availableCopies} Copies Available` : "Currently Unavailable"}
               </div>
 
               <div className="pc-modal-desc">
@@ -867,14 +921,13 @@ export default function App() {
       if (snap.exists()) { const merged = { ...SETTINGS_DEFAULTS, ...snap.data() }; setAppSettings(merged); setSettingsDraft(merged); }
     }));
     
-    // Books - Load all for admin (or use limit if needed)
     unsubs.push(onSnapshot(collection(db, "books"), async (qsnap) => {
       if (qsnap.empty) {
         for (const b of [...SEED_BOOKS, ...NMMI_SEED_BOOKS]) {
           try {
             await setDoc(doc(db, "books", b.code), {
               title: b.title, author: b.author, code: b.code, totalCopies: 1, availableCopies: 1,
-              category: inferCategoryFromCode(b.code) || "", coverUrl: "", description: ""
+              category: inferCategoryFromCode(b.code) || "", coverUrl: "", description: "", likes: 0
             });
           } catch {}
         }
@@ -890,14 +943,12 @@ export default function App() {
       }
     }));
     
-    // Students - Load all
     unsubs.push(onSnapshot(collection(db, "students"), async (qsnap) => {
       if (qsnap.empty) {
         for (const s of SEED_STUDENTS) { try { await addDoc(collection(db, "students"), { name: s.name, className: s.className, roll: s.roll }); } catch {} }
       } else setStudents(qsnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     }));
 
-    // Transactions - LIMIT to 500 for performance
     const tq = query(collection(db, "transactions"), limit(500));
     unsubs.push(onSnapshot(tq, (qsnap) => { 
       setTransactions(qsnap.docs.map((d) => ({ id: d.id, ...d.data() }))); 
@@ -1006,7 +1057,7 @@ export default function App() {
       await setDoc(doc(db, "books", code), {
         title: bookForm.title.trim(), author: bookForm.author.trim(), code,
         totalCopies: copies, availableCopies: copies, category: bookForm.category || "",
-        coverUrl: bookForm.coverUrl || "", description: bookForm.description || ""
+        coverUrl: bookForm.coverUrl || "", description: bookForm.description || "", likes: 0
       });
     } catch {}
     setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category, coverUrl: "", description: "" });
@@ -1124,7 +1175,7 @@ export default function App() {
       const copies = Math.max(1, parseInt(parts[3]) || 1);
       const category = parts[4] || bulkBookCategory || "";
       try {
-        await setDoc(doc(db, "books", code), { title, author, code, totalCopies: copies, availableCopies: copies, category, coverUrl: "", description: "" });
+        await setDoc(doc(db, "books", code), { title, author, code, totalCopies: copies, availableCopies: copies, category, coverUrl: "", description: "", likes: 0 });
       } catch {}
     }
     setBulkBooksText("");
@@ -1616,7 +1667,6 @@ export default function App() {
         .lock-hint { font-size:.76rem;color:var(--text-soft);margin-top:1rem;text-align:center; }
         .print-area { display:grid;grid-template-columns:1fr 1fr;gap:.6rem; }
         
-        /* Book QR Labels styles */
         .print-area.books-print { 
           grid-template-columns: repeat(4, 1fr); 
           gap: 0.5rem;
@@ -1681,7 +1731,6 @@ export default function App() {
         .cert-foot-item { font-size:.62rem;color:var(--text-soft);text-align:center; }
         .cert-foot-line { border-top:1px solid var(--text-soft);width:80px;margin:0 auto .2rem; }
 
-        /* ---- Settings ---- */
         .settings-sections { display:flex;flex-direction:column;gap:1rem; }
         .settings-section { background:#FAF6EC;border:1px solid var(--line);border-radius:10px;padding:.95rem 1.05rem; }
         .settings-section h3 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
@@ -1784,7 +1833,6 @@ export default function App() {
           .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
         }
 
-        /* ---- Dark mode ---- */
         .app.dark {
           --page-bg:#15171a;--text:#e8e3d8;--text-soft:#a89b7f;--row-bg:#232528;
           --line:#34373c;--search-bg:#1f2124;
@@ -2029,7 +2077,6 @@ export default function App() {
             <button className="bottom-item" onClick={openAddStudent}><span className="bottom-dot"><UserPlus size={16} /></span><span className="label">ADD STUDENT</span></button>
           </div>
 
-          {/* ==================== MODALS ==================== */}
           {sheet === "menu" && (
             <Modal title="More" onClose={() => setSheet(null)}>
               <div className="menu-list">
