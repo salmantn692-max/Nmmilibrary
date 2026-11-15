@@ -442,7 +442,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW) - UPDATED WITH ANEK MALAYALAM
+// PUBLIC CATALOG (STUDENT VIEW)
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
@@ -461,8 +461,13 @@ export function PublicCatalog() {
 
   const categoriesList = useMemo(() => {
     const cats = new Set();
-    books.forEach((b) => { if (b.category) cats.add(b.category); });
-    return Array.from(cats).sort();
+    books.forEach((b) => { 
+      if (b.category && b.category.trim() !== "" && b.category !== "Uncategorized") {
+        cats.add(b.category.trim()); 
+      }
+    });
+    const validCats = Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("ടി എസ്"));
+    return validCats.sort();
   }, [books]);
 
   const filtered = useMemo(() => {
