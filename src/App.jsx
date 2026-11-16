@@ -442,7 +442,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW) - WITH LIKES
+// PUBLIC CATALOG (STUDENT VIEW) - FIXED LIKES & JITTER
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
@@ -453,6 +453,11 @@ export function PublicCatalog() {
 
   const [visibleCount, setVisibleCount] = useState(20);
   const observerTarget = useRef(null);
+
+  // Liked IDs state - prevents whole list re-render and double count
+  const [likedIds, setLikedIds] = useState(() => {
+    return JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]");
+  });
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "books"),
@@ -510,37 +515,40 @@ export function PublicCatalog() {
     };
   }, [visibleCount, filtered.length]);
 
-  // Toggle Like Function
   const handleLike = async (e, book) => {
     e.stopPropagation(); 
+    e.preventDefault();
     
-    // Get liked books from local storage
-    let likedBooks = JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]");
-    const isCurrentlyLiked = likedBooks.includes(book.id);
+    const isCurrentlyLiked = likedIds.includes(book.id);
+    let newLikedIds;
     
+    // Update local storage and state instantly for visual feedback
+    if (isCurrentlyLiked) {
+      newLikedIds = likedIds.filter(id => id !== book.id);
+    } else {
+      newLikedIds = [...likedIds, book.id];
+    }
+    setLikedIds(newLikedIds);
+    localStorage.setItem("nmmi_liked_books", JSON.stringify(newLikedIds));
+
+    // Update database
     try {
       if (isCurrentlyLiked) {
-        // Unlike
         await updateDoc(doc(db, "books", book.id), { likes: increment(-1) });
-        likedBooks = likedBooks.filter(id => id !== book.id);
-        setBooks((prev) => prev.map(b => b.id === book.id ? { ...b, likes: Math.max(0, (b.likes || 0) - 1) } : b));
       } else {
-        // Like
         await updateDoc(doc(db, "books", book.id), { likes: increment(1) });
-        likedBooks.push(book.id);
-        setBooks((prev) => prev.map(b => b.id === book.id ? { ...b, likes: (b.likes || 0) + 1 } : b));
       }
-      localStorage.setItem("nmmi_liked_books", JSON.stringify(likedBooks));
     } catch (err) {
       console.error(err);
       alert("Error updating like. Please try again.");
+      // Revert if error
+      setLikedIds(likedIds);
+      localStorage.setItem("nmmi_liked_books", JSON.stringify(likedIds));
     }
   };
 
-  const isLiked = (bookId) => {
-    const likedBooks = JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]");
-    return likedBooks.includes(bookId);
-  };
+  // Get live data for the selected book so the modal updates instantly
+  const liveSelectedBook = selectedBook ? books.find(b => b.id === selectedBook.id) || selectedBook : null;
 
   return (
     <div className="pc-app">
@@ -654,21 +662,27 @@ export function PublicCatalog() {
                   <div className="pc-title">{b.title}</div>
                   <div className="pc-author">{b.author || "Unknown Author"}</div>
                   
-                  {/* Like Button and Badge */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
                     <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
                       {b.availableCopies > 0 ? "Available" : "All Issued"}
                     </div>
                     <button 
                       onClick={(e) => handleLike(e, b)} 
-                      style={{ background: "none", border: "none", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer", padding: "4px" }}
+                      style={{ 
+                        background: "none", border: "none", display: "flex", alignItems: "center", gap: "4px", 
+                        cursor: "pointer", padding: "4px 0", outline: "none", WebkitTapHighlightColor: "transparent" 
+                      }}
                     >
                       <Heart 
                         size={16} 
-                        fill={isLiked(b.id) ? "#e11d48" : "none"} 
-                        color={isLiked(b.id) ? "#e11d48" : "#7A6F5D"} 
+                        fill={likedIds.includes(b.id) ? "#e11d48" : "none"} 
+                        color={likedIds.includes(b.id) ? "#e11d48" : "#7A6F5D"} 
+                        style={{ transition: "all 0.2s ease" }}
                       />
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: isLiked(b.id) ? "#e11d48" : "#7A6F5D" }}>
+                      <span style={{ 
+                        fontSize: "0.8rem", fontWeight: 700, color: "#000", // Black color as requested
+                        minWidth: "16px", textAlign: "center" // Fixed width prevents jitter
+                      }}>
                         {b.likes || 0}
                       </span>
                     </button>
@@ -686,43 +700,54 @@ export function PublicCatalog() {
         )}
       </div>
 
-      {selectedBook && (
+      {liveSelectedBook && (
         <div className="pc-modal-backdrop" onClick={() => setSelectedBook(null)}>
           <div className="pc-modal" onClick={(e) => e.stopPropagation()}>
             <button className="pc-modal-close" onClick={() => setSelectedBook(null)}><X size={18} /></button>
             <div className="pc-modal-cover">
-              {selectedBook.coverUrl ? (
-                <img src={selectedBook.coverUrl} alt={selectedBook.title} />
+              {liveSelectedBook.coverUrl ? (
+                <img src={liveSelectedBook.coverUrl} alt={liveSelectedBook.title} />
               ) : (
                 <Library size={64} color="#ccc" />
               )}
             </div>
             <div className="pc-modal-body">
-              <h2 className="pc-modal-title">{selectedBook.title}</h2>
-              <div className="pc-modal-author">{selectedBook.author || "Unknown Author"}</div>
+              <h2 className="pc-modal-title">{liveSelectedBook.title}</h2>
+              <div className="pc-modal-author">{liveSelectedBook.author || "Unknown Author"}</div>
               
               <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem" }}>
                 <div className="pc-modal-meta" style={{ marginBottom: 0 }}>
-                  <div className="pc-meta-chip">Code: {selectedBook.code}</div>
-                  <div className="pc-meta-chip">Category: {selectedBook.category || UNCATEGORIZED}</div>
+                  <div className="pc-meta-chip">Code: {liveSelectedBook.code}</div>
+                  <div className="pc-meta-chip">Category: {liveSelectedBook.category || UNCATEGORIZED}</div>
                 </div>
                 <button 
-                  onClick={(e) => handleLike(e, selectedBook)} 
-                  style={{ display: "flex", alignItems: "center", gap: "6px", background: "#FFF", border: "1px solid var(--line)", padding: "6px 12px", borderRadius: "8px", cursor: "pointer" }}
+                  onClick={(e) => handleLike(e, liveSelectedBook)} 
+                  style={{ 
+                    display: "flex", alignItems: "center", gap: "6px", background: "#FFF", border: "1px solid var(--line)", 
+                    padding: "6px 12px", borderRadius: "8px", cursor: "pointer", outline: "none", WebkitTapHighlightColor: "transparent" 
+                  }}
                 >
-                  <Heart size={16} fill={isLiked(selectedBook.id) ? "#e11d48" : "none"} color={isLiked(selectedBook.id) ? "#e11d48" : "#7A6F5D"} />
-                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text)" }}>
-                    {selectedBook.likes || 0}
+                  <Heart 
+                    size={16} 
+                    fill={likedIds.includes(liveSelectedBook.id) ? "#e11d48" : "none"} 
+                    color={likedIds.includes(liveSelectedBook.id) ? "#e11d48" : "#7A6F5D"} 
+                    style={{ transition: "all 0.2s ease" }}
+                  />
+                  <span style={{ 
+                    fontSize: "0.85rem", fontWeight: 700, color: "#000", // Black color
+                    minWidth: "16px", textAlign: "center" // Fixed width
+                  }}>
+                    {liveSelectedBook.likes || 0}
                   </span>
                 </button>
               </div>
 
-              <div className={`pc-meta-chip ${selectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`} style={{ display: "inline-block", marginBottom: "1rem" }}>
-                {selectedBook.availableCopies > 0 ? `${selectedBook.availableCopies} Copies Available` : "Currently Unavailable"}
+              <div className={`pc-meta-chip ${liveSelectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`} style={{ display: "inline-block", marginBottom: "1rem" }}>
+                {liveSelectedBook.availableCopies > 0 ? `${liveSelectedBook.availableCopies} Copies Available` : "Currently Unavailable"}
               </div>
 
               <div className="pc-modal-desc">
-                {selectedBook.description || "No description available for this book yet."}
+                {liveSelectedBook.description || "No description available for this book yet."}
               </div>
             </div>
           </div>
@@ -1833,6 +1858,7 @@ export default function App() {
           .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
         }
 
+        /* ---- Dark mode ---- */
         .app.dark {
           --page-bg:#15171a;--text:#e8e3d8;--text-soft:#a89b7f;--row-bg:#232528;
           --line:#34373c;--search-bg:#1f2124;
