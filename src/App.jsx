@@ -1693,30 +1693,35 @@ export default function App() {
         .print-area { display:grid;grid-template-columns:1fr 1fr;gap:.6rem; }
         
         .print-area.books-print { 
-          grid-template-columns: repeat(4, 1fr); 
-          gap: 0.5rem;
-        }
-        .id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
-        .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
-        .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
-        .id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
-        
-        .book-label-card {
-          padding: 0.2rem;
-          border: 1px dashed #ccc;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: auto;
-        }
-        .book-label-code {
-          font-family: 'JetBrains Mono', monospace;
-          font-weight: 700;
-          font-size: 0.8rem;
-          margin-bottom: 0.1rem;
-          color: var(--text);
-        }
+  grid-template-columns: repeat(6, 1fr); 
+  gap: 0.3rem;
+}
+.id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
+.id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
+.id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
+.id-qrcode { width:100%;max-width:85px;height:auto;margin:0 auto;display:block; }
+
+.book-label-card {
+  padding: 0.12rem;
+  border: 1px dashed #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: auto;
+  overflow: hidden;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.book-label-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.58rem;
+  margin-bottom: 0.05rem;
+  color: var(--text);
+  line-height: 1.1;
+  white-space: nowrap;
+}
 
         .id-card-wrap { display:flex;justify-content:center;padding:.4rem 0 .2rem; }
         .lib-card {
@@ -2267,7 +2272,7 @@ export default function App() {
                   : books.map((b) => (
                       <div className="id-card book-label-card" key={b.id}>
                         <div className="book-label-code">{b.code}</div>
-                        <QRCodeCanvas value={bookQrValue(b.code)} size={110} />
+                        <QRCodeCanvas value={bookQrValue(b.code)} size={85} />
                       </div>
                     ))}
               </div>
