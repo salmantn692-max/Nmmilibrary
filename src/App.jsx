@@ -2322,15 +2322,14 @@ export default function App() {
                         <QRCodeCanvas value={s.roll} />
                       </div>
                     ))
-                  : books.map((b) => (
-                      <div className="id-card book-label-card" key={b.id}>
-                        <div className="book-label-code">{b.code}</div>
-                        <QRCodeCanvas value={bookQrValue(b.code)} size={85} />
-                      </div>
-                    ))}
-              </div>
-            </Modal>
-          )}
+                  : [...books]
+  .sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' }))
+  .map((b) => (
+    <div className="id-card book-label-card" key={b.id}>
+      <div className="book-label-code">{b.code}</div>
+      <QRCodeCanvas value={bookQrValue(b.code)} size={85} />
+    </div>
+  ))}
 
           {sheet === "issue" && (
             <Modal title="Issue Book" onClose={() => setSheet(null)}>
