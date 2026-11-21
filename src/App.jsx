@@ -615,6 +615,28 @@ export function PublicCatalog() {
         .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.3rem .6rem; border-radius:6px; font-size:.8rem; color:var(--text-soft); font-weight:600; }
         
         .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:1rem; line-height:1.6; color:var(--text); margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); white-space:pre-wrap; }
+        @media print {
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+  .print-area.books-print {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 0.2rem !important;
+  }
+  .book-label-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .book-qr-wrap, .book-qr-wrap canvas {
+    max-width: 85px !important;
+    width: 85px !important;
+  }
+  .id-qrcode {
+    max-width: 110px !important;
+    width: 110px !important;
+  }
+}
       `}</style>
 
       <div className="pc-header">
