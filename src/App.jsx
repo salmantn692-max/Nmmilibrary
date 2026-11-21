@@ -625,16 +625,20 @@ export function PublicCatalog() {
     gap: 0.2rem !important;
   }
   .book-label-card {
-  padding: 0.12rem;
-  border: 1px dashed #ccc;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: auto;
-  overflow: visible; /* hidden എന്നത് മാറ്റി visible ആക്കുക */
-  break-inside: avoid;
-  page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* QR വലിപ്പം ഉറപ്പാക്കാൻ */
+  .book-qr-wrap, .book-qr-wrap canvas {
+    width: 85px !important;
+    height: 85px !important;
+    max-width: 85px !important;
+    flex-shrink: 0 !important;
+  }
+  .id-qrcode {
+    max-width: 110px !important;
+    width: 110px !important;
+  }
 }
 
 .book-label-code {
