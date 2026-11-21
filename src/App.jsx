@@ -625,22 +625,49 @@ export function PublicCatalog() {
     gap: 0.2rem !important;
   }
   .book-label-card {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-  .book-qr-wrap, .book-qr-wrap canvas {
-    max-width: 85px !important;
-    width: 85px !important;
-  }
-  .id-qrcode {
-    max-width: 110px !important;
-    width: 110px !important;
-  }
+  padding: 0.12rem;
+  border: 1px dashed #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: auto;
+  overflow: visible; /* hidden എന്നത് മാറ്റി visible ആക്കുക */
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.book-label-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.58rem;
+  margin-bottom: 0.05rem;
+  color: var(--text);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* പുതിയത് ചേർക്കുക: QR കാൻവാസ് ചുരുങ്ങുന്നത് തടയാൻ */
+.book-qr-wrap {
+  width: 85px;
+  height: 85px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0; /* ഏറ്റവും പ്രധാനം! ചുരുങ്ങാൻ അനുവദിക്കരുത് */
+}
+
+.book-qr-wrap canvas {
+  width: 85px !important;
+  height: 85px !important;
+  display: block !important;
+  object-fit: contain !important;
 }
       `}</style>
 
       <div className="pc-header">
-        <h1>NMMI ISLAMIC LIBRARY</h1>
+        <h1>NMMMI ISLAMIC LIBRARY</h1>
         <div className="pc-sub">Digital Book Catalog</div>
       </div>
       
