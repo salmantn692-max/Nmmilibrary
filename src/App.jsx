@@ -615,67 +615,38 @@ export function PublicCatalog() {
         .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.3rem .6rem; border-radius:6px; font-size:.8rem; color:var(--text-soft); font-weight:600; }
         
         .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:1rem; line-height:1.6; color:var(--text); margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); white-space:pre-wrap; }
-        @media print {
-  @page {
-    size: A4;
-    margin: 6mm;
-  }
-  @media print {
-  .print-area.books-print { 
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  width: 100%;
-}
+                @media print {
+          .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head { display: none !important; }
+          .modal-backdrop { position: static !important; display: block !important; background: transparent !important; padding: 0 !important; margin: 0 !important; animation: none !important; inset: auto !important; }
+          .modal-panel { position: static !important; display: block !important; max-width: none !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border: none !important; background: transparent !important; animation: none !important; }
+          .modal-body { padding: 0 !important; }
+          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
+          @page { size: A4; margin: 4mm !important; }
+          .print-area { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
+          .print-area.books-print { display: flex !important; flex-wrap: wrap !important; gap: 0.15rem !important; width: 100% !important; }
+          .book-label-card {
+            flex: 0 0 calc((100% - 0.75rem) / 6) !important;
+            max-width: calc((100% - 0.75rem) / 6) !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            border: 1px dashed #ccc !important; 
+            padding: 1px !important; 
+          }
+          .book-label-code { font-size: 8pt !important; margin-bottom: 1px !important; color: #000 !important; line-height: 1.1 !important; }
+          .print-area:not(.books-print) { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; }
+          .book-qr-wrap, .book-qr-wrap canvas { width: 85px !important; height: 85px !important; max-width: 85px !important; flex-shrink: 0 !important; display: block !important; }
+          .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
+          .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 110px !important; height: auto !important; }
+        }
 
-.id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
-.id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
-.id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
-.id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
 
-.book-label-card {
-  /* 6 കോളങ്ങൾക്കായി വീതി കണക്കാക്കുന്നു */
-  flex: 0 0 calc((100% - 1rem) / 6);
-  max-width: calc((100% - 1rem) / 6);
-  box-sizing: border-box;
-  padding: 0.05rem; /* ബോർഡർ/പാഡിംഗ് കുറച്ചു */
-  border: 1px dashed #ccc;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  overflow: visible;
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-.book-label-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 0.58rem;
-  margin-bottom: 0.05rem;
-  color: var(--text);
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-/* QR കോഡ് ചുരുങ്ങുന്നത് തടയാൻ */
-.book-qr-wrap {
-  width: 85px;
-  height: 85px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.book-qr-wrap canvas {
-  width: 85px !important;
-  height: 85px !important;
-  display: block !important;
-}
-      `}</style>
+      }</style>
 
       <div className="pc-header">
         <h1>NMMMI ISLAMIC LIBRARY</h1>
