@@ -1365,7 +1365,38 @@ export default function App() {
   const certStudent = certStudentId ? studentById(certStudentId) : (monthlyTopReaders[0] ? monthlyTopReaders[0].student : null);
   const certCount = certStudent ? (monthlyTopReaders.find((x) => x.student.id === certStudent.id) || { count: 0 }).count : 0;
 
-  const dashboardStats = useMemo(() => {
+    const dashboardStats = useMemo(() => {
+    const bookCounts = {}; 
+    const studentCounts = {};
+    
+    transactions.forEach((t) => { 
+      bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1; 
+      studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1; 
+    });
+    
+    const mostBorrowed =                    : [...books]
+                        .sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' }))
+                        .map((b) => (
+                      <div className="id-card book-label-card" key={b.id}>
+                        <div className="book-label-code">{b.code}</div>
+                        <div className="book-qr-wrap">
+                          <QRCodeCanvas value={bookQrValue(b.code)} size={85} />
+                        </div>
+                      </div>
+                    ))}
+    const neverBorrowed = books.filter((b) => !bookCounts[b.id]);
+    const topReaders = students.map((s) => ({ student: s, count: studentCounts[s.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
+    
+    const classCounts = {};
+    students.forEach((s) => {
+      const cls = s.className && s.className.trim() ? s.className : "Unassigned";
+      classCounts[cls] = (classCounts[cls] || 0) + (studentCounts[s.id] || 0);
+    });
+    
+    const topClasses = Object.entries(classCounts).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    
+    return { mostBorrowed, neverBorrowed, topReaders, topClasses };
+  }, [books, students, transactions]);
     const bookCounts = {}; const studentCounts = {};
     transactions.forEach((t) => { bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1; studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1; });
     const mostBorrowed = [...books]
