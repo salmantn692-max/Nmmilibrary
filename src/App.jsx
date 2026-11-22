@@ -618,27 +618,33 @@ export function PublicCatalog() {
         @media print {
   @page {
     size: A4;
-    margin: 8mm;
+    margin: 6mm;
   }
+  @media print {
   .print-area.books-print {
-    grid-template-columns: repeat(6, 1fr) !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
     gap: 0.2rem !important;
+    width: 100% !important;
   }
   .book-label-card {
-    break-inside: avoid;
-    page-break-inside: avoid;
+    /* 6 കോളങ്ങൾക്കായി വീതി കണക്കാക്കുന്നു: (100% - 5 * 0.2rem) / 6 */
+    flex: 0 0 calc((100% - 1rem) / 6) !important;
+    max-width: calc((100% - 1rem) / 6) !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
   }
-  /* QR വലിപ്പം ഉറപ്പാക്കാൻ */
-  .book-qr-wrap, .book-qr-wrap canvas {
-    width: 85px !important;
-    height: 85px !important;
-    max-width: 85px !important;
-    flex-shrink: 0 !important;
-  }
-  .id-qrcode {
-    max-width: 110px !important;
-    width: 110px !important;
-  }
+  /* ബാക്കിയുള്ള ബ്ലോക്കുകൾ അതേപടി നിലനിർത്തുക */
+  .print-area:not(.books-print) { grid-template-columns: repeat(4, 1fr) !important; }
+  .book-label-code { font-size: 8pt !important; margin-bottom: 2px !important; color: #000 !important; line-height: 1.1 !important; }
+  .book-qr-wrap, .book-qr-wrap canvas { width: 85px !important; height: 85px !important; max-width: 85px !important; flex-shrink: 0 !important; display: block !important; }
+  .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
+  .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 110px !important; height: auto !important; }
 }
 
 .book-label-code {
