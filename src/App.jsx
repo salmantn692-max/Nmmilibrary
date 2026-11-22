@@ -624,23 +624,57 @@ export function PublicCatalog() {
           .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
           @page { size: A4; margin: 4mm !important; }
           .print-area { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
-          .print-area.books-print { display: flex !important; flex-wrap: wrap !important; gap: 0.15rem !important; width: 100% !important; }
-          .book-label-card {
-            flex: 0 0 calc((100% - 0.75rem) / 6) !important;
-            max-width: calc((100% - 0.75rem) / 6) !important;
-            box-sizing: border-box !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            border: 1px dashed #ccc !important; 
-            padding: 1px !important; 
+                  .print-area.books-print { 
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.2rem;
+          width: 100%;
+        }
+        .id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
+        .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
+        .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
+        .id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
+        .book-label-card {
+          flex: 0 0 calc((100% - 1rem) / 6);
+          max-width: calc((100% - 1rem) / 6);
+          box-sizing: border-box;
+          padding: 0.05rem;
+          border: 1px dashed #ccc;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          overflow: visible;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .book-label-code {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 700;
+          font-size: 0.58rem;
+          margin-bottom: 0.05rem;
+          color: var(--text);
+          line-height: 1.1;
+          white-space: nowrap;
+        }
+        .book-qr-wrap {
+          width: 85px;
+          height: 85px;
+          margin: 0 auto;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .book-qr-wrap canvas {
+          width: 85px !important;
+          height: 85px !important;
+          display: block !important;
+        
           }
           .book-label-code { font-size: 8pt !important; margin-bottom: 1px !important; color: #000 !important; line-height: 1.1 !important; }
           .print-area:not(.books-print) { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; }
-          .book-qr-wrap, .book-qr-wrap canvas { width: 85px !important; height: 85px !important; max-width: 85px !important; flex-shrink: 0 !important; display: block !important; }
+          .book-qr-wrap, .book-qr-wrap canvas { width: 70px !important; height: 70px !important; max-width: 70px !important; flex-shrink: 0 !important; display: block !important; }
           .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
           .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 110px !important; height: auto !important; }
         }
@@ -1336,36 +1370,18 @@ export default function App() {
   const certStudent = certStudentId ? studentById(certStudentId) : (monthlyTopReaders[0] ? monthlyTopReaders[0].student : null);
   const certCount = certStudent ? (monthlyTopReaders.find((x) => x.student.id === certStudent.id) || { count: 0 }).count : 0;
 
-    const dashboardStats = useMemo(() => {
-    const bookCounts = {}; 
-    const studentCounts = {};
-    
-    transactions.forEach((t) => { 
-      bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1; 
-      studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1; 
-    });
-    
-    const mostBorrowed =                    : [...books]
-                        .sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' }))
-                        .map((b) => (
-                      <div className="id-card book-label-card" key={b.id}>
-                        <div className="book-label-code">{b.code}</div>
-                        <div className="book-qr-wrap">
-                          <QRCodeCanvas value={bookQrValue(b.code)} size={85} />
-                        </div>
-                      </div>
-                    ))}
+      const dashboardStats = useMemo(() => {
+    const bookCounts = {}; const studentCounts = {};
+    transactions.forEach((t) => { bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1; studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1; });
+    const mostBorrowed = books.map((b) => ({ book: b, count: bookCounts[b.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
     const neverBorrowed = books.filter((b) => !bookCounts[b.id]);
     const topReaders = students.map((s) => ({ student: s, count: studentCounts[s.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
-    
     const classCounts = {};
     students.forEach((s) => {
       const cls = s.className && s.className.trim() ? s.className : "Unassigned";
       classCounts[cls] = (classCounts[cls] || 0) + (studentCounts[s.id] || 0);
     });
-    
     const topClasses = Object.entries(classCounts).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    
     return { mostBorrowed, neverBorrowed, topReaders, topClasses };
   }, [books, students, transactions]);
     const bookCounts = {}; const studentCounts = {};
