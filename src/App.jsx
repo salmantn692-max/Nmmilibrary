@@ -621,30 +621,32 @@ export function PublicCatalog() {
     margin: 6mm;
   }
   @media print {
-  .print-area.books-print {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 0.2rem !important;
-    width: 100% !important;
-  }
-  .book-label-card {
-    /* 6 കോളങ്ങൾക്കായി വീതി കണക്കാക്കുന്നു: (100% - 5 * 0.2rem) / 6 */
-    flex: 0 0 calc((100% - 1rem) / 6) !important;
-    max-width: calc((100% - 1rem) / 6) !important;
-    box-sizing: border-box !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-  }
-  /* ബാക്കിയുള്ള ബ്ലോക്കുകൾ അതേപടി നിലനിർത്തുക */
-  .print-area:not(.books-print) { grid-template-columns: repeat(4, 1fr) !important; }
-  .book-label-code { font-size: 8pt !important; margin-bottom: 2px !important; color: #000 !important; line-height: 1.1 !important; }
-  .book-qr-wrap, .book-qr-wrap canvas { width: 85px !important; height: 85px !important; max-width: 85px !important; flex-shrink: 0 !important; display: block !important; }
-  .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
-  .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 110px !important; height: auto !important; }
+  .print-area.books-print { 
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+.id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
+.id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
+.id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
+.id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
+
+.book-label-card {
+  /* 6 കോളങ്ങൾക്കായി വീതി കണക്കാക്കുന്നു */
+  flex: 0 0 calc((100% - 1rem) / 6);
+  max-width: calc((100% - 1rem) / 6);
+  box-sizing: border-box;
+  padding: 0.05rem; /* ബോർഡർ/പാഡിംഗ് കുറച്ചു */
+  border: 1px dashed #ccc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .book-label-code {
@@ -657,7 +659,7 @@ export function PublicCatalog() {
   white-space: nowrap;
 }
 
-/* പുതിയത് ചേർക്കുക: QR കാൻവാസ് ചുരുങ്ങുന്നത് തടയാൻ */
+/* QR കോഡ് ചുരുങ്ങുന്നത് തടയാൻ */
 .book-qr-wrap {
   width: 85px;
   height: 85px;
@@ -665,14 +667,13 @@ export function PublicCatalog() {
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-shrink: 0; /* ഏറ്റവും പ്രധാനം! ചുരുങ്ങാൻ അനുവദിക്കരുത് */
+  flex-shrink: 0;
 }
 
 .book-qr-wrap canvas {
   width: 85px !important;
   height: 85px !important;
   display: block !important;
-  object-fit: contain !important;
 }
       `}</style>
 
@@ -1367,7 +1368,16 @@ export default function App() {
   const dashboardStats = useMemo(() => {
     const bookCounts = {}; const studentCounts = {};
     transactions.forEach((t) => { bookCounts[t.bookId] = (bookCounts[t.bookId] || 0) + 1; studentCounts[t.studentId] = (studentCounts[t.studentId] || 0) + 1; });
-    const mostBorrowed = books.map((b) => ({ book: b, count: bookCounts[b.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
+    const mostBorrowed = [...books]
+  .sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: 'base' }))
+  .map((b) => (
+    <div className="id-card book-label-card" key={b.id}>
+      <div className="book-label-code">{b.code}</div>
+      <div className="book-qr-wrap">
+        <QRCodeCanvas value={bookQrValue(b.code)} size={85} />
+      </div>
+    </div>
+  ))}
     const neverBorrowed = books.filter((b) => !bookCounts[b.id]);
     const topReaders = students.map((s) => ({ student: s, count: studentCounts[s.id] || 0 })).filter((x) => x.count > 0).sort((a, b) => b.count - a.count).slice(0, 5);
     const classCounts = {};
@@ -1901,27 +1911,97 @@ export default function App() {
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
 
         @media print {
-          .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head, .modal-backdrop > .modal-panel > .modal-body > *:not(.print-area) {
-            display: none !important;
-          }
-          html, body {
-            background: #fff !important; margin: 0 !important; padding: 0 !important;
-            height: auto !important; overflow: visible !important;
-            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
-          }
-          .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
-          .modal-backdrop { position: static !important; display: block !important; background: transparent !important; padding: 0 !important; margin: 0 !important; animation: none !important; inset: auto !important; }
-          .modal-panel { position: static !important; display: block !important; max-width: none !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border: none !important; background: transparent !important; animation: none !important; }
-          .modal-body { padding: 0 !important; }
-          .print-area { display: grid !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
-          .print-area.books-print { grid-template-columns: repeat(5, 1fr) !important; gap: 0.2rem !important; }
-          .print-area:not(.books-print) { grid-template-columns: repeat(4, 1fr) !important; }
-          .book-label-card { border: 1px dashed #ccc !important; padding: 2px !important; page-break-inside: avoid !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; }
-          .book-label-code { font-size: 10pt !important; margin-bottom: 4px !important; color: #000 !important; }
-          .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
-          .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 100% !important; height: auto !important; }
-        }
+  /* UI എലമെന്റുകൾ മറയ്ക്കൽ */
+  .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head {
+    display: none !important;
+  }
+  .modal-backdrop {
+    position: static !important; display: block !important; background: transparent !important;
+    padding: 0 !important; margin: 0 !important; animation: none !important; inset: auto !important;
+  }
+  .modal-panel {
+    position: static !important; display: block !important; max-width: none !important;
+    max-height: none !important; overflow: visible !important; box-shadow: none !important;
+    padding: 0 !important; margin: 0 !important; border: none !important;
+    background: transparent !important; animation: none !important;
+  }
+  .modal-body { padding: 0 !important; }
+  
+  /* അടിസ്ഥാന പേജ് ക്രമീകരണം */
+  html, body {
+    background: #fff !important; margin: 0 !important; padding: 0 !important;
+    height: auto !important; overflow: visible !important;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
+  .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
 
+  /* A4 പേജ് മാർജിൻ കുറയ്ക്കൽ */
+  @page {
+    size: A4;
+    margin: 4mm !important;
+  }
+
+  .print-area { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
+  
+  /* 📚 ബുക്ക് ലേബൽ - പ്രിൻ്റിനുള്ള പ്രത്യേക ഗ്രിഡ് */
+  .print-area.books-print { 
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.2rem !important;
+    width: 100% !important;
+  }
+  
+  .book-label-card {
+    flex: 0 0 calc((100% - 1rem) / 6) !important;
+    max-width: calc((100% - 1rem) / 6) !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    border: 1px dashed #ccc !important; 
+    padding: 2px !important; 
+  }
+
+  .book-label-code { 
+    font-size: 8pt !important; 
+    margin-bottom: 2px !important; 
+    color: #000 !important; 
+    line-height: 1.1 !important;
+  }
+
+  /* 🎫 ID കാർഡ് - 4 കോളം (മാറ്റമില്ല) */
+  .print-area:not(.books-print) { 
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important; 
+  }
+
+  /* 🛑 QR കോഡ് ചുരുങ്ങുന്നത് തടയാൻ */
+  .book-qr-wrap, .book-qr-wrap canvas {
+    width: 85px !important;
+    height: 85px !important;
+    max-width: 85px !important;
+    flex-shrink: 0 !important;
+    display: block !important;
+  }
+
+  /* ID കാർഡ് */
+  .id-card { 
+    border: 1px dashed #ccc !important; 
+    padding: 4px !important; 
+    page-break-inside: avoid !important; 
+  }
+  .id-qrcode { 
+    display: block !important; 
+    visibility: visible !important; 
+    opacity: 1 !important; 
+    width: 100% !important; 
+    max-width: 110px !important; 
+    height: auto !important; 
+  }
+}
         /* ---- Dark mode ---- */
         .app.dark {
           --page-bg:#15171a;--text:#e8e3d8;--text-soft:#a89b7f;--row-bg:#232528;
