@@ -557,14 +557,15 @@ export function PublicCatalog() {
     setCardDownloading(true);
     try {
       const canvas = await html2canvas(bookCardRef.current, {
-        scale: 3,
+        scale: 2,
         backgroundColor: "#FDF8ED",
         useCORS: true,
         allowTaint: true,
+        logging: false,
       });
       const link = document.createElement("a");
       const safeName = (book.title || "book").replace(/[^\w\u0D00-\u0D7F\s-]/g, "").trim().replace(/\s+/g, "_").slice(0, 40);
-      link.download = `${safeName || "book"}_card.png`;
+      link.download = `${safeName || "book"}_A4_card.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (err) {
@@ -849,110 +850,141 @@ export function PublicCatalog() {
                 }}
               >
                 <Download size={18} />
-                {cardDownloading ? "Preparing card..." : "Save Book Card"}
+                {cardDownloading ? "Preparing A4 card..." : "Save A4 Book Card"}
               </button>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-soft)", textAlign: "center", marginTop: "0.5rem", marginBottom: 0 }}>
+                Notice board-ൽ ഒട്ടിക്കാൻ പറ്റുന്ന A4 സൈസ് കാർഡ്
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Hidden book card for download (captured by html2canvas) */}
+      {/* A4 Book Card for download / notice board display */}
       {liveSelectedBook && (
-        <div style={{ position: "fixed", left: "-9999px", top: 0, pointerEvents: "none" }}>
+        <div style={{ position: "fixed", left: "-9999px", top: 0, pointerEvents: "none", zIndex: -1 }}>
           <div
             ref={bookCardRef}
             style={{
-              width: "360px",
-              background: "linear-gradient(160deg, #FDF8ED 0%, #FBF2D9 100%)",
-              border: "3px solid #C9A227",
-              borderRadius: "16px",
-              overflow: "hidden",
+              width: "794px",
+              minHeight: "1123px",
+              background: "#FDF8ED",
+              border: "8px solid #C9A227",
+              boxSizing: "border-box",
               fontFamily: "'Anek Malayalam', 'Noto Sans Malayalam', Inter, sans-serif",
               color: "#2B2420",
-              boxShadow: "0 8px 24px rgba(27,77,62,0.15)"
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
             }}
           >
+            {/* Header */}
             <div style={{
               background: "linear-gradient(135deg, #1B4D3E 0%, #0F3328 100%)",
-              padding: "0.7rem 1rem",
-              color: "#fff"
+              padding: "28px 40px",
+              color: "#fff",
+              textAlign: "center"
             }}>
-              <div style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontWeight: 800, fontSize: "0.95rem", letterSpacing: "0.02em" }}>
+              <div style={{
+                fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif",
+                fontWeight: 800, fontSize: "32px", letterSpacing: "0.04em", lineHeight: 1.2
+              }}>
                 NMMI ISLAMIC LIBRARY
               </div>
-              <div style={{ fontSize: "0.62rem", color: "#E7C989", marginTop: "0.15rem" }}>
+              <div style={{ fontSize: "15px", color: "#E7C989", marginTop: "8px", fontWeight: 500 }}>
                 Nandiyil Muhammed Musliyar Memorial Islamic Library
               </div>
             </div>
 
-            <div style={{ padding: "1rem", display: "flex", gap: "0.85rem", alignItems: "flex-start" }}>
-              <div style={{
-                width: "90px", height: "130px", flexShrink: 0, borderRadius: "8px", overflow: "hidden",
-                background: "#E8DCC0", display: "flex", alignItems: "center", justifyContent: "center"
-              }}>
-                {liveSelectedBook.coverUrl ? (
-                  <img src={liveSelectedBook.coverUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} crossOrigin="anonymous" />
-                ) : (
-                  <Library size={36} color="#7A6F5D" />
-                )}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Main content */}
+            <div style={{ flex: 1, padding: "36px 40px 24px", display: "flex", flexDirection: "column" }}>
+              {/* Cover + Title row */}
+              <div style={{ display: "flex", gap: "32px", alignItems: "flex-start", marginBottom: "28px" }}>
                 <div style={{
-                  fontFamily: "'Anek Malayalam', 'Playfair Display', serif",
-                  fontWeight: 800, fontSize: "1.05rem", lineHeight: 1.35, color: "#1B4D3E",
-                  marginBottom: "0.25rem"
+                  width: "200px", height: "290px", flexShrink: 0, borderRadius: "12px", overflow: "hidden",
+                  background: "#E8DCC0", display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 6px 20px rgba(43,36,32,0.12)", border: "1px solid #E8DCC0"
                 }}>
-                  {liveSelectedBook.title}
+                  {liveSelectedBook.coverUrl ? (
+                    <img
+                      src={liveSelectedBook.coverUrl}
+                      alt=""
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      crossOrigin="anonymous"
+                    />
+                  ) : (
+                    <Library size={64} color="#7A6F5D" />
+                  )}
                 </div>
-                <div style={{ fontSize: "0.82rem", color: "#8B2E3C", fontWeight: 600, marginBottom: "0.5rem" }}>
-                  {liveSelectedBook.author || "Unknown Author"}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
-                  <span style={{
-                    fontSize: "0.68rem", fontWeight: 700, background: "#E8DCC0", color: "#2B2420",
-                    padding: "0.2rem 0.45rem", borderRadius: "4px"
+
+                <div style={{ flex: 1, minWidth: 0, paddingTop: "8px" }}>
+                  <div style={{
+                    fontFamily: "'Anek Malayalam', 'Playfair Display', serif",
+                    fontWeight: 800, fontSize: "36px", lineHeight: 1.3, color: "#1B4D3E",
+                    marginBottom: "12px"
                   }}>
-                    {liveSelectedBook.code}
-                  </span>
-                  <span style={{
-                    fontSize: "0.68rem", fontWeight: 600, background: "#fff", border: "1px solid #E8DCC0",
-                    color: "#7A6F5D", padding: "0.2rem 0.45rem", borderRadius: "4px"
-                  }}>
-                    {liveSelectedBook.category || UNCATEGORIZED}
-                  </span>
+                    {liveSelectedBook.title}
+                  </div>
+                  <div style={{ fontSize: "22px", color: "#8B2E3C", fontWeight: 600, marginBottom: "20px" }}>
+                    {liveSelectedBook.author || "Unknown Author"}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
+                    <span style={{
+                      fontSize: "16px", fontWeight: 700, background: "#E8DCC0", color: "#2B2420",
+                      padding: "6px 14px", borderRadius: "6px"
+                    }}>
+                      {liveSelectedBook.code}
+                    </span>
+                    <span style={{
+                      fontSize: "16px", fontWeight: 600, background: "#fff", border: "1.5px solid #E8DCC0",
+                      color: "#7A6F5D", padding: "6px 14px", borderRadius: "6px"
+                    }}>
+                      {liveSelectedBook.category || UNCATEGORIZED}
+                    </span>
+                    <span style={{
+                      fontSize: "16px", fontWeight: 700,
+                      background: liveSelectedBook.availableCopies > 0 ? "#E1F0E6" : "#F3E1E0",
+                      color: liveSelectedBook.availableCopies > 0 ? "#1F7A52" : "#8B2E3C",
+                      padding: "6px 14px", borderRadius: "6px"
+                    }}>
+                      {liveSelectedBook.availableCopies > 0 ? "Available" : "Currently Issued"}
+                    </span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Description box */}
+              <div style={{
+                flex: 1,
+                background: "#fff",
+                borderRadius: "14px",
+                border: "1.5px solid #E8DCC0",
+                padding: "28px 32px",
+                fontSize: "20px",
+                lineHeight: 1.75,
+                color: "#2B2420",
+                whiteSpace: "pre-wrap"
+              }}>
+                {(liveSelectedBook.description || "").trim()
+                  ? liveSelectedBook.description
+                  : "ഈ പുസ്തകത്തിന്റെ വിവരണം ഇതുവരെ ചേർത്തിട്ടില്ല."}
               </div>
             </div>
 
-            {(liveSelectedBook.description || "").trim() && (
-              <div style={{
-                margin: "0 1rem 1rem",
-                padding: "0.75rem 0.85rem",
-                background: "#fff",
-                borderRadius: "10px",
-                border: "1px solid #E8DCC0",
-                fontSize: "0.8rem",
-                lineHeight: 1.55,
-                color: "#2B2420",
-                maxHeight: "140px",
-                overflow: "hidden"
-              }}>
-                {liveSelectedBook.description}
-              </div>
-            )}
-
+            {/* Footer */}
             <div style={{
-              borderTop: "1px dashed #E8DCC0",
-              padding: "0.55rem 1rem 0.7rem",
+              borderTop: "2px dashed #C9A227",
+              padding: "16px 40px 20px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              fontSize: "0.65rem",
-              color: "#7A6F5D"
+              fontSize: "14px",
+              color: "#7A6F5D",
+              background: "#FBF2D9"
             }}>
-              <span>Digital Book Card</span>
-              <span style={{ fontWeight: 600, color: "#1B4D3E" }}>
-                {liveSelectedBook.availableCopies > 0 ? "Available" : "Currently Issued"}
+              <span style={{ fontWeight: 600 }}>Digital Book Card · Notice Board Display</span>
+              <span style={{ fontWeight: 700, color: "#1B4D3E", fontSize: "15px" }}>
+                NMMI Islamic Library
               </span>
             </div>
           </div>
