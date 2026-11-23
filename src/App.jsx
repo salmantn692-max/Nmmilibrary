@@ -1945,6 +1945,14 @@ export default function App() {
   }
 
 
+
+  function openAddStudent() {
+    const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
+    setStudentForm({ name: "", className: defaultClass, roll: "", phone: "" });
+    setBulkClass(defaultClass); setBulkNames(""); setBulkStartRoll("");
+    setEditingStudentId(null); setStudentListQuery(""); setSheet("addStudent");
+  }
+
   const studentListForManage = useMemo(() => {
     const q = studentListQuery.trim().toLowerCase(); if (!q) return students;
     return students.filter((s) => s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q));
