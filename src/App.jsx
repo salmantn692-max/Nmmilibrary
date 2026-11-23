@@ -5,7 +5,7 @@ import {
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
   Settings, Save, Palette, FileDown, BookOpen, Heart, Share2, Sparkles,
-  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic
+  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic, Image
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -1282,6 +1282,10 @@ export default function App() {
   const [lastPromotion, setLastPromotion] = useState(null);
   const [printMode, setPrintMode] = useState("students");
   const [printClass, setPrintClass] = useState("ALL");
+  const [posterBookId, setPosterBookId] = useState("");
+  const [posterQuery, setPosterQuery] = useState("");
+  const [posterDownloading, setPosterDownloading] = useState(false);
+  const posterRef = useRef(null);
 
   const [bookQuery, setBookQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState(null);
@@ -1901,7 +1905,30 @@ export default function App() {
     } catch { alert("Couldn't create the image. Try taking a screenshot instead."); }
     setCertDownloading(false);
   }
-  function openAddStudent() {
+  
+  async function downloadPoster(book) {
+    if (!posterRef.current || !book) return;
+    setPosterDownloading(true);
+    try {
+      const canvas = await html2canvas(posterRef.current, {
+        scale: 2,
+        backgroundColor: "#FDF8ED",
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      });
+      const link = document.createElement("a");
+      const safe = (book.title || book.code || "book").replace(/[^\w\u0D00-\u0D7F]+/g, "_").slice(0, 40);
+      link.download = `notice_${book.code || safe}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch {
+      alert("Couldn't create the poster image. Try Print → Save as PDF instead.");
+    }
+    setPosterDownloading(false);
+  }
+
+function openAddStudent() {
     const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
     setStudentForm({ name: "", className: defaultClass, roll: "" });
     setBulkClass(defaultClass); setBulkNames(""); setBulkStartRoll("");
@@ -2324,6 +2351,7 @@ export default function App() {
 
         @media print {
   /* UI എലമെന്റുകൾ മറയ്ക്കൽ */
+  .notice-poster { page-break-inside: avoid !important; }
   .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head {
     display: none !important;
   }
@@ -2529,6 +2557,9 @@ export default function App() {
                 <Award size={18} /> Certificate
               </button>
               <button onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
+              <button onClick={() => { setPosterBookId(""); setPosterQuery(""); setSheet("noticeBoard"); }}>
+                <Image size={18} /> Notice Board Poster
+              </button>
               <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
                 <Settings size={18} /> Settings
               </button>
@@ -2691,6 +2722,9 @@ export default function App() {
                   <Award size={18} /> Monthly Certificate
                 </button>
                 <button className="menu-row" onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
+                <button className="menu-row" onClick={() => { setPosterBookId(""); setPosterQuery(""); setSheet("noticeBoard"); }}>
+                  <Image size={18} /> Notice Board Poster
+                </button>
                 <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
                   <Settings size={18} /> Settings
                 </button>
@@ -2847,6 +2881,240 @@ export default function App() {
               </div>
             </Modal>
           )}
+
+
+          {sheet === "noticeBoard" && (() => {
+            const posterBook = posterBookId ? books.find((b) => b.id === posterBookId) : null;
+            const posterMatches = (() => {
+              const q = posterQuery.trim().toLowerCase();
+              let list = books;
+              if (q) {
+                list = list.filter((b) =>
+                  (b.title || "").toLowerCase().includes(q) ||
+                  (b.author || "").toLowerCase().includes(q) ||
+                  normCode(b.code).includes(normCode(q))
+                );
+              }
+              return list.slice(0, 12);
+            })();
+            const coverFb = (book) => {
+              const palette = ["#1B4D3E", "#8B2E3C", "#2C6E5C", "#C9A227", "#5B4B8A", "#2F6B8A"];
+              const idx = (book.code || book.title || "A").charCodeAt(0) % palette.length;
+              const initial = ((book.title || "?").trim().charAt(0) || "?").toUpperCase();
+              return { bg: palette[idx], initial };
+            };
+            return (
+              <Modal title="Notice Board Poster" onClose={() => setSheet(null)} wide>
+                <div className="no-print">
+                  <p style={{ fontSize: ".82rem", color: "var(--text-soft)", marginBottom: ".7rem", lineHeight: 1.5 }}>
+                    Pick a book to generate an A4 poster for the notice board — with cover, title, and short description.
+                    Download as image or Print → Save as PDF.
+                  </p>
+                  {!posterBook ? (
+                    <>
+                      <div className="field">
+                        <label>Find book</label>
+                        <input
+                          type="search"
+                          value={posterQuery}
+                          onChange={(e) => setPosterQuery(e.target.value)}
+                          placeholder="Title, author or code..."
+                          autoFocus
+                        />
+                      </div>
+                      <div className="pick-list" style={{ maxHeight: 280, overflowY: "auto" }}>
+                        {posterMatches.length === 0 && <div className="empty">No books found</div>}
+                        {posterMatches.map((b) => (
+                          <button key={b.id} className="pick-item" onClick={() => setPosterBookId(b.id)}>
+                            <span className="badge">{b.code}</span>
+                            <span>
+                              <div className="t-title">{b.title}</div>
+                              <div className="t-meta">{b.author || "—"} · {(b.availableCopies || 0) > 0 ? "Available" : "Issued"}</div>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", marginBottom: ".9rem", alignItems: "center" }}>
+                      <button type="button" className="btn secondary" onClick={() => setPosterBookId("")}>Change book</button>
+                      <button type="button" className="btn" disabled={posterDownloading} onClick={() => downloadPoster(posterBook)}>
+                        <Download size={15} /> {posterDownloading ? "Preparing..." : "Download PNG"}
+                      </button>
+                      <button type="button" className="btn secondary" onClick={() => setTimeout(() => window.print(), 300)}>
+                        <Printer size={15} /> Print / PDF
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {posterBook && (
+                  <div style={{ overflowX: "auto", padding: ".4rem 0 1rem" }}>
+                    <div
+                      ref={posterRef}
+                      className="notice-poster"
+                      style={{
+                        width: "210mm",
+                        minHeight: "297mm",
+                        maxWidth: "100%",
+                        margin: "0 auto",
+                        background: "#FDF8ED",
+                        border: "10px solid #C9A227",
+                        boxSizing: "border-box",
+                        display: "flex",
+                        flexDirection: "column",
+                        fontFamily: "'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif",
+                        color: "#2B2420",
+                      }}
+                    >
+                      <div style={{
+                        background: "linear-gradient(180deg, #1B4D3E 0%, #0F3328 100%)",
+                        color: "#fff",
+                        textAlign: "center",
+                        padding: "18px 20px 16px",
+                        borderBottom: "4px solid #C9A227",
+                      }}>
+                        <div style={{
+                          fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif",
+                          fontWeight: 800,
+                          fontSize: "22px",
+                          letterSpacing: "0.04em",
+                          lineHeight: 1.25,
+                        }}>
+                          {appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#E7C989", marginTop: "4px", fontWeight: 500 }}>
+                          {appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial Islamic Library"}
+                        </div>
+                      </div>
+
+                      <div style={{
+                        flex: 1,
+                        padding: "28px 32px 20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "22px",
+                      }}>
+                        <div style={{ display: "flex", gap: "24px", alignItems: "flex-start" }}>
+                          <div style={{
+                            width: "140px",
+                            flexShrink: 0,
+                            borderRadius: "8px",
+                            overflow: "hidden",
+                            boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+                            border: "1px solid #E8DCC0",
+                            background: "#fff",
+                            aspectRatio: "2/3",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}>
+                            {posterBook.coverUrl ? (
+                              <img
+                                src={posterBook.coverUrl}
+                                alt=""
+                                crossOrigin="anonymous"
+                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: "100%", height: "100%",
+                                background: coverFb(posterBook).bg,
+                                color: "#fff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "48px",
+                                fontWeight: 800,
+                              }}>
+                                {coverFb(posterBook).initial}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0, paddingTop: "4px" }}>
+                            <div style={{
+                              fontFamily: "'Anek Malayalam', 'Playfair Display', serif",
+                              fontWeight: 800,
+                              fontSize: "28px",
+                              color: "#1B4D3E",
+                              lineHeight: 1.3,
+                              marginBottom: "6px",
+                            }}>
+                              {posterBook.title}
+                            </div>
+                            <div style={{
+                              fontSize: "16px",
+                              fontWeight: 600,
+                              color: "#8B2E3C",
+                              marginBottom: "14px",
+                            }}>
+                              {posterBook.author || "Unknown Author"}
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              <span style={{
+                                background: "#F0E6D0", border: "1px solid #E8DCC0", borderRadius: "6px",
+                                padding: "4px 10px", fontSize: "12px", fontWeight: 700, color: "#5A5040",
+                              }}>
+                                {posterBook.code}
+                              </span>
+                              <span style={{
+                                background: "#fff", border: "1px solid #E8DCC0", borderRadius: "6px",
+                                padding: "4px 10px", fontSize: "12px", fontWeight: 600, color: "#7A6F5D",
+                              }}>
+                                {posterBook.category || "Uncategorized"}
+                              </span>
+                              <span style={{
+                                background: (posterBook.availableCopies || 0) > 0 ? "#E1F0E6" : "#F3E1E0",
+                                borderRadius: "6px",
+                                padding: "4px 10px", fontSize: "12px", fontWeight: 700,
+                                color: (posterBook.availableCopies || 0) > 0 ? "#1F7A52" : "#8B2E3C",
+                              }}>
+                                {(posterBook.availableCopies || 0) > 0 ? "Available" : "All Issued"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          background: "#fff",
+                          border: "1px solid #E8DCC0",
+                          borderRadius: "14px",
+                          padding: "18px 20px",
+                          flex: 1,
+                          minHeight: "180px",
+                        }}>
+                          <div style={{
+                            fontSize: "15px",
+                            lineHeight: 1.75,
+                            color: "#2B2420",
+                            whiteSpace: "pre-wrap",
+                          }}>
+                            {posterBook.description
+                              || "No description available for this book yet. Add a short description in the Book Catalog for a richer notice-board poster."}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{
+                        borderTop: "2px solid #C9A227",
+                        background: "#FBF2D9",
+                        padding: "10px 24px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: "11px",
+                        color: "#7A6F5D",
+                        fontWeight: 600,
+                      }}>
+                        <span>Digital Book Card · Notice Board Display</span>
+                        <span>{appSettings.libraryName || "NMMI Islamic Library"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Modal>
+            );
+          })()}
 
           {sheet === "issue" && (
             <Modal title="Issue Book" onClose={() => setSheet(null)}>
@@ -3399,9 +3667,10 @@ export default function App() {
                     <b>{dBook.code}</b>{dBook.author ? ` · ${dBook.author}` : ""}<br />
                     <span style={{ fontSize: ".78rem", color: "var(--text-soft)" }}>{dBook.category || UNCATEGORIZED} · {dBook.availableCopies}/{dBook.totalCopies} available</span>
                   </span>
-                  <div style={{ display: "flex", gap: ".7rem" }}>
+                  <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
                     <button onClick={() => { setSheet("catalog"); startEditBook(dBook); }}><Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit</button>
                     <button onClick={() => { deleteBook(dBook); setSheet(null); }}><Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove</button>
+                    <button onClick={() => { setPosterBookId(dBook.id); setPosterQuery(""); setSheet("noticeBoard"); }}><Image size={12} style={{ verticalAlign: "-1px" }} /> Poster</button>
                   </div>
                 </div>
                 <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".4rem" }}>Currently issued to</h2>
