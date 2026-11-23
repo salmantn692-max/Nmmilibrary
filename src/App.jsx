@@ -1910,30 +1910,40 @@ export default function App() {
     if (!posterRef.current || !book) return;
     setPosterDownloading(true);
     try {
-      const canvas = await html2canvas(posterRef.current, {
+      // A4 at 150 DPI: 210mm x 297mm ≈ 1240 x 1754 px
+      const A4_W = 1240;
+      const A4_H = 1754;
+      const el = posterRef.current;
+      const canvas = await html2canvas(el, {
         scale: 2,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
         backgroundColor: "#FDF8ED",
         useCORS: true,
         allowTaint: true,
         logging: false,
+        imageTimeout: 15000,
       });
+      // Resample to exact A4 pixel size for consistent print/download
+      const out = document.createElement("canvas");
+      out.width = A4_W;
+      out.height = A4_H;
+      const ctx = out.getContext("2d");
+      ctx.fillStyle = "#FDF8ED";
+      ctx.fillRect(0, 0, A4_W, A4_H);
+      ctx.drawImage(canvas, 0, 0, A4_W, A4_H);
       const link = document.createElement("a");
       const safe = (book.title || book.code || "book").replace(/[^\w\u0D00-\u0D7F]+/g, "_").slice(0, 40);
-      link.download = `notice_${book.code || safe}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.download = `notice_${book.code || safe}_A4.png`;
+      link.href = out.toDataURL("image/png");
       link.click();
-    } catch {
-      alert("Couldn't create the poster image. Try Print → Save as PDF instead.");
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't create the poster image. Check the cover image URL allows download, or try again.");
     }
     setPosterDownloading(false);
   }
 
-function openAddStudent() {
-    const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
-    setStudentForm({ name: "", className: defaultClass, roll: "" });
-    setBulkClass(defaultClass); setBulkNames(""); setBulkStartRoll("");
-    setEditingStudentId(null); setStudentListQuery(""); setSheet("addStudent");
-  }
 
   const studentListForManage = useMemo(() => {
     const q = studentListQuery.trim().toLowerCase(); if (!q) return students;
@@ -2903,12 +2913,15 @@ function openAddStudent() {
               const initial = ((book.title || "?").trim().charAt(0) || "?").toUpperCase();
               return { bg: palette[idx], initial };
             };
+            // Fixed A4 layout size used for on-screen preview + capture (CSS px ≈ 96dpi)
+            // 794 x 1123 ≈ A4; we scale up on download
+            const A4_CSS_W = 794;
+            const A4_CSS_H = 1123;
             return (
               <Modal title="Notice Board Poster" onClose={() => setSheet(null)} wide>
                 <div className="no-print">
                   <p style={{ fontSize: ".82rem", color: "var(--text-soft)", marginBottom: ".7rem", lineHeight: 1.5 }}>
-                    Pick a book to generate an A4 poster for the notice board — with cover, title, and short description.
-                    Download as image or Print → Save as PDF.
+                    Pick a book to generate an A4 poster for the notice board. Download PNG is print-ready (A4 size).
                   </p>
                   {!posterBook ? (
                     <>
@@ -2939,175 +2952,177 @@ function openAddStudent() {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", marginBottom: ".9rem", alignItems: "center" }}>
                       <button type="button" className="btn secondary" onClick={() => setPosterBookId("")}>Change book</button>
                       <button type="button" className="btn" disabled={posterDownloading} onClick={() => downloadPoster(posterBook)}>
-                        <Download size={15} /> {posterDownloading ? "Preparing..." : "Download PNG"}
-                      </button>
-                      <button type="button" className="btn secondary" onClick={() => setTimeout(() => window.print(), 300)}>
-                        <Printer size={15} /> Print / PDF
+                        <Download size={15} /> {posterDownloading ? "Preparing A4..." : "Download PNG"}
                       </button>
                     </div>
                   )}
                 </div>
 
                 {posterBook && (
-                  <div style={{ overflowX: "auto", padding: ".4rem 0 1rem" }}>
-                    <div
-                      ref={posterRef}
-                      className="notice-poster"
-                      style={{
-                        width: "210mm",
-                        minHeight: "297mm",
-                        maxWidth: "100%",
-                        margin: "0 auto",
-                        background: "#FDF8ED",
-                        border: "10px solid #C9A227",
-                        boxSizing: "border-box",
-                        display: "flex",
-                        flexDirection: "column",
-                        fontFamily: "'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif",
-                        color: "#2B2420",
-                      }}
-                    >
-                      <div style={{
-                        background: "linear-gradient(180deg, #1B4D3E 0%, #0F3328 100%)",
-                        color: "#fff",
-                        textAlign: "center",
-                        padding: "18px 20px 16px",
-                        borderBottom: "4px solid #C9A227",
-                      }}>
+                  <div className="no-print" style={{ overflowX: "auto", padding: ".4rem 0 1rem", background: "#e8e0d0", borderRadius: 12 }}>
+                    <div style={{ transform: "scale(0.72)", transformOrigin: "top center", width: A4_CSS_W, margin: "0 auto -280px" }}>
+                      <div
+                        ref={posterRef}
+                        className="notice-poster"
+                        style={{
+                          width: A4_CSS_W,
+                          height: A4_CSS_H,
+                          background: "#FDF8ED",
+                          border: "12px solid #C9A227",
+                          boxSizing: "border-box",
+                          display: "flex",
+                          flexDirection: "column",
+                          fontFamily: "'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif",
+                          color: "#2B2420",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {/* Header */}
                         <div style={{
-                          fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif",
-                          fontWeight: 800,
-                          fontSize: "22px",
-                          letterSpacing: "0.04em",
-                          lineHeight: 1.25,
+                          background: "linear-gradient(180deg, #1B4D3E 0%, #0F3328 100%)",
+                          color: "#fff",
+                          textAlign: "center",
+                          padding: "22px 28px 18px",
+                          flexShrink: 0,
                         }}>
-                          {appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "#E7C989", marginTop: "4px", fontWeight: 500 }}>
-                          {appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial Islamic Library"}
-                        </div>
-                      </div>
-
-                      <div style={{
-                        flex: 1,
-                        padding: "28px 32px 20px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "22px",
-                      }}>
-                        <div style={{ display: "flex", gap: "24px", alignItems: "flex-start" }}>
                           <div style={{
-                            width: "140px",
-                            flexShrink: 0,
-                            borderRadius: "8px",
-                            overflow: "hidden",
-                            boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
-                            border: "1px solid #E8DCC0",
-                            background: "#fff",
-                            aspectRatio: "2/3",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif",
+                            fontWeight: 800,
+                            fontSize: 28,
+                            letterSpacing: "0.06em",
+                            lineHeight: 1.2,
                           }}>
-                            {posterBook.coverUrl ? (
-                              <img
-                                src={posterBook.coverUrl}
-                                alt=""
-                                crossOrigin="anonymous"
-                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                              />
-                            ) : (
-                              <div style={{
-                                width: "100%", height: "100%",
-                                background: coverFb(posterBook).bg,
-                                color: "#fff",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "48px",
-                                fontWeight: 800,
-                              }}>
-                                {coverFb(posterBook).initial}
-                              </div>
-                            )}
+                            {appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}
                           </div>
-                          <div style={{ flex: 1, minWidth: 0, paddingTop: "4px" }}>
-                            <div style={{
-                              fontFamily: "'Anek Malayalam', 'Playfair Display', serif",
-                              fontWeight: 800,
-                              fontSize: "28px",
-                              color: "#1B4D3E",
-                              lineHeight: 1.3,
-                              marginBottom: "6px",
-                            }}>
-                              {posterBook.title}
-                            </div>
-                            <div style={{
-                              fontSize: "16px",
-                              fontWeight: 600,
-                              color: "#8B2E3C",
-                              marginBottom: "14px",
-                            }}>
-                              {posterBook.author || "Unknown Author"}
-                            </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                              <span style={{
-                                background: "#F0E6D0", border: "1px solid #E8DCC0", borderRadius: "6px",
-                                padding: "4px 10px", fontSize: "12px", fontWeight: 700, color: "#5A5040",
-                              }}>
-                                {posterBook.code}
-                              </span>
-                              <span style={{
-                                background: "#fff", border: "1px solid #E8DCC0", borderRadius: "6px",
-                                padding: "4px 10px", fontSize: "12px", fontWeight: 600, color: "#7A6F5D",
-                              }}>
-                                {posterBook.category || "Uncategorized"}
-                              </span>
-                              <span style={{
-                                background: (posterBook.availableCopies || 0) > 0 ? "#E1F0E6" : "#F3E1E0",
-                                borderRadius: "6px",
-                                padding: "4px 10px", fontSize: "12px", fontWeight: 700,
-                                color: (posterBook.availableCopies || 0) > 0 ? "#1F7A52" : "#8B2E3C",
-                              }}>
-                                {(posterBook.availableCopies || 0) > 0 ? "Available" : "All Issued"}
-                              </span>
-                            </div>
+                          <div style={{ fontSize: 12, color: "#E7C989", marginTop: 6, fontWeight: 500 }}>
+                            {appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial Islamic Library"}
                           </div>
                         </div>
 
+                        {/* Body */}
                         <div style={{
-                          background: "#fff",
-                          border: "1px solid #E8DCC0",
-                          borderRadius: "14px",
-                          padding: "18px 20px",
                           flex: 1,
-                          minHeight: "180px",
+                          padding: "32px 36px 24px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 28,
+                          minHeight: 0,
                         }}>
+                          {/* Top row: cover + meta */}
+                          <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
+                            <div style={{
+                              width: 168,
+                              height: 252,
+                              flexShrink: 0,
+                              borderRadius: 10,
+                              overflow: "hidden",
+                              boxShadow: "0 6px 18px rgba(0,0,0,0.14)",
+                              border: "1px solid #E8DCC0",
+                              background: "#fff",
+                            }}>
+                              {posterBook.coverUrl ? (
+                                <img
+                                  src={posterBook.coverUrl}
+                                  alt=""
+                                  crossOrigin="anonymous"
+                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                />
+                              ) : (
+                                <div style={{
+                                  width: "100%", height: "100%",
+                                  background: coverFb(posterBook).bg,
+                                  color: "#fff",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 56,
+                                  fontWeight: 800,
+                                }}>
+                                  {coverFb(posterBook).initial}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0, paddingTop: 8 }}>
+                              <div style={{
+                                fontFamily: "'Anek Malayalam', 'Playfair Display', serif",
+                                fontWeight: 800,
+                                fontSize: 32,
+                                color: "#1B4D3E",
+                                lineHeight: 1.3,
+                                marginBottom: 8,
+                              }}>
+                                {posterBook.title}
+                              </div>
+                              <div style={{
+                                fontSize: 18,
+                                fontWeight: 600,
+                                color: "#8B2E3C",
+                                marginBottom: 18,
+                              }}>
+                                {posterBook.author || "Unknown Author"}
+                              </div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                                <span style={{
+                                  background: "#F0E6D0", border: "1px solid #E8DCC0", borderRadius: 8,
+                                  padding: "6px 12px", fontSize: 13, fontWeight: 700, color: "#5A5040",
+                                }}>
+                                  {posterBook.code}
+                                </span>
+                                <span style={{
+                                  background: "#fff", border: "1px solid #E8DCC0", borderRadius: 8,
+                                  padding: "6px 12px", fontSize: 13, fontWeight: 600, color: "#7A6F5D",
+                                }}>
+                                  {posterBook.category || "Uncategorized"}
+                                </span>
+                                <span style={{
+                                  background: (posterBook.availableCopies || 0) > 0 ? "#E1F0E6" : "#F3E1E0",
+                                  borderRadius: 8,
+                                  padding: "6px 12px", fontSize: 13, fontWeight: 700,
+                                  color: (posterBook.availableCopies || 0) > 0 ? "#1F7A52" : "#8B2E3C",
+                                }}>
+                                  {(posterBook.availableCopies || 0) > 0 ? "Available" : "All Issued"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Description card */}
                           <div style={{
-                            fontSize: "15px",
-                            lineHeight: 1.75,
-                            color: "#2B2420",
-                            whiteSpace: "pre-wrap",
+                            background: "#fff",
+                            border: "1px solid #E8DCC0",
+                            borderRadius: 16,
+                            padding: "22px 24px",
+                            flex: 1,
+                            minHeight: 200,
                           }}>
-                            {posterBook.description
-                              || "No description available for this book yet. Add a short description in the Book Catalog for a richer notice-board poster."}
+                            <div style={{
+                              fontSize: 16,
+                              lineHeight: 1.8,
+                              color: "#2B2420",
+                              whiteSpace: "pre-wrap",
+                            }}>
+                              {posterBook.description
+                                || "No description available for this book yet. Add a short description in the Book Catalog for a richer notice-board poster."}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div style={{
-                        borderTop: "2px solid #C9A227",
-                        background: "#FBF2D9",
-                        padding: "10px 24px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: "11px",
-                        color: "#7A6F5D",
-                        fontWeight: 600,
-                      }}>
-                        <span>Digital Book Card · Notice Board Display</span>
-                        <span>{appSettings.libraryName || "NMMI Islamic Library"}</span>
+                        {/* Footer */}
+                        <div style={{
+                          borderTop: "2px solid #C9A227",
+                          background: "#FBF2D9",
+                          padding: "12px 28px",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: 12,
+                          color: "#7A6F5D",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                        }}>
+                          <span>Digital Book Card · Notice Board Display</span>
+                          <span>{appSettings.libraryName || "NMMI Islamic Library"}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
