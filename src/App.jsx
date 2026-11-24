@@ -3503,31 +3503,294 @@ export default function App() {
           )}
 
           {sheet === "dashboard" && (
-            <Modal title="Dashboard" onClose={() => setSheet(null)} wide>
-              <div className="grid-stats">
-                <div className="stat-card"><div className="num">{totalCopies}</div><div className="label">Total Books</div></div>
-                <div className="stat-card"><div className="num">{availableCopies}</div><div className="label">Available</div></div>
-                <div className="stat-card"><div className="num">{activeTx.length}</div><div className="label">Currently Issued</div></div>
-                <div className={`stat-card ${overdueTx.length > 0 ? "warn" : ""}`}><div className="num">{overdueTx.length}</div><div className="label">Overdue</div></div>
+          
+{sheet === "dashboard" && (
+  <div className="dashboard-page">
+
+    {/* HEADER */}
+    <header className="dashboard-header">
+      <div className="dashboard-brand">
+        <div className="dashboard-logo">
+          <BookOpen size={23} />
+        </div>
+        <div>
+          <h2>NMMI Library</h2>
+          <p>Library Management System</p>
+        </div>
+      </div>
+
+      <button
+        className="dashboard-close"
+        onClick={() => setSheet(null)}
+      >
+        <X size={16} /> Close
+      </button>
+    </header>
+
+    <main className="dashboard-content">
+
+      {/* WELCOME */}
+      <section className="dashboard-welcome">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Welcome back, Librarian 👋</p>
+        </div>
+        <div style={{color:"#718078",fontSize:".82rem"}}>
+          {new Date().toLocaleDateString("en-IN", {
+            day:"2-digit",
+            month:"short",
+            year:"numeric"
+          })}
+        </div>
+      </section>
+
+      {/* STATISTICS */}
+      <section className="dashboard-stats">
+
+        {[
+          {
+            title:"Total Books",
+            value:totalCopies,
+            icon:<Library size={20}/>
+          },
+          {
+            title:"Available Books",
+            value:availableCopies,
+            icon:<BookOpen size={20}/>
+          },
+          {
+            title:"Currently Issued",
+            value:activeTx.length,
+            icon:<BookMarked size={20}/>
+          },
+          {
+            title:"Total Students",
+            value:students.length,
+            icon:<UserPlus size={20}/>
+          },
+          {
+            title:"Overdue Books",
+            value:overdueTx.length,
+            icon:<AlertTriangle size={20}/>
+          },
+          {
+            title:"Today's Returns",
+            value:transactions.filter(
+              t => t.returnDate === todayISO()
+            ).length,
+            icon:<RotateCcw size={20}/>
+          }
+        ].map((item,i)=>(
+          <div className="dashboard-stat" key={i}>
+            <div className="dashboard-stat-top">
+              <div className="dashboard-stat-icon">
+                {item.icon}
               </div>
-              <div className="stat-card">
-                <div className="label" style={{ marginBottom: ".4rem" }}>Students</div>
-                <div className="num" style={{ fontSize: "1.1rem" }}>{students.length}</div>
-              </div>
-              <h3 className="dash-heading">📚 Most Borrowed Books</h3>
-              {dashboardStats.mostBorrowed.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
-                <div className="row-list">
-                  {dashboardStats.mostBorrowed.map((x, i) => (
-                    <div key={x.book.id} className="row-card">
-                      <div className="dash-row">
-                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
-                        <div><div className="title">{x.book.title}</div><div className="meta">{x.book.code}</div></div>
-                      </div>
-                      <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
-                    </div>
-                  ))}
+            </div>
+            <div className="dashboard-stat-number">
+              {item.value}
+            </div>
+            <div className="dashboard-stat-label">
+              {item.title}
+            </div>
+          </div>
+        ))}
+
+      </section>
+
+      {/* QUICK ACTIONS */}
+      <section className="dashboard-section">
+        <h3>Quick Actions</h3>
+
+        <div className="dashboard-actions">
+
+          <button className="dashboard-action" onClick={openIssue}>
+            <BookMarked size={23}/>
+            Issue Book
+          </button>
+
+          <button className="dashboard-action" onClick={openReturn}>
+            <RotateCcw size={23}/>
+            Return Book
+          </button>
+
+          <button className="dashboard-action" onClick={openAddStudent}>
+            <UserPlus size={23}/>
+            Add Student
+          </button>
+
+          <button
+            className="dashboard-action"
+            onClick={() => openScanner("home")}
+          >
+            <Camera size={23}/>
+            Scan QR
+          </button>
+
+        </div>
+      </section>
+
+      {/* LIBRARY INSIGHTS */}
+      <div className="dashboard-columns">
+
+        <section className="dashboard-section">
+          <h3>📚 Most Borrowed Books</h3>
+
+          {dashboardStats.mostBorrowed.length === 0 ? (
+            <div className="dashboard-empty">
+              No borrowing activity yet.
+            </div>
+          ) : dashboardStats.mostBorrowed.map((x,i)=>(
+            <div className="dashboard-row" key={x.book.id}>
+              <div>
+                <div className="dashboard-row-title">
+                  {i+1}. {x.book.title}
                 </div>
-              )}
+                <div className="dashboard-row-sub">
+                  {x.book.code}
+                </div>
+              </div>
+              <div className="dashboard-count">
+                {x.count} times
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <section className="dashboard-section">
+          <h3>🏆 Top Readers</h3>
+
+          {dashboardStats.topReaders.length === 0 ? (
+            <div className="dashboard-empty">
+              No borrowing activity yet.
+            </div>
+          ) : dashboardStats.topReaders.map((x,i)=>(
+            <div className="dashboard-row" key={x.student.id}>
+              <div>
+                <div className="dashboard-row-title">
+                  {i+1}. {x.student.name}
+                </div>
+                <div className="dashboard-row-sub">
+                  {x.student.className || "Unassigned"}
+                </div>
+              </div>
+              <div className="dashboard-count">
+                {x.count} books
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <section className="dashboard-section">
+          <h3>🎓 Most Active Classes</h3>
+
+          {dashboardStats.topClasses.length === 0 ? (
+            <div className="dashboard-empty">
+              No class activity yet.
+            </div>
+          ) : dashboardStats.topClasses.map(([cls,count],i)=>(
+            <div className="dashboard-row" key={cls}>
+              <div className="dashboard-row-title">
+                {i+1}. {cls}
+              </div>
+              <div className="dashboard-count">
+                {count} books
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <section className="dashboard-section">
+          <h3>⚠️ Overdue Alerts</h3>
+
+          {overdueList.length === 0 ? (
+            <div className="dashboard-empty">
+              No overdue books. Great!
+            </div>
+          ) : overdueList.slice(0,6).map(r=>(
+            <div className="dashboard-row" key={r.tx.id}>
+              <div>
+                <div className="dashboard-row-title">
+                  {r.book.title}
+                </div>
+                <div className="dashboard-row-sub">
+                  {r.student.name} · {r.student.className}
+                </div>
+              </div>
+              <div style={{color:"#B5302A",fontWeight:700,fontSize:".78rem"}}>
+                {daysBetween(r.tx.dueDate,todayISO())}d late
+              </div>
+            </div>
+          ))}
+        </section>
+
+      </div>
+
+      {/* NEVER BORROWED */}
+      <section className="dashboard-section">
+        <h3>📦 Never Borrowed Books</h3>
+
+        {dashboardStats.neverBorrowed.length === 0 ? (
+          <div className="dashboard-empty">
+            Every book has been borrowed at least once.
+          </div>
+        ) : dashboardStats.neverBorrowed.slice(0,8).map(b=>(
+          <div className="dashboard-row" key={b.id}>
+            <div>
+              <div className="dashboard-row-title">{b.title}</div>
+              <div className="dashboard-row-sub">{b.code}</div>
+            </div>
+            <div className="dashboard-row-sub">
+              Not borrowed
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* RECENT ACTIVITIES */}
+      <section className="dashboard-section">
+        <h3>🕒 Recent Library Activities</h3>
+
+        {[...transactions]
+          .sort((a,b)=>
+            (b.issueDate || "").localeCompare(a.issueDate || "")
+          )
+          .slice(0,8)
+          .map(t=>{
+            const book = bookById(t.bookId);
+            const student = studentById(t.studentId);
+
+            if (!book || !student) return null;
+
+            return (
+              <div className="dashboard-row" key={t.id}>
+                <div>
+                  <div className="dashboard-row-title">
+                    {student.name} – {book.title}
+                  </div>
+                  <div className="dashboard-row-sub">
+                    {t.returnDate ? "Returned" : "Issued"}
+                    {" · "}
+                    {formatDate(t.returnDate || t.issueDate)}
+                  </div>
+                </div>
+                <div className="dashboard-count">
+                  {t.returnDate ? "Returned" : "Issued"}
+                </div>
+              </div>
+            );
+          })}
+
+        {transactions.length === 0 && (
+          <div className="dashboard-empty">
+            No activities recorded yet.
+          </div>
+        )}
+      </section>
+
+    </main>
+  </div>
+)}
               <h3 className="dash-heading">🏆 Top Readers <span className="dash-sub">all-time</span></h3>
               {dashboardStats.topReaders.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
                 <div className="row-list">
