@@ -2443,6 +2443,261 @@ export default function App() {
     height: auto !important; 
   }
 }
+        
+/* ===== PREMIUM LIBRARY DASHBOARD ===== */
+
+.dashboard-page {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow-y: auto;
+  background: #F7FAF8;
+  color: #202B26;
+  font-family: Inter, "Noto Sans Malayalam", sans-serif;
+}
+
+.dashboard-header {
+  background: #fff;
+  border-bottom: 1px solid #E4EBE6;
+  padding: 18px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: #087B59;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.dashboard-brand h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #153D30;
+}
+
+.dashboard-brand p {
+  margin: 3px 0 0;
+  font-size: .75rem;
+  color: #718078;
+}
+
+.dashboard-content {
+  max-width: 1500px;
+  margin: auto;
+  padding: 28px;
+}
+
+.dashboard-welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.dashboard-welcome h1 {
+  font-size: 1.8rem;
+  color: #153D30;
+  margin: 0;
+}
+
+.dashboard-welcome p {
+  color: #718078;
+  margin: 5px 0 0;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.dashboard-stat {
+  background: white;
+  border: 1px solid #E4EBE6;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 3px 12px rgba(20, 60, 40, .04);
+}
+
+.dashboard-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dashboard-stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: #E8F5EE;
+  color: #087B59;
+  display: grid;
+  place-items: center;
+}
+
+.dashboard-stat-number {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #153D30;
+  margin-top: 13px;
+}
+
+.dashboard-stat-label {
+  color: #718078;
+  font-size: .83rem;
+  margin-top: 3px;
+}
+
+.dashboard-section {
+  background: white;
+  border: 1px solid #E4EBE6;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.dashboard-section h3 {
+  color: #153D30;
+  font-size: 1rem;
+  margin: 0 0 17px;
+}
+
+.dashboard-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-action {
+  border: 1px solid #E1EAE4;
+  background: #F7FAF8;
+  border-radius: 12px;
+  padding: 17px 10px;
+  color: #153D30;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-size: .83rem;
+  transition: .2s;
+}
+
+.dashboard-action:hover {
+  background: #E8F5EE;
+  border-color: #087B59;
+  transform: translateY(-2px);
+}
+
+.dashboard-action svg {
+  color: #087B59;
+}
+
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.dashboard-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #EEF2EF;
+}
+
+.dashboard-row:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-row-title {
+  color: #253C31;
+  font-weight: 600;
+  font-size: .88rem;
+}
+
+.dashboard-row-sub {
+  color: #87948C;
+  font-size: .75rem;
+  margin-top: 3px;
+}
+
+.dashboard-count {
+  color: #087B59;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dashboard-close {
+  background: #E8F5EE;
+  color: #087B59;
+  border: 0;
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dashboard-empty {
+  color: #87948C;
+  font-size: .85rem;
+  padding: 12px 0;
+}
+
+@media (max-width: 700px) {
+  .dashboard-header {
+    padding: 13px 15px;
+  }
+
+  .dashboard-content {
+    padding: 19px 14px 35px;
+  }
+
+  .dashboard-welcome h1 {
+    font-size: 1.35rem;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .dashboard-stat {
+    padding: 14px;
+  }
+
+  .dashboard-stat-number {
+    font-size: 1.55rem;
+  }
+
+  .dashboard-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-columns {
+    grid-template-columns: 1fr;
+  }
+}
         /* ---- Dark mode ---- */
         .app.dark {
           --page-bg:#15171a;--text:#e8e3d8;--text-soft:#a89b7f;--row-bg:#232528;
