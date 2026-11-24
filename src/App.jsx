@@ -2549,12 +2549,6 @@ export default function App() {
                 <Settings size={18} /> Settings
               </button>
             </nav>
-            <div className="sidebar-footer">
-              <button onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
-                <Lock size={16} /> Change Password
-              </button>
-              <button onClick={handleSignOut}><LogOut size={16} /> Sign Out</button>
-            </div>
           </aside>
 
           <div className="top-fixed">
@@ -2710,10 +2704,6 @@ export default function App() {
                 <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSettingsTab("library"); setSheet("settings"); }}>
                   <Settings size={18} /> Settings
                 </button>
-                <button className="menu-row" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
-                  <Lock size={18} /> Change Password
-                </button>
-                <button className="menu-row" onClick={handleSignOut}><LogOut size={18} /> Sign Out</button>
               </div>
             </Modal>
           )}
