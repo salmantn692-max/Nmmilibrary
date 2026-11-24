@@ -3501,12 +3501,9 @@ export default function App() {
               </div>
             </Modal>
           )}
-
-          {sheet === "dashboard" && (
-          
 {sheet === "dashboard" && (
   <div className="dashboard-page">
-
+    
     {/* HEADER */}
     <header className="dashboard-header">
       <div className="dashboard-brand">
