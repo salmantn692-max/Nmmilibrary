@@ -1295,7 +1295,7 @@ export default function App() {
   const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
   const [editingBookId, setEditingBookId] = useState(null);
-  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "", coverUrl: "", description: "" });
 
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
@@ -1544,14 +1544,48 @@ export default function App() {
     setEditingCategoryOld(null);
   }
   async function deleteCategory(name) {
-    const count = books.filter((b) => b.category === name).length;
-    if (!window.confirm(count > 0 ? `${count} book(s) are in "${name}". Remove the category anyway?` : `Remove category "${name}"?`)) return;
+    const inCategory = books.filter((b) => (b.category || "") === name);
+    const count = inCategory.length;
+
+    if (count === 0) {
+      if (!window.confirm(`Remove empty category "${name}"?`)) return;
+      try {
+        await setDoc(doc(db, "settings", "bookCategories"), { list: categories.filter((c) => c !== name) });
+      } catch {}
+      return;
+    }
+
+    // Block if any book in this category is currently issued
+    const issued = inCategory.filter((b) =>
+      transactions.some((t) => t.bookId === b.id && !t.returnDate)
+    );
+    if (issued.length > 0) {
+      alert(
+        `Cannot delete "${name}".\n\n${issued.length} book(s) in this section are still issued to students.\nReturn them first, then delete the section.`
+      );
+      return;
+    }
+
+    const ok = window.confirm(
+      `Delete section "${name}" and all ${count} book(s) in it?\n\nThis removes the books from the library permanently. This cannot be undone.`
+    );
+    if (!ok) return;
+
     try {
-      await setDoc(doc(db, "settings", "bookCategories"), { list: categories.filter((c) => c !== name) });
-      const q = query(collection(db, "books"), where("category", "==", name));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: "" }); } catch {} }
-    } catch {}
+      // Delete books in batches of 400 (Firestore limit is 500)
+      for (let i = 0; i < inCategory.length; i += 400) {
+        const chunk = inCategory.slice(i, i + 400);
+        const batch = writeBatch(db);
+        chunk.forEach((b) => batch.delete(doc(db, "books", b.id)));
+        await batch.commit();
+      }
+      await setDoc(doc(db, "settings", "bookCategories"), {
+        list: categories.filter((c) => c !== name),
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't fully delete the section. Please try again.");
+    }
   }
 
   async function addBook(e) {
@@ -1572,8 +1606,7 @@ export default function App() {
   function startEditBook(b) {
     setEditingBookId(b.id);
     setEditBookForm({
-      title: b.title, author: b.author || "", code: b.code || "",
-      copies: String(b.totalCopies), category: b.category || "",
+      title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "",
       coverUrl: b.coverUrl || "", description: b.description || ""
     });
   }
@@ -1584,36 +1617,15 @@ export default function App() {
     if (!editBookForm.title.trim()) return;
     const book = books.find((b) => b.id === editingBookId);
     if (!book) return;
-    const newCode = stripSpaces(editBookForm.code.trim());
-    if (!newCode) {
-      alert("Book code is required.");
-      return;
-    }
-    const codeTaken = books.some(
-      (b) => b.id !== editingBookId && normCode(b.code) === normCode(newCode)
-    );
-    if (codeTaken) {
-      alert(`Code "${newCode}" is already used by another book. Choose a different code.`);
-      return;
-    }
     const newTotal = Math.max(1, parseInt(editBookForm.copies) || 1);
     const newAvailable = Math.max(0, newTotal - (book.totalCopies - book.availableCopies));
     try {
       await updateDoc(doc(db, "books", editingBookId), {
-        title: editBookForm.title.trim(),
-        author: editBookForm.author.trim(),
-        code: newCode,
-        totalCopies: newTotal,
-        availableCopies: newAvailable,
-        category: editBookForm.category || "",
-        coverUrl: editBookForm.coverUrl || "",
-        description: editBookForm.description || ""
+        title: editBookForm.title.trim(), author: editBookForm.author.trim(),
+        totalCopies: newTotal, availableCopies: newAvailable, category: editBookForm.category || "",
+        coverUrl: editBookForm.coverUrl || "", description: editBookForm.description || ""
       });
-    } catch (err) {
-      console.error(err);
-      alert("Couldn't save book. Please try again.");
-      return;
-    }
+    } catch {}
     setEditingBookId(null);
   }
 
@@ -3172,23 +3184,9 @@ export default function App() {
                                 </select>
                                 <input type="number" min="1" value={editBookForm.copies} onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })} />
                               </div>
-                              <div className="form-grid" style={{ marginBottom: 0 }}>
-                                <div>
-                                  <label style={{ fontSize: ".72rem" }}>Code</label>
-                                  <input
-                                    type="text"
-                                    value={editBookForm.code}
-                                    onChange={(e) => setEditBookForm({ ...editBookForm, code: e.target.value })}
-                                    placeholder="e.g. SH22"
-                                    required
-                                  />
-                                </div>
-                                <div style={{ fontSize: ".72rem", color: "var(--text-soft)", alignSelf: "end", paddingBottom: ".55rem" }}>
-                                  Can be changed · must be unique
-                                </div>
-                              </div>
                               <input type="text" value={editBookForm.coverUrl} onChange={(e) => setEditBookForm({ ...editBookForm, coverUrl: e.target.value })} placeholder="Cover Image URL (https://...)" />
                               <textarea value={editBookForm.description} onChange={(e) => setEditBookForm({ ...editBookForm, description: e.target.value })} placeholder="Short description" rows={2} style={{ resize: "vertical" }} />
+                              <div className="meta" style={{ fontSize: ".72rem" }}>Code: {b.code} (fixed)</div>
                               <div style={{ display: "flex", gap: ".5rem" }}>
                                 <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
                                 <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditBook}><X size={14} /> Cancel</button>
