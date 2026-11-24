@@ -5,7 +5,7 @@ import {
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
   Settings, Save, Palette, FileDown, BookOpen, Heart, Share2, Sparkles,
-  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic
+  Filter, ChevronUp, ChevronDown, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic, Menu, Home
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -456,6 +456,8 @@ export function PublicCatalog() {
   const [availableOnly, setAvailableOnly] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [viewMode, setViewMode] = useState("browse");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(true);
   const [visibleCount, setVisibleCount] = useState(24);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [listening, setListening] = useState(false);
@@ -928,9 +930,79 @@ export function PublicCatalog() {
         .pc-action-btn.on { border-color:var(--sky); background:#FBF2D9; color:var(--navy); }
         .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:.98rem; line-height:1.6; color:var(--text); margin-top:.9rem; padding-top:.9rem; border-top:1px solid var(--line); white-space:pre-wrap; }
         .pc-result-count { font-size:.8rem; color:var(--text-soft); padding:0 1.1rem .4rem; max-width:920px; margin:0 auto; font-weight:600; }
+
+        .pc-menu-btn {
+          position: absolute; left: 0.9rem; top: 1.15rem;
+          width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
+          background: #fff; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--navy); box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .pc-header { position: relative; }
+        .pc-drawer-backdrop {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 80;
+          animation: pcFadeIn .18s ease;
+        }
+        @keyframes pcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .pc-drawer {
+          position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 86vw);
+          background: #fff; z-index: 90; box-shadow: 8px 0 28px rgba(0,0,0,0.12);
+          display: flex; flex-direction: column;
+          animation: pcSlideIn .22s cubic-bezier(.16,1,.3,1);
+        }
+        @keyframes pcSlideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+        .pc-drawer-head {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 1rem 1rem 0.85rem; border-bottom: 1px solid var(--line);
+        }
+        .pc-drawer-head .title {
+          font-family: 'Anek Malayalam', 'Playfair Display', serif;
+          font-weight: 800; font-size: 1rem; color: var(--navy);
+        }
+        .pc-drawer-close {
+          width: 36px; height: 36px; border-radius: 50%; border: none;
+          background: var(--row-bg); display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--text);
+        }
+        .pc-drawer-nav { flex: 1; overflow-y: auto; padding: 0.5rem 0 1.5rem; }
+        .pc-nav-item {
+          display: flex; align-items: center; gap: 0.7rem; width: 100%;
+          padding: 0.85rem 1.15rem; border: none; background: transparent;
+          font-size: 0.95rem; font-weight: 600; color: var(--text);
+          cursor: pointer; text-align: left; font-family: inherit;
+          transition: background .15s;
+        }
+        .pc-nav-item:hover { background: #F7F3E8; }
+        .pc-nav-item.active { background: #EAF3EC; color: var(--navy); }
+        .pc-nav-item svg { flex-shrink: 0; color: var(--navy); }
+        .pc-nav-item .chev {
+          margin-left: auto; color: var(--text-soft); transition: transform .2s;
+        }
+        .pc-nav-item .chev.open { transform: rotate(180deg); }
+        .pc-nav-sub {
+          padding: 0.15rem 0 0.4rem 0;
+          border-left: 2px solid var(--line);
+          margin-left: 1.55rem;
+        }
+        .pc-nav-sub-item {
+          display: flex; align-items: center; justify-content: space-between;
+          width: 100%; padding: 0.55rem 1rem 0.55rem 0.85rem;
+          border: none; background: transparent; cursor: pointer;
+          font-size: 0.88rem; font-weight: 600; color: var(--text);
+          text-align: left; font-family: inherit;
+        }
+        .pc-nav-sub-item:hover { background: #F7F3E8; }
+        .pc-nav-sub-item.active { color: var(--navy); background: #EAF3EC; }
+        .pc-nav-sub-item .count {
+          font-size: 0.72rem; font-weight: 700; color: var(--text-soft);
+          background: var(--row-bg); padding: 0.12rem 0.45rem; border-radius: 999px;
+        }
+        .pc-nav-sub-item.active .count { background: #fff; color: var(--navy); }
       `}</style>
 
       <div className="pc-header">
+        <button type="button" className="pc-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+          <Menu size={20} />
+        </button>
         <h1>NMMI ISLAMIC LIBRARY</h1>
         <div className="pc-sub">Digital Book Catalog</div>
         {!loading && (
@@ -950,6 +1022,92 @@ export function PublicCatalog() {
           </button>
         </div>
       </div>
+
+      {menuOpen && (
+        <>
+          <div className="pc-drawer-backdrop" onClick={() => setMenuOpen(false)} />
+          <aside className="pc-drawer" role="dialog" aria-label="Catalog menu">
+            <div className="pc-drawer-head">
+              <div className="title">Menu</div>
+              <button type="button" className="pc-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="pc-drawer-nav">
+              <button
+                type="button"
+                className={`pc-nav-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
+                onClick={() => {
+                  setViewMode("browse");
+                  setSelectedCategory("ALL");
+                  setMenuOpen(false);
+                }}
+              >
+                <Home size={18} /> Home
+              </button>
+              <button
+                type="button"
+                className={`pc-nav-item ${viewMode === "wishlist" ? "active" : ""}`}
+                onClick={() => {
+                  setViewMode("wishlist");
+                  setMenuOpen(false);
+                }}
+              >
+                <Bookmark size={18} /> My Favourites
+                {wishlistIds.length > 0 && (
+                  <span className="count" style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 700, background: "var(--row-bg)", padding: "0.12rem 0.45rem", borderRadius: 999 }}>{wishlistIds.length}</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="pc-nav-item"
+                onClick={() => setCategoriesOpen((v) => !v)}
+                aria-expanded={categoriesOpen}
+              >
+                <LayoutGrid size={18} /> Categories
+                <span className={`chev ${categoriesOpen ? "open" : ""}`}>
+                  <ChevronDown size={18} />
+                </span>
+              </button>
+              {categoriesOpen && (
+                <div className="pc-nav-sub">
+                  <button
+                    type="button"
+                    className={`pc-nav-sub-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
+                    onClick={() => {
+                      setViewMode("browse");
+                      setSelectedCategory("ALL");
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span>All Books</span>
+                    <span className="count">{categoryCounts.ALL || 0}</span>
+                  </button>
+                  {categoriesList.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`pc-nav-sub-item ${selectedCategory === c ? "active" : ""}`}
+                      onClick={() => {
+                        setViewMode("browse");
+                        setSelectedCategory(c);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{c}</span>
+                      <span className="count">{categoryCounts[c] || 0}</span>
+                    </button>
+                  ))}
+                  {categoriesList.length === 0 && (
+                    <div style={{ padding: "0.5rem 1rem", fontSize: "0.82rem", color: "var(--text-soft)" }}>No categories yet</div>
+                  )}
+                </div>
+              )}
+            </nav>
+          </aside>
+        </>
+      )}
       
       <div className="pc-search-wrap">
         <Search size={18} className="pc-search-icon" />
