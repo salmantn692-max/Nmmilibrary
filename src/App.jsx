@@ -4,8 +4,7 @@ import {
   BookMarked, RotateCcw, UserPlus, MoreVertical, X, Layers, Pencil,
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
-  Settings, Save, Palette, FileDown, BookOpen, Heart, Share2, Sparkles,
-  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic
+  Settings, Save, Palette, FileDown, BookOpen, Heart
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -38,6 +37,7 @@ const SETTINGS_DEFAULTS = {
   graceDays: 0,
   reminderDaysBefore: 2,
   darkMode: false,
+  catalogHeroImageUrl: "",
 };
 
 function bookQrValue(code) { return BOOK_QR_PREFIX + stripSpaces(code); }
@@ -443,8 +443,7 @@ function DesktopScannerWaiting({ onClose, onUseCamera, feedback }) {
 }
 
 // ==========================================
-// PUBLIC CATALOG (STUDENT VIEW) - ENHANCED
-// Wishlist + Voice Search + Sort + Trending
+// PUBLIC CATALOG (STUDENT VIEW) - FIXED LIKES & JITTER
 // ==========================================
 export function PublicCatalog() {
   const [books, setBooks] = useState([]);
@@ -452,32 +451,16 @@ export function PublicCatalog() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedBook, setSelectedBook] = useState(null);
-  const [sortBy, setSortBy] = useState("popular");
-  const [availableOnly, setAvailableOnly] = useState(false);
-  const [showSortMenu, setShowSortMenu] = useState(false);
-  const [viewMode, setViewMode] = useState("browse");
-  const [visibleCount, setVisibleCount] = useState(24);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [voiceSupported, setVoiceSupported] = useState(false);
-  const [voiceHint, setVoiceHint] = useState("");
-  const observerTarget = useRef(null);
-  const sortMenuRef = useRef(null);
-  const recognitionRef = useRef(null);
+  const [catalogSettings, setCatalogSettings] = useState(SETTINGS_DEFAULTS);
+  const [heroImgOk, setHeroImgOk] = useState(true);
 
+  const [visibleCount, setVisibleCount] = useState(20);
+  const observerTarget = useRef(null);
+
+  // Liked IDs state - prevents whole list re-render and double count
   const [likedIds, setLikedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]"); } catch { return []; }
   });
-
-  const [wishlistIds, setWishlistIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("nmmi_wishlist") || "[]"); } catch { return []; }
-  });
-
-  const [recentIds, setRecentIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("nmmi_recent_books") || "[]"); } catch { return []; }
-  });
-
-  const [likeAnimId, setLikeAnimId] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "books"),
@@ -488,690 +471,398 @@ export function PublicCatalog() {
   }, []);
 
   useEffect(() => {
-    const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
-    setVoiceSupported(!!SR);
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => setShowScrollTop(window.scrollY > 420);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target)) setShowSortMenu(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      try { recognitionRef.current?.stop(); } catch {}
-    };
+    const unsub = onSnapshot(doc(db, "settings", "app"),
+      (snap) => {
+        if (snap.exists()) {
+          setCatalogSettings({ ...SETTINGS_DEFAULTS, ...snap.data() });
+          setHeroImgOk(true);
+        }
+      },
+      () => {}
+    );
+    return unsub;
   }, []);
 
   const categoriesList = useMemo(() => {
     const cats = new Set();
-    books.forEach((b) => {
+    books.forEach((b) => { 
       if (b.category && b.category.trim() !== "" && b.category !== "Uncategorized") {
-        cats.add(b.category.trim());
+        cats.add(b.category.trim()); 
       }
     });
-    return Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("? 8M")).sort();
+    const validCats = Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("ടി എസ്"));
+    return validCats.sort();
   }, [books]);
-
-  const categoryCounts = useMemo(() => {
-    const map = { ALL: books.length };
-    books.forEach((b) => {
-      const c = (b.category && b.category.trim()) || UNCATEGORIZED;
-      map[c] = (map[c] || 0) + 1;
-    });
-    return map;
-  }, [books]);
-
-  const wishlistBooks = useMemo(() => {
-    const set = new Set(wishlistIds);
-    return books.filter((b) => set.has(b.id));
-  }, [books, wishlistIds]);
 
   const filtered = useMemo(() => {
-    let list = viewMode === "wishlist" ? [...wishlistBooks] : [...books];
+    let list = books;
     if (selectedCategory !== "ALL") {
       list = list.filter((b) => (b.category || UNCATEGORIZED) === selectedCategory);
     }
-    if (availableOnly) {
-      list = list.filter((b) => (b.availableCopies || 0) > 0);
-    }
     const q = query.trim().toLowerCase();
-    if (q) {
-      list = list.filter((b) =>
-        (b.title || "").toLowerCase().includes(q) ||
-        (b.author || "").toLowerCase().includes(q) ||
-        normCode(b.code).includes(normCode(q))
-      );
-    }
-    if (sortBy === "popular") {
-      list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
-    } else if (sortBy === "available") {
-      list.sort((a, b) => (b.availableCopies || 0) - (a.availableCopies || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
-    } else if (sortBy === "title") {
-      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ml"));
-    } else if (sortBy === "newest") {
-      list.sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
-    }
-    return list;
-  }, [query, books, selectedCategory, sortBy, availableOnly, viewMode, wishlistBooks]);
+    if (!q) return list;
+    return list.filter((b) =>
+      (b.title || "").toLowerCase().includes(q) ||
+      (b.author || "").toLowerCase().includes(q) ||
+      normCode(b.code).includes(normCode(q))
+    );
+  }, [query, books, selectedCategory]);
 
-  const trending = useMemo(() => {
-    return [...books]
-      .filter((b) => (b.likes || 0) > 0)
-      .sort((a, b) => (b.likes || 0) - (a.likes || 0))
-      .slice(0, 8);
-  }, [books]);
-
-  const recentBooks = useMemo(() => {
-    return recentIds.map((id) => books.find((b) => b.id === id)).filter(Boolean).slice(0, 6);
-  }, [recentIds, books]);
-
-  const stats = useMemo(() => {
-    const available = books.reduce((s, b) => s + (b.availableCopies > 0 ? 1 : 0), 0);
-    return { total: books.length, available, categories: categoriesList.length, wishlist: wishlistIds.length };
-  }, [books, categoriesList, wishlistIds]);
+  const catalogStats = useMemo(() => {
+    const available = books.reduce((n, b) => n + ((b.availableCopies || 0) > 0 ? 1 : 0), 0);
+    return {
+      total: books.length,
+      available,
+      categories: categoriesList.length,
+    };
+  }, [books, categoriesList]);
 
   useEffect(() => {
-    setVisibleCount(24);
-  }, [query, selectedCategory, sortBy, availableOnly, viewMode]);
+    setVisibleCount(20);
+  }, [query, selectedCategory]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && visibleCount < filtered.length) {
-          setVisibleCount((prev) => prev + 24);
+          setVisibleCount((prev) => prev + 20);
         }
       },
-      { threshold: 0.1, rootMargin: "120px" }
+      { threshold: 1 }
     );
-    if (observerTarget.current) observer.observe(observerTarget.current);
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
     return () => {
-      if (observerTarget.current) observer.unobserve(observerTarget.current);
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
     };
   }, [visibleCount, filtered.length]);
 
-  const openBook = (book) => {
-    setSelectedBook(book);
-    const next = [book.id, ...recentIds.filter((id) => id !== book.id)].slice(0, 12);
-    setRecentIds(next);
-    try { localStorage.setItem("nmmi_recent_books", JSON.stringify(next)); } catch {}
-  };
-
   const handleLike = async (e, book) => {
-    e.stopPropagation();
+    e.stopPropagation(); 
     e.preventDefault();
+    
     const isCurrentlyLiked = likedIds.includes(book.id);
-    const newLikedIds = isCurrentlyLiked
-      ? likedIds.filter((id) => id !== book.id)
-      : [...likedIds, book.id];
-    if (!isCurrentlyLiked) {
-      setLikeAnimId(book.id);
-      setTimeout(() => setLikeAnimId(null), 600);
+    let newLikedIds;
+    
+    // Update local storage and state instantly for visual feedback
+    if (isCurrentlyLiked) {
+      newLikedIds = likedIds.filter(id => id !== book.id);
+    } else {
+      newLikedIds = [...likedIds, book.id];
     }
     setLikedIds(newLikedIds);
-    try { localStorage.setItem("nmmi_liked_books", JSON.stringify(newLikedIds)); } catch {}
+    localStorage.setItem("nmmi_liked_books", JSON.stringify(newLikedIds));
+
+    // Update database
     try {
-      await updateDoc(doc(db, "books", book.id), { likes: increment(isCurrentlyLiked ? -1 : 1) });
+      if (isCurrentlyLiked) {
+        await updateDoc(doc(db, "books", book.id), { likes: increment(-1) });
+      } else {
+        await updateDoc(doc(db, "books", book.id), { likes: increment(1) });
+      }
     } catch (err) {
       console.error(err);
+      alert("Error updating like. Please try again.");
+      // Revert if error
       setLikedIds(likedIds);
-      try { localStorage.setItem("nmmi_liked_books", JSON.stringify(likedIds)); } catch {}
+      localStorage.setItem("nmmi_liked_books", JSON.stringify(likedIds));
     }
   };
 
-  const toggleWishlist = (e, book) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const has = wishlistIds.includes(book.id);
-    const next = has ? wishlistIds.filter((id) => id !== book.id) : [...wishlistIds, book.id];
-    setWishlistIds(next);
-    try { localStorage.setItem("nmmi_wishlist", JSON.stringify(next)); } catch {}
-  };
-
-  const handleShare = async (book) => {
-    const text = `${book.title}${book.author ? `  ${book.author}` : ""} | NMMI Islamic Library`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: book.title, text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        alert("Book details copied!");
-      }
-    } catch {}
-  };
-
-  const startVoiceSearch = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      setVoiceHint("Voice search not supported on this browser");
-      setTimeout(() => setVoiceHint(""), 2500);
-      return;
-    }
-    try { recognitionRef.current?.stop(); } catch {}
-    const rec = new SR();
-    recognitionRef.current = rec;
-    rec.lang = "ml-IN";
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    rec.onstart = () => {
-      setListening(true);
-      setVoiceHint("Listening& speak book name or author");
-    };
-    rec.onresult = (event) => {
-      const transcript = (event.results[0][0].transcript || "").trim();
-      if (transcript) {
-        setQuery(transcript);
-        setViewMode("browse");
-        setVoiceHint(`Searching: ${transcript}`);
-        setTimeout(() => setVoiceHint(""), 2000);
-      }
-    };
-    rec.onerror = () => {
-      setListening(false);
-      setVoiceHint("Couldn't hear  try again");
-      setTimeout(() => setVoiceHint(""), 2000);
-    };
-    rec.onend = () => setListening(false);
-    try {
-      rec.start();
-    } catch {
-      setListening(false);
-      setVoiceHint("Mic busy  try again");
-      setTimeout(() => setVoiceHint(""), 2000);
-    }
-  };
-
-  const stopVoiceSearch = () => {
-    try { recognitionRef.current?.stop(); } catch {}
-    setListening(false);
-  };
-
-  const liveSelectedBook = selectedBook ? books.find((b) => b.id === selectedBook.id) || selectedBook : null;
-
-  const coverFallback = (book) => {
-    const palette = ["#1B4D3E", "#8B2E3C", "#2C6E5C", "#C9A227", "#5B4B8A", "#2F6B8A"];
-    const idx = (book.code || book.title || "A").charCodeAt(0) % palette.length;
-    const initial = ((book.title || "?").trim().charAt(0) || "?").toUpperCase();
-    return { bg: palette[idx], initial };
-  };
-
-  const sortLabels = {
-    popular: "Most Liked",
-    available: "Available First",
-    title: "Title AZ",
-    newest: "Newest",
-  };
+  // Get live data for the selected book so the modal updates instantly
+  const liveSelectedBook = selectedBook ? books.find(b => b.id === selectedBook.id) || selectedBook : null;
 
   return (
     <div className="pc-app">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
         
         .pc-app { 
           --navy:#1B4D3E; --maroon:#8B2E3C; --sky:#C9A227; --text:#2B2420; --text-soft:#7A6F5D; 
-          --line:#E8DCC0; --row-bg:#FBF2D9; --bg:#FDF8ED; --indigo:#2C6E5C;
-          font-family:'Anek Malayalam', 'Inter', -apple-system, sans-serif;
+          --line:#E8DCC0; --row-bg:#FBF2D9; --bg:#FDF8ED;
+          font-family: 'Anek Malayalam', 'Inter', -apple-system, sans-serif;
           min-height:100vh; background:var(--bg); color:var(--text);
-          padding-bottom:4rem;
-          -webkit-font-smoothing: antialiased;
-          -webkit-tap-highlight-color: transparent;
-          touch-action: manipulation;
-        }
-        .pc-app button, .pc-app input { font-family: inherit; }
-        .pc-app img { max-width: 100%; height: auto; }
-        
-        .pc-header { 
-          padding:1.25rem 1.1rem 1rem; text-align:center; border-bottom:3px solid var(--sky); 
-          background:linear-gradient(180deg,#fff 0%,#FDF8ED 100%); position:sticky; top:0; z-index:20; 
-          box-shadow:0 2px 12px rgba(27,77,62,0.08);
-        }
-        .pc-header h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif; font-weight:800; font-size:1.35rem; color:var(--navy); margin:0; line-height:1.3; }
-        .pc-sub { font-size:.82rem; color:var(--maroon); margin-top:.15rem; font-weight:500; }
-        
-        .pc-stats { display:flex; justify-content:center; gap:.7rem; margin-top:.7rem; flex-wrap:wrap; }
-        .pc-stat {
-          font-size:.72rem; color:var(--text-soft); font-weight:600;
-          background:#fff; border:1px solid var(--line); border-radius:999px; padding:.25rem .7rem;
-        }
-        .pc-stat b { color:var(--navy); font-weight:800; }
-        
-        .pc-tabs {
-          display:flex; gap:.4rem; justify-content:center; margin-top:.75rem;
-        }
-        .pc-tab {
-          display:inline-flex; align-items:center; gap:.35rem; background:transparent; border:1px solid var(--line);
-          border-radius:999px; padding:.4rem .95rem; font-size:.82rem; font-weight:700; cursor:pointer;
-          color:var(--text-soft); font-family:inherit; transition:all .15s;
-        }
-        .pc-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
-        .pc-tab .badge {
-          background:rgba(255,255,255,.25); font-size:.68rem; padding:.05rem .4rem; border-radius:999px; font-weight:800;
-        }
-        .pc-tab:not(.active) .badge { background:var(--row-bg); color:var(--navy); }
-        
-        .pc-search-wrap { padding:1rem 1.1rem .35rem; max-width:920px; margin:0 auto; position:relative; }
-        .pc-search { 
-          width:100%; font-size:1rem; padding:.75rem 3.2rem .75rem 2.6rem; border:1px solid var(--line); 
-          border-radius:999px; background:#fff; color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,0.04); 
-          font-family:'Anek Malayalam', inherit; 
-        }
-        .pc-search:focus { outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(201,162,39,0.22); }
-        .pc-search-icon { position:absolute; left:1.9rem; top:50%; transform:translateY(-42%); color:var(--text-soft); pointer-events:none; }
-        .pc-mic-btn {
-          position:absolute; right:1.7rem; top:50%; transform:translateY(-42%);
-          width:34px; height:34px; border-radius:50%; border:none; cursor:pointer;
-          display:flex; align-items:center; justify-content:center;
-          background:var(--indigo); color:#fff; transition:all .15s;
-        }
-        .pc-mic-btn:hover { transform:translateY(-42%) scale(1.05); }
-        .pc-mic-btn.listening {
-          background:var(--maroon); animation:micPulse 1.2s ease-in-out infinite;
-        }
-        @keyframes micPulse {
-          0%,100% { box-shadow:0 0 0 0 rgba(139,46,60,.45); }
-          50% { box-shadow:0 0 0 10px rgba(139,46,60,0); }
-        }
-        .pc-voice-hint {
-          text-align:center; font-size:.78rem; color:var(--maroon); font-weight:600;
-          padding:.2rem 1.1rem .1rem; max-width:920px; margin:0 auto; min-height:1.1rem;
+          padding-bottom:3rem;
         }
         
-        .pc-toolbar {
-          display:flex; align-items:center; gap:.5rem; padding:.4rem 1.1rem .55rem; max-width:920px; margin:0 auto; flex-wrap:wrap;
+        .pc-hero {
+          position: relative; text-align: center; padding: 2.2rem 1.2rem 1.8rem;
+          background: linear-gradient(145deg, #0F3328 0%, #1B4D3E 55%, #2C6E5C 100%);
+          background-size: cover; background-position: center;
+          color: #fff; overflow: hidden;
         }
-        .pc-filter-btn, .pc-sort-btn {
-          display:inline-flex; align-items:center; gap:.35rem; background:#fff; border:1px solid var(--line);
-          border-radius:999px; padding:.4rem .85rem; font-size:.8rem; font-weight:600; cursor:pointer;
-          color:var(--text); font-family:inherit; transition:all .15s;
+        .pc-hero.has-image { background-color: #0F3328; }
+        .pc-hero-overlay {
+          position: absolute; inset: 0;
+          background: linear-gradient(180deg, rgba(12,35,28,0.45) 0%, rgba(12,35,28,0.72) 100%);
+          pointer-events: none;
         }
-        .pc-filter-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
-        .pc-sort-wrap { position:relative; margin-left:auto; }
-        .pc-sort-menu {
-          position:absolute; right:0; top:calc(100% + 6px); background:#fff; border:1px solid var(--line);
-          border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); min-width:170px; z-index:30; overflow:hidden;
+        .pc-hero-inner { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; }
+        .pc-hero h1 {
+          font-family: 'Playfair Display', 'Noto Serif Malayalam', serif;
+          font-weight: 800; font-size: clamp(1.55rem, 5vw, 2.1rem);
+          margin: 0; line-height: 1.25; letter-spacing: 0.02em; color: #fff;
+          text-shadow: 0 2px 12px rgba(0,0,0,0.25);
         }
-        .pc-sort-menu button {
-          display:block; width:100%; text-align:left; padding:.55rem .9rem; border:none; background:none;
-          font-size:.84rem; font-weight:600; cursor:pointer; color:var(--text); font-family:inherit;
+        .pc-hero .pc-sub {
+          font-size: 0.88rem; color: #E7C989; margin-top: 0.45rem; font-weight: 500;
+          opacity: 0.95;
         }
-        .pc-sort-menu button:hover { background:var(--row-bg); }
-        .pc-sort-menu button.active { color:var(--navy); background:#EAF2EB; }
+        .pc-stats-line {
+          margin-top: 1rem; font-size: 0.8rem; font-weight: 600;
+          color: rgba(255,255,255,0.88); letter-spacing: 0.01em;
+        }
+        .pc-stats-line span { opacity: 0.55; margin: 0 0.35rem; }
         
-        .pc-cat-scroll { display:flex; gap:.45rem; overflow-x:auto; padding:.3rem 1.1rem .65rem; max-width:920px; margin:0 auto; scrollbar-width:none; }
+        .pc-sticky-bar {
+          position: sticky; top: 0; z-index: 30;
+          background: rgba(253,248,237,0.94);
+          backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+          border-bottom: 2px solid var(--sky);
+          box-shadow: 0 4px 16px rgba(27,77,62,0.06);
+          padding: 0.75rem 1.1rem 0.65rem;
+        }
+        .pc-search-wrap { max-width: 900px; margin: 0 auto; position: relative; }
+        .pc-search {
+          width: 100%; font-size: 1rem; padding: 0.75rem 1rem 0.75rem 2.6rem;
+          border: 1.5px solid var(--line); border-radius: 999px; background: #fff;
+          color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          font-family: 'Anek Malayalam', inherit;
+        }
+        .pc-search:focus { outline: none; border-color: var(--sky); box-shadow: 0 0 0 3px rgba(201,162,39,0.22); }
+        .pc-search-icon {
+          position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%);
+          color: var(--text-soft); pointer-events: none;
+        }
+        
+        .pc-cat-scroll { display:flex; gap:.5rem; overflow-x:auto; padding:.65rem 1.1rem .35rem; max-width:900px; margin:0 auto; scrollbar-width:none; }
         .pc-cat-scroll::-webkit-scrollbar { display:none; }
-        .pc-cat-btn { 
-          white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); 
-          padding:.38rem .85rem; border-radius:999px; font-size:.8rem; font-weight:600; cursor:pointer; 
-          transition:all .18s; font-family:'Anek Malayalam', inherit; display:inline-flex; align-items:center; gap:.35rem;
-        }
-        .pc-cat-btn .count { font-size:.68rem; opacity:.7; font-weight:700; }
+        .pc-cat-btn { white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); padding:.4rem .9rem; border-radius:999px; font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; font-family:'Anek Malayalam', inherit; }
         .pc-cat-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
-        .pc-cat-btn.active .count { opacity:.9; }
         
-        .pc-section { max-width:920px; margin:0 auto; padding:0 1.1rem 1rem; }
-        .pc-section-head {
-          display:flex; align-items:center; gap:.5rem; margin-bottom:.7rem;
-          font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif; font-weight:700; font-size:1.05rem; color:var(--navy);
-        }
-        .pc-section-head svg { color:var(--sky); }
+        .pc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:1rem; padding:1rem 1.1rem 3rem; max-width:900px; margin:0 auto; }
+        @media(min-width: 600px) { .pc-grid { grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:1.5rem; } }
         
-        .pc-hscroll {
-          display:flex; gap:.75rem; overflow-x:auto; padding-bottom:.4rem; scrollbar-width:thin;
-          scroll-snap-type:x mandatory;
-          -webkit-overflow-scrolling: touch;
-          overscroll-behavior-x: contain;
-        }
-        .pc-hscroll::-webkit-scrollbar { height:4px; }
-        .pc-hscroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:4px; }
-        
-        .pc-mini-card {
-          flex:0 0 120px; scroll-snap-align:start; background:#fff; border-radius:10px; overflow:hidden;
-          border:1px solid var(--line); cursor:pointer; transition:transform .2s, box-shadow .2s;
-          box-shadow:0 2px 8px rgba(43,36,32,0.05);
-        }
-        .pc-mini-card:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(43,36,32,0.1); }
-        .pc-mini-cover { width:100%; aspect-ratio:2/3; background:#eee; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-        .pc-mini-cover img { width:100%; height:100%; object-fit:cover; }
-        .pc-mini-title { font-size:.72rem; font-weight:700; padding:.4rem .45rem .5rem; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-        
-        .pc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:1rem; padding:0.5rem 1.1rem 3rem; max-width:920px; margin:0 auto; }
-        @media(min-width: 600px) { .pc-grid { grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:1.25rem; } }
-        
-        .pc-card { 
-          background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(43,36,32,0.06); 
-          cursor:pointer; transition:transform .22s ease, box-shadow .22s ease; display:flex; flex-direction:column; 
-          border:1px solid var(--line); position:relative;
-        }
-        @media (hover:hover) {
-          .pc-card:hover { transform:translateY(-4px); box-shadow:0 10px 28px rgba(43,36,32,0.12); }
-          .pc-mini-card:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(43,36,32,0.1); }
-        }
-        .pc-card:active { transform:scale(0.98); }
-        .pc-wishlist-flag {
-          position:absolute; top:8px; right:8px; z-index:2; background:rgba(255,255,255,.92);
-          border:none; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
-          cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.12); color:var(--text-soft);
-        }
-        .pc-wishlist-flag.on { color:#C9A227; }
+        .pc-card { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(43,36,32,0.06); cursor:pointer; transition:transform .2s ease, box-shadow .2s ease; display:flex; flex-direction:column; border:1px solid var(--line); }
+        .pc-card:hover { transform:translateY(-4px); box-shadow:0 8px 24px rgba(43,36,32,0.12); }
         
         .pc-cover-wrap { width:100%; aspect-ratio:2/3; background:#f0f0f0; position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .pc-cover-img { width:100%; height:100%; object-fit:cover; }
-        .pc-cover-fallback { 
-          width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; 
-          color:#fff; font-weight:800; font-size:2rem; letter-spacing:.02em;
-        }
-        .pc-cover-fallback span { font-size:.65rem; font-weight:600; opacity:.85; margin-top:.35rem; max-width:80%; text-align:center; line-height:1.2; }
+        .pc-cover-fallback { color:#ccc; display:flex; flex-direction:column; align-items:center; gap:.5rem; }
         
-        .pc-card-info { padding:.75rem; display:flex; flex-direction:column; flex:1; }
-        .pc-title { font-family: 'Anek Malayalam', sans-serif; font-weight:700; font-size:.95rem; color:var(--text); line-height:1.35; margin-bottom:.15rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-        .pc-author { font-size:.78rem; color:var(--text-soft); margin-bottom:.45rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .pc-card-info { padding:.8rem; display:flex; flex-direction:column; flex:1; }
+        .pc-title { font-family: 'Anek Malayalam', sans-serif; font-weight:700; font-size:1rem; color:var(--text); line-height:1.4; margin-bottom:.2rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .pc-author { font-size:.8rem; color:var(--text-soft); margin-bottom:.5rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         
-        .pc-badge { font-size:.68rem; font-weight:700; padding:.18rem .4rem; border-radius:4px; display:inline-block; }
+        .pc-badge { font-size:.7rem; font-weight:700; padding:.2rem .4rem; border-radius:4px; display:inline-block; }
         .pc-avail { background:#E1F0E6; color:#1F7A52; }
         .pc-out { background:#F3E1E0; color:#8B2E3C; }
         
-        .pc-like-btn {
-          background:none; border:none; display:flex; align-items:center; gap:4px; cursor:pointer; 
-          padding:4px 0; outline:none; -webkit-tap-highlight-color:transparent; position:relative;
-        }
-        .pc-like-btn.anim svg { animation:heartPop .5s ease; }
-        @keyframes heartPop {
-          0% { transform:scale(1); } 25% { transform:scale(1.35); } 50% { transform:scale(0.95); } 100% { transform:scale(1); }
-        }
+        .pc-empty { text-align:center; padding:3rem 1rem; color:var(--text-soft); font-size:1rem; grid-column:1/-1; }
+        .pc-loading-more { grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-soft); font-size:0.9rem; }
         
-        .pc-empty { text-align:center; padding:3rem 1.2rem; color:var(--text-soft); font-size:1rem; grid-column:1/-1; }
-        .pc-empty-icon { margin-bottom:.8rem; opacity:.5; }
-        .pc-loading-more { grid-column:1/-1; text-align:center; padding:1.5rem; color:var(--text-soft); font-size:0.88rem; }
+        /* Modal styles */
+        .pc-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(3px); }
+        .pc-modal { background:#fff; width:100%; max-width:500px; max-height:90vh; border-radius:16px; overflow-y:auto; position:relative; animation:modalPop .3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes modalPop { from{opacity:0; transform:scale(.95) translateY(20px);} to{opacity:1; transform:scale(1) translateY(0);} }
         
-        .pc-skeleton { background:linear-gradient(90deg,#f0ebe0 25%,#f8f4ea 50%,#f0ebe0 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; border-radius:8px; }
-        @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-        .pc-skel-card { background:#fff; border-radius:12px; overflow:hidden; border:1px solid var(--line); }
-        .pc-skel-cover { width:100%; aspect-ratio:2/3; }
-        .pc-skel-line { height:12px; margin:.5rem .7rem; border-radius:4px; }
-        .pc-skel-line.short { width:55%; }
+        .pc-modal-close { position:absolute; top:1rem; right:1rem; background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; backdrop-filter:blur(4px); }
         
-        .pc-scroll-top {
-          position:fixed; bottom:1.4rem; right:1.2rem; z-index:40; width:44px; height:44px; border-radius:50%;
-          background:var(--navy); color:#fff; border:none; box-shadow:0 4px 16px rgba(27,77,62,.35);
-          display:flex; align-items:center; justify-content:center; cursor:pointer; transition:opacity .2s, transform .2s;
-        }
-        .pc-scroll-top:hover { transform:scale(1.06); }
-        
-        .pc-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(4px); }
-        .pc-modal { background:#fff; width:100%; max-width:520px; max-height:90vh; border-radius:16px; overflow-y:auto; position:relative; animation:modalPop .28s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes modalPop { from{opacity:0; transform:scale(.94) translateY(16px);} to{opacity:1; transform:scale(1) translateY(0);} }
-        
-        .pc-modal-close { position:absolute; top:1rem; right:1rem; background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:2; backdrop-filter:blur(4px); }
         .pc-modal-cover { width:100%; aspect-ratio:4/3; background:#f0f0f0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .pc-modal-cover img { width:100%; height:100%; object-fit:contain; background:#f8f8f8; }
-        .pc-modal-body { padding:1.4rem 1.5rem 1.6rem; }
-        .pc-modal-title { font-family:'Anek Malayalam', 'Playfair Display', serif; font-size:1.4rem; font-weight:800; color:var(--navy); margin:0 0 .2rem; line-height:1.35; }
-        .pc-modal-author { font-size:.95rem; color:var(--maroon); font-weight:600; margin-bottom:.9rem; }
-        .pc-modal-meta { display:flex; gap:.45rem; flex-wrap:wrap; margin-bottom:.8rem; }
-        .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.28rem .55rem; border-radius:6px; font-size:.78rem; color:var(--text-soft); font-weight:600; }
-        .pc-modal-actions { display:flex; gap:.5rem; margin-bottom:1rem; flex-wrap:wrap; }
-        .pc-action-btn {
-          display:inline-flex; align-items:center; gap:.4rem; background:#fff; border:1px solid var(--line);
-          padding:.5rem .9rem; border-radius:8px; cursor:pointer; font-size:.84rem; font-weight:700;
-          color:var(--text); font-family:inherit; transition:background .15s;
+        
+        .pc-modal-body { padding:1.5rem; }
+        .pc-modal-title { font-family:'Anek Malayalam', 'Playfair Display', serif; font-size:1.5rem; font-weight:800; color:var(--navy); margin:0 0 .2rem; line-height:1.4; }
+        .pc-modal-author { font-size:.95rem; color:var(--maroon); font-weight:600; margin-bottom:1rem; }
+        
+        .pc-modal-meta { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+        .pc-meta-chip { background:var(--bg); border:1px solid var(--line); padding:.3rem .6rem; border-radius:6px; font-size:.8rem; color:var(--text-soft); font-weight:600; }
+        
+        .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:1rem; line-height:1.6; color:var(--text); margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line); white-space:pre-wrap; }
+                @media print {
+          .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head { display: none !important; }
+          .modal-backdrop { position: static !important; display: block !important; background: transparent !important; padding: 0 !important; margin: 0 !important; animation: none !important; inset: auto !important; }
+          .modal-panel { position: static !important; display: block !important; max-width: none !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; border: none !important; background: transparent !important; animation: none !important; }
+          .modal-body { padding: 0 !important; }
+          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
+          @page { size: A4; margin: 4mm !important; }
+          .print-area { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
+                  .print-area.books-print { 
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.2rem;
+          width: 100%;
         }
-        .pc-action-btn:hover { background:var(--row-bg); }
-        .pc-action-btn.on { border-color:var(--sky); background:#FBF2D9; color:var(--navy); }
-        .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:.98rem; line-height:1.6; color:var(--text); margin-top:.9rem; padding-top:.9rem; border-top:1px solid var(--line); white-space:pre-wrap; }
-        .pc-result-count { font-size:.8rem; color:var(--text-soft); padding:0 1.1rem .4rem; max-width:920px; margin:0 auto; font-weight:600; }
+        .id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
+        .id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
+        .id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
+        .id-qrcode { width:100%;max-width:110px;height:auto;margin:0 auto;display:block; }
+        .book-label-card {
+          flex: 0 0 calc((100% - 1rem) / 6);
+          max-width: calc((100% - 1rem) / 6);
+          box-sizing: border-box;
+          padding: 0.05rem;
+          border: 1px dashed #ccc;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          overflow: visible;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .book-label-code {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 700;
+          font-size: 0.58rem;
+          margin-bottom: 0.05rem;
+          color: var(--text);
+          line-height: 1.1;
+          white-space: nowrap;
+        }
+        .book-qr-wrap {
+          width: 85px;
+          height: 85px;
+          margin: 0 auto;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .book-qr-wrap canvas {
+          width: 85px !important;
+          height: 85px !important;
+          display: block !important;
+        
+          }
+          .book-label-code { font-size: 8pt !important; margin-bottom: 1px !important; color: #000 !important; line-height: 1.1 !important; }
+          .print-area:not(.books-print) { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; }
+          .book-qr-wrap, .book-qr-wrap canvas { width: 70px !important; height: 70px !important; max-width: 70px !important; flex-shrink: 0 !important; display: block !important; }
+          .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
+          .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 110px !important; height: auto !important; }
+        }
       `}</style>
 
-      <div className="pc-header">
-        <h1>NMMI ISLAMIC LIBRARY</h1>
-        <div className="pc-sub">Digital Book Catalog</div>
-        {!loading && (
-          <div className="pc-stats">
-            <span className="pc-stat"><b>{stats.total}</b> books</span>
-            <span className="pc-stat"><b>{stats.available}</b> available</span>
-            <span className="pc-stat"><b>{stats.categories}</b> categories</span>
-          </div>
-        )}
-        <div className="pc-tabs">
-          <button className={`pc-tab ${viewMode === "browse" ? "active" : ""}`} onClick={() => setViewMode("browse")}>
-            <LayoutGrid size={14} /> Browse
-          </button>
-          <button className={`pc-tab ${viewMode === "wishlist" ? "active" : ""}`} onClick={() => setViewMode("wishlist")}>
-            <Bookmark size={14} /> My Favourites
-            {wishlistIds.length > 0 && <span className="badge">{wishlistIds.length}</span>}
-          </button>
-        </div>
-      </div>
-      
-      <div className="pc-search-wrap">
-        <Search size={18} className="pc-search-icon" />
-        <input 
-          type="search" 
-          className="pc-search" 
-          placeholder={listening ? "Listening&" : "Search by title, author or code..."} 
-          value={query} 
-          onChange={(e) => setQuery(e.target.value)} 
-        />
-        {voiceSupported && (
-          <button
-            type="button"
-            className={`pc-mic-btn ${listening ? "listening" : ""}`}
-            onClick={listening ? stopVoiceSearch : startVoiceSearch}
-            aria-label={listening ? "Stop listening" : "Voice search"}
-            title={listening ? "Stop" : "Voice search (Malayalam / English)"}
-          >
-            {listening ? <X size={16} /> : <Mic size={16} />}
-          </button>
-        )}
-      </div>
-      <div className="pc-voice-hint">{voiceHint}</div>
-
-      <div className="pc-toolbar">
-        <button 
-          className={`pc-filter-btn ${availableOnly ? "active" : ""}`}
-          onClick={() => setAvailableOnly((v) => !v)}
-        >
-          <Filter size={14} /> Available only
-        </button>
-        <div className="pc-sort-wrap" ref={sortMenuRef}>
-          <button className="pc-sort-btn" onClick={() => setShowSortMenu((v) => !v)}>
-            <ArrowUpDown size={14} /> {sortLabels[sortBy]}
-          </button>
-          {showSortMenu && (
-            <div className="pc-sort-menu">
-              {Object.entries(sortLabels).map(([key, label]) => (
-                <button 
-                  key={key} 
-                  className={sortBy === key ? "active" : ""}
-                  onClick={() => { setSortBy(key); setShowSortMenu(false); }}
-                >
-                  {label}
-                </button>
-              ))}
+      {/* Hero — scrolls away; background from Settings URL */}
+      <div
+        className={`pc-hero${(catalogSettings.catalogHeroImageUrl || "").trim() && heroImgOk ? " has-image" : ""}`}
+        style={
+          (catalogSettings.catalogHeroImageUrl || "").trim() && heroImgOk
+            ? { backgroundImage: `url(${(catalogSettings.catalogHeroImageUrl || "").trim()})` }
+            : undefined
+        }
+      >
+        {(catalogSettings.catalogHeroImageUrl || "").trim() && heroImgOk && <div className="pc-hero-overlay" />}
+        <div className="pc-hero-inner">
+          <h1>{catalogSettings.libraryName || "NMMI ISLAMIC LIBRARY"}</h1>
+          <div className="pc-sub">{catalogSettings.librarySubtitle || "Digital Book Catalog"}</div>
+          {!loading && (
+            <div className="pc-stats-line">
+              <b>{catalogStats.total}</b> books
+              <span>·</span>
+              <b>{catalogStats.available}</b> available
+              <span>·</span>
+              <b>{catalogStats.categories}</b> categories
             </div>
           )}
         </div>
+        {/* preload check for broken image URL */}
+        {(catalogSettings.catalogHeroImageUrl || "").trim() && (
+          <img
+            src={(catalogSettings.catalogHeroImageUrl || "").trim()}
+            alt=""
+            style={{ display: "none" }}
+            onError={() => setHeroImgOk(false)}
+            onLoad={() => setHeroImgOk(true)}
+          />
+        )}
       </div>
 
-      {viewMode === "browse" && (
-        <div className="pc-cat-scroll">
-          <button className={`pc-cat-btn ${selectedCategory === "ALL" ? "active" : ""}`} onClick={() => setSelectedCategory("ALL")}>
-            All <span className="count">{categoryCounts.ALL || 0}</span>
-          </button>
-          {categoriesList.map((c) => (
-            <button key={c} className={`pc-cat-btn ${selectedCategory === c ? "active" : ""}`} onClick={() => setSelectedCategory(c)}>
-              {c} <span className="count">{categoryCounts[c] || 0}</span>
-            </button>
-          ))}
+      {/* Search always visible while scrolling */}
+      <div className="pc-sticky-bar">
+        <div className="pc-search-wrap">
+          <Search size={18} className="pc-search-icon" />
+          <input
+            type="search"
+            className="pc-search"
+            placeholder="Search by title, author or code..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
-      )}
+      </div>
 
-      {viewMode === "browse" && !query && selectedCategory === "ALL" && recentBooks.length > 0 && (
-        <div className="pc-section">
-          <div className="pc-section-head"><Eye size={18} /> Recently viewed</div>
-          <div className="pc-hscroll">
-            {recentBooks.map((b) => {
-              const fb = coverFallback(b);
-              return (
-                <div key={b.id} className="pc-mini-card" onClick={() => openBook(b)}>
-                  <div className="pc-mini-cover">
-                    {b.coverUrl ? <img src={b.coverUrl} alt="" loading="lazy" /> : (
-                      <div className="pc-cover-fallback" style={{ background: fb.bg, fontSize: "1.4rem" }}>{fb.initial}</div>
-                    )}
-                  </div>
-                  <div className="pc-mini-title">{b.title}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {viewMode === "browse" && !query && selectedCategory === "ALL" && !availableOnly && trending.length > 0 && (
-        <div className="pc-section">
-          <div className="pc-section-head"><TrendingUp size={18} /> Trending now</div>
-          <div className="pc-hscroll">
-            {trending.map((b) => {
-              const fb = coverFallback(b);
-              return (
-                <div key={b.id} className="pc-mini-card" onClick={() => openBook(b)}>
-                  <div className="pc-mini-cover">
-                    {b.coverUrl ? <img src={b.coverUrl} alt="" loading="lazy" /> : (
-                      <div className="pc-cover-fallback" style={{ background: fb.bg, fontSize: "1.4rem" }}>{fb.initial}</div>
-                    )}
-                  </div>
-                  <div className="pc-mini-title">{b.title}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {viewMode === "wishlist" && (
-        <div className="pc-section" style={{ paddingBottom: ".2rem" }}>
-          <div className="pc-section-head"><Bookmark size={18} /> My Favourites</div>
-          <p style={{ fontSize: ".82rem", color: "var(--text-soft)", margin: "0 0 .4rem" }}>
-            Saved on this device. Tap the bookmark on any book to add or remove.
-          </p>
-        </div>
-      )}
-
-      {!loading && filtered.length > 0 && (
-        <div className="pc-result-count">
-          Showing {Math.min(visibleCount, filtered.length)} of {filtered.length} book{filtered.length === 1 ? "" : "s"}
-          {viewMode === "wishlist" ? " in favourites" : ""}
-        </div>
-      )}
+      <div className="pc-cat-scroll">
+        <button className={`pc-cat-btn ${selectedCategory === "ALL" ? "active" : ""}`} onClick={() => setSelectedCategory("ALL")}>All Books</button>
+        {categoriesList.map((c) => (
+          <button key={c} className={`pc-cat-btn ${selectedCategory === c ? "active" : ""}`} onClick={() => setSelectedCategory(c)}>{c}</button>
+        ))}
+      </div>
 
       <div className="pc-grid">
         {loading ? (
-          Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="pc-skel-card">
-              <div className="pc-skel-cover pc-skeleton" />
-              <div className="pc-skel-line pc-skeleton" />
-              <div className="pc-skel-line short pc-skeleton" />
-            </div>
-          ))
+          <div className="pc-empty">Loading books...</div>
         ) : filtered.length === 0 ? (
-          <div className="pc-empty">
-            <div className="pc-empty-icon">
-              {viewMode === "wishlist" ? <Bookmark size={48} /> : <Library size={48} />}
-            </div>
-            <div style={{ fontWeight: 700, marginBottom: ".3rem" }}>
-              {viewMode === "wishlist" ? "No favourites yet" : "No books found"}
-            </div>
-            <div style={{ fontSize: ".88rem" }}>
-              {viewMode === "wishlist"
-                ? "Browse books and tap the bookmark icon to save them here"
-                : query
-                  ? `Try a different search for "${query}"`
-                  : availableOnly
-                    ? "No available books in this filter"
-                    : "Books will appear here soon"}
-            </div>
-            {viewMode === "wishlist" ? (
-              <button className="pc-filter-btn" style={{ marginTop: "1rem" }} onClick={() => setViewMode("browse")}>
-                Browse catalog
-              </button>
-            ) : (query || availableOnly || selectedCategory !== "ALL") && (
-              <button
-                className="pc-filter-btn"
-                style={{ marginTop: "1rem" }}
-                onClick={() => { setQuery(""); setAvailableOnly(false); setSelectedCategory("ALL"); }}
-              >
-                Clear filters
-              </button>
-            )}
-          </div>
+          <div className="pc-empty">No books found.</div>
         ) : (
           <>
-            {filtered.slice(0, visibleCount).map((b) => {
-              const fb = coverFallback(b);
-              const liked = likedIds.includes(b.id);
-              const wished = wishlistIds.includes(b.id);
-              return (
-                <div key={b.id} className="pc-card" onClick={() => openBook(b)}>
-                  <button
-                    className={`pc-wishlist-flag ${wished ? "on" : ""}`}
-                    onClick={(e) => toggleWishlist(e, b)}
-                    aria-label={wished ? "Remove from favourites" : "Add to favourites"}
-                    title={wished ? "Remove from favourites" : "Add to favourites"}
-                  >
-                    <Bookmark size={15} fill={wished ? "#C9A227" : "none"} />
-                  </button>
-                  <div className="pc-cover-wrap">
-                    {b.coverUrl ? (
-                      <img src={b.coverUrl} alt={b.title} className="pc-cover-img" loading="lazy" />
-                    ) : (
-                      <div className="pc-cover-fallback" style={{ background: fb.bg }}>
-                        {fb.initial}
-                        <span>{(b.category || "").split(" ")[0] || "Book"}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="pc-card-info">
-                    <div className="pc-title">{b.title}</div>
-                    <div className="pc-author">{b.author || "Unknown Author"}</div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-                      <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
-                        {b.availableCopies > 0 ? "Available" : "All Issued"}
-                      </div>
-                      <button
-                        className={`pc-like-btn ${likeAnimId === b.id ? "anim" : ""}`}
-                        onClick={(e) => handleLike(e, b)}
-                      >
-                        <Heart size={16} fill={liked ? "#e11d48" : "none"} color={liked ? "#e11d48" : "#7A6F5D"} />
-                        <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#000", minWidth: "16px", textAlign: "center" }}>
-                          {b.likes || 0}
-                        </span>
-                      </button>
+            {filtered.slice(0, visibleCount).map((b) => (
+              <div key={b.id} className="pc-card" onClick={() => setSelectedBook(b)}>
+                <div className="pc-cover-wrap">
+                  {b.coverUrl ? (
+                    <img src={b.coverUrl} alt={b.title} className="pc-cover-img" loading="lazy" />
+                  ) : (
+                    <div className="pc-cover-fallback">
+                      <Library size={32} />
+                      <span style={{ fontSize: "0.7rem", fontWeight: "bold" }}>No Cover</span>
                     </div>
+                  )}
+                </div>
+                <div className="pc-card-info">
+                  <div className="pc-title">{b.title}</div>
+                  <div className="pc-author">{b.author || "Unknown Author"}</div>
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+                    <div className={`pc-badge ${b.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
+                      {b.availableCopies > 0 ? "Available" : "All Issued"}
+                    </div>
+                    <button 
+                      onClick={(e) => handleLike(e, b)} 
+                      style={{ 
+                        background: "none", border: "none", display: "flex", alignItems: "center", gap: "4px", 
+                        cursor: "pointer", padding: "4px 0", outline: "none", WebkitTapHighlightColor: "transparent" 
+                      }}
+                    >
+                      <Heart 
+                        size={16} 
+                        fill={likedIds.includes(b.id) ? "#e11d48" : "none"} 
+                        color={likedIds.includes(b.id) ? "#e11d48" : "#7A6F5D"} 
+                        style={{ transition: "all 0.2s ease" }}
+                      />
+                      <span style={{ 
+                        fontSize: "0.8rem", fontWeight: 700, color: "#000", // Black color as requested
+                        minWidth: "16px", textAlign: "center" // Fixed width prevents jitter
+                      }}>
+                        {b.likes || 0}
+                      </span>
+                    </button>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
             
             {visibleCount < filtered.length && (
-              <div ref={observerTarget} className="pc-loading-more">Loading more books...</div>
+              <div ref={observerTarget} className="pc-loading-more">
+                Loading more books...
+              </div>
             )}
           </>
         )}
       </div>
-
-      {showScrollTop && (
-        <button className="pc-scroll-top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Scroll to top">
-          <ChevronUp size={22} />
-        </button>
-      )}
 
       {liveSelectedBook && (
         <div className="pc-modal-backdrop" onClick={() => setSelectedBook(null)}>
@@ -1181,49 +872,42 @@ export function PublicCatalog() {
               {liveSelectedBook.coverUrl ? (
                 <img src={liveSelectedBook.coverUrl} alt={liveSelectedBook.title} />
               ) : (
-                (() => {
-                  const fb = coverFallback(liveSelectedBook);
-                  return (
-                    <div className="pc-cover-fallback" style={{ background: fb.bg, fontSize: "3.5rem", width: "100%", height: "100%" }}>
-                      {fb.initial}
-                    </div>
-                  );
-                })()
+                <Library size={64} color="#ccc" />
               )}
             </div>
             <div className="pc-modal-body">
               <h2 className="pc-modal-title">{liveSelectedBook.title}</h2>
               <div className="pc-modal-author">{liveSelectedBook.author || "Unknown Author"}</div>
               
-              <div className="pc-modal-meta">
-                <div className="pc-meta-chip">Code: {liveSelectedBook.code}</div>
-                <div className="pc-meta-chip">{liveSelectedBook.category || UNCATEGORIZED}</div>
-                <div className={`pc-meta-chip ${liveSelectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`}>
-                  {liveSelectedBook.availableCopies > 0
-                    ? `${liveSelectedBook.availableCopies} available`
-                    : "Currently unavailable"}
+              <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem" }}>
+                <div className="pc-modal-meta" style={{ marginBottom: 0 }}>
+                  <div className="pc-meta-chip">Code: {liveSelectedBook.code}</div>
+                  <div className="pc-meta-chip">Category: {liveSelectedBook.category || UNCATEGORIZED}</div>
                 </div>
+                <button 
+                  onClick={(e) => handleLike(e, liveSelectedBook)} 
+                  style={{ 
+                    display: "flex", alignItems: "center", gap: "6px", background: "#FFF", border: "1px solid var(--line)", 
+                    padding: "6px 12px", borderRadius: "8px", cursor: "pointer", outline: "none", WebkitTapHighlightColor: "transparent" 
+                  }}
+                >
+                  <Heart 
+                    size={16} 
+                    fill={likedIds.includes(liveSelectedBook.id) ? "#e11d48" : "none"} 
+                    color={likedIds.includes(liveSelectedBook.id) ? "#e11d48" : "#7A6F5D"} 
+                    style={{ transition: "all 0.2s ease" }}
+                  />
+                  <span style={{ 
+                    fontSize: "0.85rem", fontWeight: 700, color: "#000", // Black color
+                    minWidth: "16px", textAlign: "center" // Fixed width
+                  }}>
+                    {liveSelectedBook.likes || 0}
+                  </span>
+                </button>
               </div>
 
-              <div className="pc-modal-actions">
-                <button className="pc-action-btn" onClick={(e) => handleLike(e, liveSelectedBook)}>
-                  <Heart
-                    size={16}
-                    fill={likedIds.includes(liveSelectedBook.id) ? "#e11d48" : "none"}
-                    color={likedIds.includes(liveSelectedBook.id) ? "#e11d48" : "#7A6F5D"}
-                  />
-                  {liveSelectedBook.likes || 0} likes
-                </button>
-                <button
-                  className={`pc-action-btn ${wishlistIds.includes(liveSelectedBook.id) ? "on" : ""}`}
-                  onClick={(e) => toggleWishlist(e, liveSelectedBook)}
-                >
-                  <Bookmark size={15} fill={wishlistIds.includes(liveSelectedBook.id) ? "#C9A227" : "none"} />
-                  {wishlistIds.includes(liveSelectedBook.id) ? "In Favourites" : "Add Favourite"}
-                </button>
-                <button className="pc-action-btn" onClick={() => handleShare(liveSelectedBook)}>
-                  <Share2 size={15} /> Share
-                </button>
+              <div className={`pc-meta-chip ${liveSelectedBook.availableCopies > 0 ? "pc-avail" : "pc-out"}`} style={{ display: "inline-block", marginBottom: "1rem" }}>
+                {liveSelectedBook.availableCopies > 0 ? `${liveSelectedBook.availableCopies} Copies Available` : "Currently Unavailable"}
               </div>
 
               <div className="pc-modal-desc">
@@ -1322,7 +1006,6 @@ export default function App() {
   const [settingsDraft, setSettingsDraft] = useState(SETTINGS_DEFAULTS);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSavedMsg, setSettingsSavedMsg] = useState("");
-  const [settingsTab, setSettingsTab] = useState("library");
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -1902,12 +1585,9 @@ export default function App() {
     } catch { alert("Couldn't create the image. Try taking a screenshot instead."); }
     setCertDownloading(false);
   }
-  
-
-
   function openAddStudent() {
     const defaultClass = selectedClass !== "ALL" ? selectedClass : classes[0] || "CLASS-1";
-    setStudentForm({ name: "", className: defaultClass, roll: "", phone: "" });
+    setStudentForm({ name: "", className: defaultClass, roll: "" });
     setBulkClass(defaultClass); setBulkNames(""); setBulkStartRoll("");
     setEditingStudentId(null); setStudentListQuery(""); setSheet("addStudent");
   }
@@ -1920,7 +1600,7 @@ export default function App() {
   return (
     <div className={`app ${appSettings.darkMode ? "dark" : ""}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         :root {
           --navy:#1B4D3E;--navy-deep:#0F3328;--maroon:#8B2E3C;--sky:#C9A227;--gold-soft:#E7C989;
           --green:#2F9E6E;--row-bg:#FBF2D9;--indigo:#2C6E5C;--page-bg:#FDF8ED;--text:#2B2420;
@@ -1930,7 +1610,7 @@ export default function App() {
         }
         * { box-sizing: border-box; }
         html,body { margin:0; padding:0; }
-        .app { font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;background:var(--page-bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:6rem;position:relative;line-height:1.5; }
+        .app { font-family:'Inter', 'Noto Sans Malayalam', sans-serif;background:var(--page-bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:6rem;position:relative;line-height:1.5; }
         .mono { font-family:'JetBrains Mono',monospace; }
         .top-fixed {
           position:sticky;top:0;z-index:20;background-color:var(--page-bg);
@@ -1944,10 +1624,10 @@ export default function App() {
           box-shadow:0 2px 8px rgba(27,77,62,0.08);border-bottom:2px solid var(--sky);
         }
         .header { display:flex;align-items:flex-start;justify-content:space-between;padding:1.1rem 1.1rem .7rem; }
-        .brand h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.5rem;color:var(--navy);margin:0;line-height:1.3; }
+        .brand h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.5rem;color:var(--navy);margin:0;line-height:1.3; }
         .brand .sub { font-size:.72rem;color:var(--maroon);font-weight:500;margin-top:.15rem;line-height:1.4; }
         .desktop-title { display:none; }
-        .desktop-title h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.7rem;color:var(--navy);margin:0;line-height:1.3; }
+        .desktop-title h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.7rem;color:var(--navy);margin:0;line-height:1.3; }
         .desktop-title .sub { font-size:.82rem;color:var(--text-soft);margin-top:.25rem; }
         .sidebar { display:none; }
         .icon-btn { background:transparent;border:none;color:var(--text);cursor:pointer;padding:.3rem;border-radius:6px; }
@@ -1957,7 +1637,7 @@ export default function App() {
         .search-wrap .icon { position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--text-soft);z-index:1; }
         .search-wrap input {
           width:100%;background:var(--search-bg);border:none;border-radius:999px;
-          padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;color:var(--text);
+          padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;color:var(--text);
           transition:box-shadow .15s ease;
         }
         .search-wrap input:focus-visible { outline:none;box-shadow:0 0 0 2px var(--indigo),var(--shadow-sm); }
@@ -2087,7 +1767,7 @@ export default function App() {
         @media (prefers-reduced-motion:reduce) { .modal-backdrop,.modal-panel { animation:none; } }
         @media (min-width:540px) { .modal-backdrop { align-items:center; } .modal-panel { border-radius:14px;max-height:80vh; } }
         .modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem; }
-        .modal-head h2 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:1.15rem;color:var(--navy);margin:0;line-height:1.3; }
+        .modal-head h2 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:1.15rem;color:var(--navy);margin:0;line-height:1.3; }
         .menu-list { display:flex;flex-direction:column;gap:.4rem; }
         .menu-row {
           display:flex;align-items:center;gap:.7rem;padding:.75rem .5rem;border-radius:8px;
@@ -2097,14 +1777,14 @@ export default function App() {
         .menu-row:hover { background:#EFEFEF; }
         label { display:block;font-size:.8rem;color:var(--text-soft);margin-bottom:.3rem; }
         input[type="text"],input[type="number"],input[type="search"],input[type="month"],input[type="email"],input[type="password"],input[type="tel"],select,textarea {
-          width:100%;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;font-size:.92rem;padding:.55rem .7rem;
+          width:100%;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-size:.92rem;padding:.55rem .7rem;
           border:1px solid #DDD;border-radius:6px;background:#FAFAFA;color:var(--text);
         }
         input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--indigo);border-color:var(--indigo); }
         .field { margin-bottom:.7rem; }
         .form-grid { display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.7rem; }
         .btn {
-          font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;
+          font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;
           border:none;border-radius:9px;padding:.6rem 1.1rem;cursor:pointer;display:inline-flex;
           align-items:center;gap:.4rem;box-shadow:var(--shadow-sm);
           transition:transform .1s ease,box-shadow .15s ease,background .15s ease;
@@ -2161,14 +1841,14 @@ export default function App() {
         .stat-card .num { font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--navy); }
         .stat-card.warn .num { color:var(--danger); }
         .stat-card .label { font-size:.78rem;color:var(--text-soft);margin-top:.1rem; }
-        .dash-heading { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:.95rem;color:var(--navy);margin:1.1rem 0 .5rem;display:flex;align-items:baseline;gap:.4rem;line-height:1.4; }
+        .dash-heading { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:1.1rem 0 .5rem;display:flex;align-items:baseline;gap:.4rem;line-height:1.4; }
         .dash-heading:first-of-type { margin-top:.2rem; }
-        .dash-heading .dash-sub { font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;font-weight:400;font-size:.74rem;color:var(--text-soft); }
+        .dash-heading .dash-sub { font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-weight:400;font-size:.74rem;color:var(--text-soft); }
         .rank { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--navy);width:26px;flex:0 0 auto;text-align:center;font-size:.88rem; }
         .dash-row { display:flex;align-items:center;gap:.6rem; }
         .lock-screen { position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.3rem;text-align:center;overflow-y:auto;background:var(--page-bg); }
         .lock-icon { width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:1rem; }
-        .lock-screen h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.3rem;color:var(--navy);margin:0 0 .15rem;line-height:1.3; }
+        .lock-screen h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.3rem;color:var(--navy);margin:0 0 .15rem;line-height:1.3; }
         .lock-screen .sub { font-size:.74rem;color:var(--maroon);margin-bottom:1.6rem; }
         .lock-form { width:100%;max-width:320px;text-align:left; }
         .lock-form .field { margin-bottom:.8rem; }
@@ -2178,32 +1858,31 @@ export default function App() {
         
         .print-area.books-print { 
   grid-template-columns: repeat(6, 1fr); 
-  gap: 2px;
+  gap: 0.3rem;
 }
-.id-card { border:1px solid var(--line);border-radius:6px;padding:.35rem;text-align:center;background:#fff; }
-.id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.25; }
-.id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.2rem;line-height:1.25; }
-.id-qrcode { width:100%;max-width:70px;height:auto;margin:0 auto;display:block; }
+.id-card { border:1px solid var(--line);border-radius:8px;padding:.5rem;text-align:center;background:#fff; }
+.id-card-name { font-weight:700;font-size:.72rem;color:var(--text);line-height:1.3; }
+.id-card-meta { font-size:.62rem;color:var(--text-soft);margin-bottom:.3rem;line-height:1.3; }
+.id-qrcode { width:100%;max-width:85px;height:auto;margin:0 auto;display:block; }
 
 .book-label-card {
-  padding: 1px 0 2px;
-  border: 1px dashed #bbb;
+  padding: 0.12rem;
+  border: 1px dashed #ccc;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   min-height: auto;
   overflow: hidden;
   break-inside: avoid;
   page-break-inside: avoid;
-  background: #fff;
 }
 .book-label-code {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
-  font-size: 0.55rem;
-  margin-bottom: 1px;
-  color: #000;
+  font-size: 0.58rem;
+  margin-bottom: 0.05rem;
+  color: var(--text);
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -2215,11 +1894,11 @@ export default function App() {
           display:flex;flex-direction:column;
         }
         .lib-card-top { background:var(--navy);background-image:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);padding:.65rem .9rem;color:#fff; }
-        .lib-card-brand-name { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:.95rem;letter-spacing:.02em;line-height:1.3; }
+        .lib-card-brand-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:.95rem;letter-spacing:.02em;line-height:1.3; }
         .lib-card-brand-sub { font-size:.6rem;color:var(--gold-soft);margin-top:.15rem;line-height:1.3; }
         .lib-card-body { display:flex;align-items:center;gap:.8rem;padding:.9rem;flex:1; }
         .lib-card-info { flex:1;min-width:0; }
-        .lib-card-name { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:700;font-size:1.05rem;color:var(--navy-deep);line-height:1.3; }
+        .lib-card-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:700;font-size:1.05rem;color:var(--navy-deep);line-height:1.3; }
         .lib-card-meta { font-size:.78rem;color:var(--text-soft);margin-top:.2rem;line-height:1.3; }
         .lib-card-bottom { display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem .8rem;border-top:1px dashed var(--line); }
         .lib-card-id-label { font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;color:var(--text-soft);font-weight:700; }
@@ -2236,29 +1915,19 @@ export default function App() {
           box-shadow:var(--shadow-md);
         }
         .cert-badge { font-size:1.9rem;margin-bottom:.1rem; }
-        .cert-title { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.02rem;color:var(--navy-deep);letter-spacing:.03em;text-transform:uppercase;line-height:1.3; }
+        .cert-title { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.02rem;color:var(--navy-deep);letter-spacing:.03em;text-transform:uppercase;line-height:1.3; }
         .cert-sub { font-size:.64rem;color:var(--maroon);margin-top:.1rem;margin-bottom:.55rem; }
         .cert-presented { font-size:.7rem;color:var(--text-soft); }
-        .cert-name { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:.3rem 0;border-bottom:2px solid var(--gold-soft);padding-bottom:.2rem;line-height:1.3; }
+        .cert-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:.3rem 0;border-bottom:2px solid var(--gold-soft);padding-bottom:.2rem;line-height:1.3; }
         .cert-desc { font-size:.72rem;color:var(--text);line-height:1.5;max-width:92%;margin-top:.25rem; }
         .cert-month { font-weight:700;color:var(--maroon); }
         .cert-footer { display:flex;justify-content:space-between;width:100%;margin-top:auto;padding-top:.7rem; }
         .cert-foot-item { font-size:.62rem;color:var(--text-soft);text-align:center; }
         .cert-foot-line { border-top:1px solid var(--text-soft);width:80px;margin:0 auto .2rem; }
 
-        .settings-tabs {
-          display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1rem;border-bottom:1px solid var(--line);padding-bottom:.65rem;
-        }
-        .settings-tab {
-          display:inline-flex;align-items:center;gap:.35rem;background:transparent;border:1px solid var(--line);
-          border-radius:999px;padding:.4rem .85rem;font-size:.8rem;font-weight:700;cursor:pointer;
-          color:var(--text-soft);font-family:inherit;transition:all .15s;
-        }
-        .settings-tab.active { background:var(--navy);color:#fff;border-color:var(--navy); }
-        .settings-tab:hover:not(.active) { background:var(--row-bg); }
         .settings-sections { display:flex;flex-direction:column;gap:1rem; }
         .settings-section { background:#FAF6EC;border:1px solid var(--line);border-radius:10px;padding:.95rem 1.05rem; }
-        .settings-section h3 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
+        .settings-section h3 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
         .settings-section .field:last-child { margin-bottom:0; }
         .settings-section .form-grid:last-child { margin-bottom:0; }
         .settings-footer {
@@ -2277,12 +1946,12 @@ export default function App() {
             box-shadow:2px 0 12px rgba(0,0,0,.12);overflow-y:auto;
           }
           .sidebar-brand { padding:.4rem 1.2rem 1rem;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:.8rem; }
-          .sidebar-brand-logo { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.3rem;line-height:1.3;color:#fff; }
+          .sidebar-brand-logo { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.3rem;line-height:1.3;color:#fff; }
           .sidebar-brand-sub { font-size:.68rem;color:var(--gold-soft);margin-top:.25rem;line-height:1.4; }
           .sidebar-actions { display:flex;flex-direction:column;gap:.4rem;padding:0 .7rem .9rem;margin-bottom:.6rem;border-bottom:1px solid rgba(255,255,255,.12); }
           .sidebar-action-btn {
             display:flex;align-items:center;gap:.6rem;background:var(--sky);color:var(--navy-deep);
-            border:none;border-radius:8px;padding:.62rem .85rem;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;
+            border:none;border-radius:8px;padding:.62rem .85rem;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
             font-weight:700;font-size:.85rem;cursor:pointer;text-align:left;
             transition:background .15s ease,transform .1s ease;
           }
@@ -2292,7 +1961,7 @@ export default function App() {
           .sidebar-nav { display:flex;flex-direction:column;gap:.12rem;padding:0 .7rem;flex:1; }
           .sidebar-nav button {
             display:flex;align-items:center;gap:.7rem;background:transparent;color:rgba(255,255,255,.82);
-            border:none;padding:.6rem .8rem;border-radius:8px;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;
+            border:none;padding:.6rem .8rem;border-radius:8px;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
             font-size:.86rem;font-weight:500;cursor:pointer;text-align:left;position:relative;
             transition:background .15s ease,color .15s ease;
           }
@@ -2306,7 +1975,7 @@ export default function App() {
           .sidebar-footer { padding:.8rem .7rem 0;border-top:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;gap:.12rem; }
           .sidebar-footer button {
             display:flex;align-items:center;gap:.7rem;background:transparent;color:rgba(255,255,255,.65);
-            border:none;padding:.55rem .8rem;border-radius:8px;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;
+            border:none;padding:.55rem .8rem;border-radius:8px;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
             font-size:.82rem;cursor:pointer;text-align:left;
             transition:background .15s ease,color .15s ease;
           }
@@ -2330,7 +1999,8 @@ export default function App() {
           .modal-panel .row-card .meta { font-size:.78rem; }
           .modal-panel th,.modal-panel td { padding:.65rem .4rem;font-size:.86rem; }
           .settings-footer { bottom:-1.8rem;margin:1.2rem -1.8rem -1.8rem;padding:1rem 1.8rem; }
-          .settings-sections { display:flex;flex-direction:column;gap:1rem; }
+          .settings-sections { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
+          .settings-section:first-child,.settings-section:nth-child(5) { grid-column:1 / -1; }
           .empty { padding:3rem 1rem; }
         }
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
@@ -2360,24 +2030,25 @@ export default function App() {
   }
   .app { padding: 0 !important; margin: 0 !important; max-width: none !important; min-height: auto !important; }
 
-  /* A4 — tight margins for max stickers */
+  /* A4 പേജ് മാർജിൻ കുറയ്ക്കൽ */
   @page {
     size: A4;
-    margin: 3mm !important;
+    margin: 4mm !important;
   }
 
   .print-area { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; position: static !important; }
   
-  /* Book QR labels: 6 per row, minimal whitespace */
+  /* 📚 ബുക്ക് ലേബൽ - പ്രിൻ്റിനുള്ള പ്രത്യേക ഗ്രിഡ് */
   .print-area.books-print { 
-    display: grid !important;
-    grid-template-columns: repeat(6, 1fr) !important;
-    gap: 1.5mm !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.2rem !important;
     width: 100% !important;
-    align-content: start !important;
   }
   
   .book-label-card {
+    flex: 0 0 calc((100% - 1rem) / 6) !important;
+    max-width: calc((100% - 1rem) / 6) !important;
     box-sizing: border-box !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -2385,47 +2056,30 @@ export default function App() {
     flex-direction: column !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    border: 0.4pt dashed #999 !important; 
-    padding: 1mm 0.5mm !important;
-    margin: 0 !important;
-    background: #fff !important;
-    overflow: hidden !important;
+    border: 1px dashed #ccc !important; 
+    padding: 2px !important; 
   }
 
   .book-label-code { 
-    font-size: 7pt !important; 
-    margin: 0 0 0.5mm 0 !important; 
+    font-size: 8pt !important; 
+    margin-bottom: 2px !important; 
     color: #000 !important; 
-    line-height: 1.05 !important;
-    font-weight: 700 !important;
-    white-space: nowrap !important;
+    line-height: 1.1 !important;
   }
 
-  /* Student ID cards: 4 columns */
+  /* 🎫 ID കാർഡ് - 4 കോളം (മാറ്റമില്ല) */
   .print-area:not(.books-print) { 
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 2mm !important;
+    grid-template-columns: repeat(4, 1fr) !important; 
   }
 
-  /* QR size ~18–20mm — scannable, sticker-friendly */
-  .book-label-card canvas,
-  .book-label-card .id-qrcode {
-    width: 18mm !important;
-    height: 18mm !important;
-    max-width: 18mm !important;
-    max-height: 18mm !important;
-    flex-shrink: 0 !important;
-    display: block !important;
-    margin: 0 auto !important;
-  }
+  /* 🛑 QR കോഡ് ചുരുങ്ങുന്നത് തടയാൻ */
   .book-qr-wrap, .book-qr-wrap canvas {
-    width: 18mm !important;
-    height: 18mm !important;
-    max-width: 18mm !important;
+    width: 85px !important;
+    height: 85px !important;
+    max-width: 85px !important;
     flex-shrink: 0 !important;
     display: block !important;
-    margin: 0 auto !important;
   }
 
   /* ID കാർഡ് */
@@ -2471,9 +2125,6 @@ export default function App() {
         .app.dark .settings-section { background:#232528; }
         .app.dark .settings-section h3 { color:#e8e3d8; }
         .app.dark .settings-footer { background:#1a1c1f; }
-        .app.dark .settings-tab { border-color:#34373c; color:var(--text-soft); }
-        .app.dark .settings-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
-        .app.dark .settings-tab:hover:not(.active) { background:#232528; }
         .app.dark input[type="text"],.app.dark input[type="number"],.app.dark input[type="search"],
         .app.dark input[type="month"],.app.dark input[type="email"],.app.dark input[type="password"],
         .app.dark input[type="tel"],.app.dark select,.app.dark textarea {
@@ -2545,10 +2196,16 @@ export default function App() {
                 <Award size={18} /> Certificate
               </button>
               <button onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
-              <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSettingsTab("library"); setSheet("settings"); }}>
+              <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
                 <Settings size={18} /> Settings
               </button>
             </nav>
+            <div className="sidebar-footer">
+              <button onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
+                <Lock size={16} /> Change Password
+              </button>
+              <button onClick={handleSignOut}><LogOut size={16} /> Sign Out</button>
+            </div>
           </aside>
 
           <div className="top-fixed">
@@ -2701,9 +2358,13 @@ export default function App() {
                   <Award size={18} /> Monthly Certificate
                 </button>
                 <button className="menu-row" onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
-                <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSettingsTab("library"); setSheet("settings"); }}>
+                <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
                   <Settings size={18} /> Settings
                 </button>
+                <button className="menu-row" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
+                  <Lock size={18} /> Change Password
+                </button>
+                <button className="menu-row" onClick={handleSignOut}><LogOut size={18} /> Sign Out</button>
               </div>
             </Modal>
           )}
@@ -2725,129 +2386,114 @@ export default function App() {
 
           {sheet === "settings" && (
             <Modal title="Settings" onClose={() => setSheet(null)} wide>
-              <div className="settings-tabs">
-                <button type="button" className={`settings-tab ${settingsTab === "library" ? "active" : ""}`} onClick={() => setSettingsTab("library")}>
-                  <Library size={14} /> Library Info
-                </button>
-                <button type="button" className={`settings-tab ${settingsTab === "loan" ? "active" : ""}`} onClick={() => setSettingsTab("loan")}>
-                  <Clock size={14} /> Loan Rules
-                </button>
-                <button type="button" className={`settings-tab ${settingsTab === "appearance" ? "active" : ""}`} onClick={() => setSettingsTab("appearance")}>
-                  <Palette size={14} /> Appearance
-                </button>
-                <button type="button" className={`settings-tab ${settingsTab === "data" ? "active" : ""}`} onClick={() => setSettingsTab("data")}>
-                  <FileDown size={14} /> Data & Backup
-                </button>
-                <button type="button" className={`settings-tab ${settingsTab === "account" ? "active" : ""}`} onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSettingsTab("account"); }}>
-                  <Lock size={14} /> Account
-                </button>
-              </div>
-
               <div className="settings-sections">
-                {settingsTab === "library" && (
-                  <div className="settings-section">
-                    <h3><Library size={16} /> Library Info</h3>
-                    <div className="field">
-                      <label>Library name</label>
-                      <input type="text" value={settingsDraft.libraryName} onChange={(e) => setSettingsDraft({ ...settingsDraft, libraryName: e.target.value })} />
+                <div className="settings-section">
+                  <h3><Library size={16} /> Library Info</h3>
+                  <div className="field">
+                    <label>Library name</label>
+                    <input type="text" value={settingsDraft.libraryName} onChange={(e) => setSettingsDraft({ ...settingsDraft, libraryName: e.target.value })} />
+                  </div>
+                  <div className="field">
+                    <label>Subtitle</label>
+                    <input type="text" value={settingsDraft.librarySubtitle} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarySubtitle: e.target.value })} />
+                  </div>
+                  <div className="form-grid">
+                    <div>
+                      <label>Librarian name</label>
+                      <input type="text" value={settingsDraft.librarianName} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarianName: e.target.value })} placeholder="For certificates" />
                     </div>
-                    <div className="field">
-                      <label>Subtitle</label>
-                      <input type="text" value={settingsDraft.librarySubtitle} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarySubtitle: e.target.value })} />
-                    </div>
-                    <div className="form-grid">
-                      <div>
-                        <label>Librarian name</label>
-                        <input type="text" value={settingsDraft.librarianName} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarianName: e.target.value })} placeholder="For certificates" />
-                      </div>
-                      <div>
-                        <label>Phone</label>
-                        <input type="tel" value={settingsDraft.phone} onChange={(e) => setSettingsDraft({ ...settingsDraft, phone: e.target.value })} />
-                      </div>
+                    <div>
+                      <label>Phone</label>
+                      <input type="tel" value={settingsDraft.phone} onChange={(e) => setSettingsDraft({ ...settingsDraft, phone: e.target.value })} />
                     </div>
                   </div>
-                )}
+                </div>
 
-                {settingsTab === "loan" && (
-                  <div className="settings-section">
-                    <h3><Clock size={16} /> Loan Rules</h3>
-                    <div className="form-grid">
-                      <div>
-                        <label>Default loan days</label>
-                        <input type="number" min="1" value={settingsDraft.defaultLoanDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, defaultLoanDays: parseInt(e.target.value) || 14 })} />
-                      </div>
-                      <div>
-                        <label>Max books per student (0 = unlimited)</label>
-                        <input type="number" min="0" value={settingsDraft.maxBooksPerStudent} onChange={(e) => setSettingsDraft({ ...settingsDraft, maxBooksPerStudent: parseInt(e.target.value) || 0 })} />
-                      </div>
+                <div className="settings-section">
+                  <h3><Clock size={16} /> Loan Rules</h3>
+                  <div className="form-grid">
+                    <div>
+                      <label>Default loan days</label>
+                      <input type="number" min="1" value={settingsDraft.defaultLoanDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, defaultLoanDays: parseInt(e.target.value) || 14 })} />
                     </div>
-                    <div className="form-grid">
-                      <div>
-                        <label>Fine per day (₹)</label>
-                        <input type="number" min="0" value={settingsDraft.finePerDay} onChange={(e) => setSettingsDraft({ ...settingsDraft, finePerDay: parseInt(e.target.value) || 0 })} />
-                      </div>
-                      <div>
-                        <label>Grace days before fine</label>
-                        <input type="number" min="0" value={settingsDraft.graceDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, graceDays: parseInt(e.target.value) || 0 })} />
-                      </div>
+                    <div>
+                      <label>Max books per student (0 = unlimited)</label>
+                      <input type="number" min="0" value={settingsDraft.maxBooksPerStudent} onChange={(e) => setSettingsDraft({ ...settingsDraft, maxBooksPerStudent: parseInt(e.target.value) || 0 })} />
                     </div>
                   </div>
-                )}
-
-                {settingsTab === "appearance" && (
-                  <div className="settings-section">
-                    <h3><Palette size={16} /> Appearance</h3>
-                    <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: 0 }}>
-                      <input type="checkbox" checked={settingsDraft.darkMode} onChange={(e) => setSettingsDraft({ ...settingsDraft, darkMode: e.target.checked })} style={{ width: "auto", margin: 0 }} />
-                      Dark mode
-                    </label>
+                  <div className="form-grid">
+                    <div>
+                      <label>Fine per day (₹)</label>
+                      <input type="number" min="0" value={settingsDraft.finePerDay} onChange={(e) => setSettingsDraft({ ...settingsDraft, finePerDay: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label>Grace days before fine</label>
+                      <input type="number" min="0" value={settingsDraft.graceDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, graceDays: parseInt(e.target.value) || 0 })} />
+                    </div>
                   </div>
-                )}
+                </div>
 
-                {settingsTab === "data" && (
-                  <div className="settings-section">
-                    <h3><FileDown size={16} /> Data & Backup</h3>
-                    <p style={{ fontSize: ".8rem", color: "var(--text-soft)", margin: "0 0 .7rem" }}>
-                      Download a snapshot of your library data as CSV. Safe to open in Excel or Google Sheets.
+                <div className="settings-section">
+                  <h3><Palette size={16} /> Appearance</h3>
+                  <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: ".85rem" }}>
+                    <input type="checkbox" checked={settingsDraft.darkMode} onChange={(e) => setSettingsDraft({ ...settingsDraft, darkMode: e.target.checked })} style={{ width: "auto", margin: 0 }} />
+                    Dark mode
+                  </label>
+                  <div className="field" style={{ marginBottom: 0 }}>
+                    <label>Student catalog background image (URL)</label>
+                    <input
+                      type="url"
+                      value={settingsDraft.catalogHeroImageUrl || ""}
+                      onChange={(e) => setSettingsDraft({ ...settingsDraft, catalogHeroImageUrl: e.target.value })}
+                      placeholder="https://example.com/college-photo.jpg"
+                    />
+                    <p style={{ fontSize: ".75rem", color: "var(--text-soft)", margin: ".4rem 0 0", lineHeight: 1.45 }}>
+                      Paste a direct image link (college / library photo). Leave empty for the default green gradient. Shows on the student catalog after Save.
                     </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                      <button type="button" className="btn secondary" onClick={exportBooksCSV}><FileDown size={14} /> Books</button>
-                      <button type="button" className="btn secondary" onClick={exportStudentsCSV}><FileDown size={14} /> Students</button>
-                      <button type="button" className="btn secondary" onClick={exportTransactionsCSV}><FileDown size={14} /> Transactions</button>
-                    </div>
-                  </div>
-                )}
-
-                {settingsTab === "account" && (
-                  <div className="settings-section">
-                    <h3><Lock size={16} /> Account</h3>
-                    {changeSuccess ? (
-                      <div className="empty" style={{ padding: "1rem 0" }}><Check size={18} style={{ marginBottom: ".3rem" }} /><br />Password updated.</div>
-                    ) : (
-                      <form onSubmit={handleChangePassword}>
-                        {changeError && <div className="lock-error">{changeError}</div>}
-                        <div className="field"><label>New password</label><input type="password" value={changeNewPw} onChange={(e) => setChangeNewPw(e.target.value)} required /></div>
-                        <div className="field"><label>Confirm new password</label><input type="password" value={changeNewPw2} onChange={(e) => setChangeNewPw2(e.target.value)} required /></div>
-                        <button type="submit" className="btn full"><Lock size={15} /> Update Password</button>
-                      </form>
+                    {(settingsDraft.catalogHeroImageUrl || "").trim() && (
+                      <div style={{ marginTop: ".65rem", borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)", maxHeight: 120 }}>
+                        <img
+                          src={(settingsDraft.catalogHeroImageUrl || "").trim()}
+                          alt="Catalog background preview"
+                          style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }}
+                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        />
+                      </div>
                     )}
-                    <div style={{ borderTop: "1px solid var(--line)", marginTop: "1.1rem", paddingTop: ".9rem" }}>
-                      <button type="button" className="btn secondary full" onClick={handleSignOut}><LogOut size={15} /> Sign Out</button>
-                    </div>
                   </div>
-                )}
+                </div>
+
+                <div className="settings-section">
+                  <h3><FileDown size={16} /> Data & Backup</h3>
+                  <p style={{ fontSize: ".8rem", color: "var(--text-soft)", margin: "0 0 .7rem" }}>
+                    Download a snapshot of your library data as CSV. Safe to open in Excel or Google Sheets.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                    <button type="button" className="btn secondary" onClick={exportBooksCSV}><FileDown size={14} /> Books</button>
+                    <button type="button" className="btn secondary" onClick={exportStudentsCSV}><FileDown size={14} /> Students</button>
+                    <button type="button" className="btn secondary" onClick={exportTransactionsCSV}><FileDown size={14} /> Transactions</button>
+                  </div>
+                </div>
+
+                <div className="settings-section">
+                  <h3><Lock size={16} /> Account</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                    <button type="button" className="btn secondary" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
+                      <Lock size={14} /> Change Password
+                    </button>
+                    <button type="button" className="btn secondary" onClick={handleSignOut}><LogOut size={14} /> Sign Out</button>
+                  </div>
+                </div>
               </div>
 
-              {settingsTab !== "account" && (
-                <div className="settings-footer">
-                  {settingsSavedMsg && (
-                    <div style={{ color: settingsSavedMsg.startsWith("✅") ? "#1F8A5E" : "var(--danger)", fontSize: ".84rem", fontWeight: 700 }}>{settingsSavedMsg}</div>
-                  )}
-                  <button className="btn full" onClick={saveSettings} disabled={settingsSaving}>
-                    <Save size={16} /> {settingsSaving ? "Saving..." : "Save Settings"}
-                  </button>
-                </div>
-              )}
+              <div className="settings-footer">
+                {settingsSavedMsg && (
+                  <div style={{ color: settingsSavedMsg.startsWith("✅") ? "#1F8A5E" : "var(--danger)", fontSize: ".84rem", fontWeight: 700 }}>{settingsSavedMsg}</div>
+                )}
+                <button className="btn full" onClick={saveSettings} disabled={settingsSaving}>
+                  <Save size={16} /> {settingsSaving ? "Saving..." : "Save Settings"}
+                </button>
+              </div>
             </Modal>
           )}
 
@@ -2891,8 +2537,7 @@ export default function App() {
             </Modal>
           )}
 
-
-{sheet === "issue" && (
+          {sheet === "issue" && (
             <Modal title="Issue Book" onClose={() => setSheet(null)}>
               {selectedStudent ? (
                 <div className="current-pick">
@@ -3248,107 +2893,68 @@ export default function App() {
           )}
 
           {sheet === "dashboard" && (
-            <Modal title="Library Dashboard" onClose={() => setSheet(null)} wide>
-              <div className="dashboard-page" style={{ background: "#fff", color: "#172b24", borderRadius: 16, padding: ".2rem 0" }}>
-                <div style={{ background: "linear-gradient(135deg,#0d3b2e,#17634a)", color: "#fff", borderRadius: 16, padding: "1.2rem", marginBottom: "1rem" }}>
-                  <div style={{ fontSize: ".72rem", letterSpacing: ".12em", opacity: .8, fontWeight: 700 }}>NMMI ISLAMIC LIBRARY</div>
-                  <div style={{ fontSize: "1.35rem", fontWeight: 800, marginTop: ".35rem" }}>Library Overview</div>
-                  <div style={{ fontSize: ".8rem", opacity: .82, marginTop: ".25rem" }}>Today's library activity at a glance</div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: ".65rem", marginBottom: "1rem" }}>
-                  <div style={{ background: "#f5faf7", border: "1px solid #dcebe2", borderRadius: 13, padding: ".85rem" }}>
-                    <div style={{ color: "#527064", fontSize: ".75rem" }}>Total Books</div>
-                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#14543e" }}>{totalCopies}</div>
-                    <div style={{ fontSize: ".7rem", color: "#71877c" }}>Copies in library</div>
-                  </div>
-                  <div style={{ background: "#f5faf7", border: "1px solid #dcebe2", borderRadius: 13, padding: ".85rem" }}>
-                    <div style={{ color: "#527064", fontSize: ".75rem" }}>Available</div>
-                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#14543e" }}>{availableCopies}</div>
-                    <div style={{ fontSize: ".7rem", color: "#71877c" }}>Ready to issue</div>
-                  </div>
-                  <div style={{ background: "#f5faf7", border: "1px solid #dcebe2", borderRadius: 13, padding: ".85rem" }}>
-                    <div style={{ color: "#527064", fontSize: ".75rem" }}>Currently Issued</div>
-                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#14543e" }}>{activeTx.length}</div>
-                    <div style={{ fontSize: ".7rem", color: "#71877c" }}>Books with students</div>
-                  </div>
-                  <div style={{ background: overdueTx.length ? "#fff7f5" : "#f5faf7", border: `1px solid ${overdueTx.length ? "#f3d5ce" : "#dcebe2"}`, borderRadius: 13, padding: ".85rem" }}>
-                    <div style={{ color: "#7c625d", fontSize: ".75rem" }}>Overdue</div>
-                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: overdueTx.length ? "#b64232" : "#14543e" }}>{overdueTx.length}</div>
-                    <div style={{ fontSize: ".7rem", color: "#8a7772" }}>Need attention</div>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "1rem 0 .6rem" }}>
-                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>Quick Actions</div>
-                  <div style={{ fontSize: ".75rem", color: "#71877c" }}>{students.length} students</div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: ".6rem", marginBottom: "1.1rem" }}>
-                  <button className="btn" style={{ justifyContent: "center", minHeight: 48, background: "#14543e" }} onClick={openIssue}><BookMarked size={16} /> Issue Book</button>
-                  <button className="btn secondary" style={{ justifyContent: "center", minHeight: 48 }} onClick={openReturn}><RotateCcw size={16} /> Return Book</button>
-                  <button className="btn secondary" style={{ justifyContent: "center", minHeight: 48 }} onClick={openAddStudent}><UserPlus size={16} /> Add Student</button>
-                  <button className="btn secondary" style={{ justifyContent: "center", minHeight: 48 }} onClick={() => openScanner("home")}><Camera size={16} /> Scan QR / Barcode</button>
-                </div>
-
-                <div style={{ border: "1px solid #e1ebe5", borderRadius: 14, padding: ".9rem", marginBottom: ".8rem" }}>
-                  <div style={{ fontWeight: 800, marginBottom: ".65rem" }}>Overdue Alerts</div>
-                  {overdueList.length === 0 ? <div className="empty">No overdue books. Great work!</div> : (
-                    <div className="row-list">
-                      {overdueList.slice(0, 4).map((r) => (
-                        <div key={r.tx.id} className="row-card overdue">
-                          <div style={{ minWidth: 0 }}>
-                            <div className="title">{r.book.title}</div>
-                            <div className="meta">{r.student.name} · Due {formatDate(r.tx.dueDate)}</div>
-                          </div>
-                          <div className="due" style={{ color: "#b64232", whiteSpace: "nowrap" }}>{daysBetween(r.tx.dueDate, todayISO())}d late</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {overdueList.length > 0 && <button className="btn secondary full" style={{ marginTop: ".6rem", justifyContent: "center" }} onClick={() => setSheet("overdue")}>View all overdue books <ChevronRight size={15} /></button>}
-                </div>
-
-                <h3 className="dash-heading">📚 Most Borrowed Books</h3>
-                {dashboardStats.mostBorrowed.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
-                  <div className="row-list">
-                    {dashboardStats.mostBorrowed.map((x, i) => (
-                      <div key={x.book.id} className="row-card">
-                        <div className="dash-row"><span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span><div><div className="title">{x.book.title}</div><div className="meta">{x.book.code}</div></div></div>
-                        <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <h3 className="dash-heading">🏆 Top Readers <span className="dash-sub">all-time</span></h3>
-                {dashboardStats.topReaders.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
-                  <div className="row-list">
-                    {dashboardStats.topReaders.map((x, i) => (
-                      <div key={x.student.id} className="row-card">
-                        <div className="dash-row"><span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span><div><div className="title">{x.student.name}</div><div className="meta">{x.student.className || "Unassigned"}</div></div></div>
-                        <div className="due" style={{ fontWeight: 700 }}>{x.count} books</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <h3 className="dash-heading">🎓 Most Active Class</h3>
-                {dashboardStats.topClasses.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
-                  <div className="row-list">
-                    {dashboardStats.topClasses.map(([cls, count], i) => (
-                      <div key={cls} className="row-card"><div className="dash-row"><span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span><div className="title">{cls}</div></div><div className="due" style={{ fontWeight: 700 }}>{count} books</div></div>
-                    ))}
-                  </div>
-                )}
-
-                <h3 className="dash-heading">📦 Never Borrowed <span className="dash-sub">{dashboardStats.neverBorrowed.length} of {books.length} books</span></h3>
-                {dashboardStats.neverBorrowed.length === 0 ? <div className="empty">Every book has been borrowed at least once 🎉</div> : (
-                  <div className="row-list">
-                    {dashboardStats.neverBorrowed.slice(0, 8).map((b) => <div key={b.id} className="row-card"><div><div className="title">{b.title}</div><div className="meta">{b.code}</div></div></div>)}
-                    {dashboardStats.neverBorrowed.length > 8 && <div className="empty" style={{ padding: ".6rem" }}>+{dashboardStats.neverBorrowed.length - 8} more</div>}
-                  </div>
-                )}
+            <Modal title="Dashboard" onClose={() => setSheet(null)} wide>
+              <div className="grid-stats">
+                <div className="stat-card"><div className="num">{totalCopies}</div><div className="label">Total Books</div></div>
+                <div className="stat-card"><div className="num">{availableCopies}</div><div className="label">Available</div></div>
+                <div className="stat-card"><div className="num">{activeTx.length}</div><div className="label">Currently Issued</div></div>
+                <div className={`stat-card ${overdueTx.length > 0 ? "warn" : ""}`}><div className="num">{overdueTx.length}</div><div className="label">Overdue</div></div>
               </div>
+              <div className="stat-card">
+                <div className="label" style={{ marginBottom: ".4rem" }}>Students</div>
+                <div className="num" style={{ fontSize: "1.1rem" }}>{students.length}</div>
+              </div>
+              <h3 className="dash-heading">📚 Most Borrowed Books</h3>
+              {dashboardStats.mostBorrowed.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
+                <div className="row-list">
+                  {dashboardStats.mostBorrowed.map((x, i) => (
+                    <div key={x.book.id} className="row-card">
+                      <div className="dash-row">
+                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                        <div><div className="title">{x.book.title}</div><div className="meta">{x.book.code}</div></div>
+                      </div>
+                      <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <h3 className="dash-heading">🏆 Top Readers <span className="dash-sub">all-time</span></h3>
+              {dashboardStats.topReaders.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
+                <div className="row-list">
+                  {dashboardStats.topReaders.map((x, i) => (
+                    <div key={x.student.id} className="row-card">
+                      <div className="dash-row">
+                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                        <div><div className="title">{x.student.name}</div><div className="meta">{x.student.className || "Unassigned"}</div></div>
+                      </div>
+                      <div className="due" style={{ fontWeight: 700 }}>{x.count} book{x.count === 1 ? "" : "s"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <h3 className="dash-heading">🎓 Most Active Class</h3>
+              {dashboardStats.topClasses.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
+                <div className="row-list">
+                  {dashboardStats.topClasses.map(([cls, count], i) => (
+                    <div key={cls} className="row-card">
+                      <div className="dash-row">
+                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
+                        <div className="title">{cls}</div>
+                      </div>
+                      <div className="due" style={{ fontWeight: 700 }}>{count} book{count === 1 ? "" : "s"}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <h3 className="dash-heading">📦 Never Borrowed <span className="dash-sub">{dashboardStats.neverBorrowed.length} of {books.length} book{books.length === 1 ? "" : "s"}</span></h3>
+              {dashboardStats.neverBorrowed.length === 0 ? <div className="empty">Every book has been borrowed at least once 🎉</div> : (
+                <div className="row-list">
+                  {dashboardStats.neverBorrowed.slice(0, 8).map((b) => (
+                    <div key={b.id} className="row-card"><div><div className="title">{b.title}</div><div className="meta">{b.code}</div></div></div>
+                  ))}
+                  {dashboardStats.neverBorrowed.length > 8 && <div className="empty" style={{ padding: ".6rem" }}>+{dashboardStats.neverBorrowed.length - 8} more</div>}
+                </div>
+              )}
             </Modal>
           )}
 
@@ -3482,7 +3088,7 @@ export default function App() {
                     <b>{dBook.code}</b>{dBook.author ? ` · ${dBook.author}` : ""}<br />
                     <span style={{ fontSize: ".78rem", color: "var(--text-soft)" }}>{dBook.category || UNCATEGORIZED} · {dBook.availableCopies}/{dBook.totalCopies} available</span>
                   </span>
-                  <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: ".7rem" }}>
                     <button onClick={() => { setSheet("catalog"); startEditBook(dBook); }}><Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit</button>
                     <button onClick={() => { deleteBook(dBook); setSheet(null); }}><Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove</button>
                   </div>
