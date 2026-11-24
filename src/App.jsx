@@ -2443,261 +2443,6 @@ export default function App() {
     height: auto !important; 
   }
 }
-        
-/* ===== PREMIUM LIBRARY DASHBOARD ===== */
-
-.dashboard-page {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  overflow-y: auto;
-  background: #F7FAF8;
-  color: #202B26;
-  font-family: Inter, "Noto Sans Malayalam", sans-serif;
-}
-
-.dashboard-header {
-  background: #fff;
-  border-bottom: 1px solid #E4EBE6;
-  padding: 18px 28px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.dashboard-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.dashboard-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  background: #087B59;
-  color: white;
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.dashboard-brand h2 {
-  margin: 0;
-  font-size: 1.1rem;
-  color: #153D30;
-}
-
-.dashboard-brand p {
-  margin: 3px 0 0;
-  font-size: .75rem;
-  color: #718078;
-}
-
-.dashboard-content {
-  max-width: 1500px;
-  margin: auto;
-  padding: 28px;
-}
-
-.dashboard-welcome {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 15px;
-  margin-bottom: 25px;
-}
-
-.dashboard-welcome h1 {
-  font-size: 1.8rem;
-  color: #153D30;
-  margin: 0;
-}
-
-.dashboard-welcome p {
-  color: #718078;
-  margin: 5px 0 0;
-}
-
-.dashboard-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 25px;
-}
-
-.dashboard-stat {
-  background: white;
-  border: 1px solid #E4EBE6;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 3px 12px rgba(20, 60, 40, .04);
-}
-
-.dashboard-stat-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.dashboard-stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: #E8F5EE;
-  color: #087B59;
-  display: grid;
-  place-items: center;
-}
-
-.dashboard-stat-number {
-  font-size: 1.9rem;
-  font-weight: 800;
-  color: #153D30;
-  margin-top: 13px;
-}
-
-.dashboard-stat-label {
-  color: #718078;
-  font-size: .83rem;
-  margin-top: 3px;
-}
-
-.dashboard-section {
-  background: white;
-  border: 1px solid #E4EBE6;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.dashboard-section h3 {
-  color: #153D30;
-  font-size: 1rem;
-  margin: 0 0 17px;
-}
-
-.dashboard-actions {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.dashboard-action {
-  border: 1px solid #E1EAE4;
-  background: #F7FAF8;
-  border-radius: 12px;
-  padding: 17px 10px;
-  color: #153D30;
-  font-weight: 700;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  cursor: pointer;
-  font-size: .83rem;
-  transition: .2s;
-}
-
-.dashboard-action:hover {
-  background: #E8F5EE;
-  border-color: #087B59;
-  transform: translateY(-2px);
-}
-
-.dashboard-action svg {
-  color: #087B59;
-}
-
-.dashboard-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-}
-
-.dashboard-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid #EEF2EF;
-}
-
-.dashboard-row:last-child {
-  border-bottom: 0;
-}
-
-.dashboard-row-title {
-  color: #253C31;
-  font-weight: 600;
-  font-size: .88rem;
-}
-
-.dashboard-row-sub {
-  color: #87948C;
-  font-size: .75rem;
-  margin-top: 3px;
-}
-
-.dashboard-count {
-  color: #087B59;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.dashboard-close {
-  background: #E8F5EE;
-  color: #087B59;
-  border: 0;
-  padding: 10px 15px;
-  border-radius: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.dashboard-empty {
-  color: #87948C;
-  font-size: .85rem;
-  padding: 12px 0;
-}
-
-@media (max-width: 700px) {
-  .dashboard-header {
-    padding: 13px 15px;
-  }
-
-  .dashboard-content {
-    padding: 19px 14px 35px;
-  }
-
-  .dashboard-welcome h1 {
-    font-size: 1.35rem;
-  }
-
-  .dashboard-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .dashboard-stat {
-    padding: 14px;
-  }
-
-  .dashboard-stat-number {
-    font-size: 1.55rem;
-  }
-
-  .dashboard-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-columns {
-    grid-template-columns: 1fr;
-  }
-}
         /* ---- Dark mode ---- */
         .app.dark {
           --page-bg:#15171a;--text:#e8e3d8;--text-soft:#a89b7f;--row-bg:#232528;
@@ -3501,330 +3246,109 @@ export default function App() {
               </div>
             </Modal>
           )}
-{sheet === "dashboard" && (
-  <div className="dashboard-page">
-    
-    {/* HEADER */}
-    <header className="dashboard-header">
-      <div className="dashboard-brand">
-        <div className="dashboard-logo">
-          <BookOpen size={23} />
-        </div>
-        <div>
-          <h2>NMMI Library</h2>
-          <p>Library Management System</p>
-        </div>
-      </div>
 
-      <button
-        className="dashboard-close"
-        onClick={() => setSheet(null)}
-      >
-        <X size={16} /> Close
-      </button>
-    </header>
-
-    <main className="dashboard-content">
-
-      {/* WELCOME */}
-      <section className="dashboard-welcome">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Welcome back, Librarian 👋</p>
-        </div>
-        <div style={{color:"#718078",fontSize:".82rem"}}>
-          {new Date().toLocaleDateString("en-IN", {
-            day:"2-digit",
-            month:"short",
-            year:"numeric"
-          })}
-        </div>
-      </section>
-
-      {/* STATISTICS */}
-      <section className="dashboard-stats">
-
-        {[
-          {
-            title:"Total Books",
-            value:totalCopies,
-            icon:<Library size={20}/>
-          },
-          {
-            title:"Available Books",
-            value:availableCopies,
-            icon:<BookOpen size={20}/>
-          },
-          {
-            title:"Currently Issued",
-            value:activeTx.length,
-            icon:<BookMarked size={20}/>
-          },
-          {
-            title:"Total Students",
-            value:students.length,
-            icon:<UserPlus size={20}/>
-          },
-          {
-            title:"Overdue Books",
-            value:overdueTx.length,
-            icon:<AlertTriangle size={20}/>
-          },
-          {
-            title:"Today's Returns",
-            value:transactions.filter(
-              t => t.returnDate === todayISO()
-            ).length,
-            icon:<RotateCcw size={20}/>
-          }
-        ].map((item,i)=>(
-          <div className="dashboard-stat" key={i}>
-            <div className="dashboard-stat-top">
-              <div className="dashboard-stat-icon">
-                {item.icon}
-              </div>
-            </div>
-            <div className="dashboard-stat-number">
-              {item.value}
-            </div>
-            <div className="dashboard-stat-label">
-              {item.title}
-            </div>
-          </div>
-        ))}
-
-      </section>
-
-      {/* QUICK ACTIONS */}
-      <section className="dashboard-section">
-        <h3>Quick Actions</h3>
-
-        <div className="dashboard-actions">
-
-          <button className="dashboard-action" onClick={openIssue}>
-            <BookMarked size={23}/>
-            Issue Book
-          </button>
-
-          <button className="dashboard-action" onClick={openReturn}>
-            <RotateCcw size={23}/>
-            Return Book
-          </button>
-
-          <button className="dashboard-action" onClick={openAddStudent}>
-            <UserPlus size={23}/>
-            Add Student
-          </button>
-
-          <button
-            className="dashboard-action"
-            onClick={() => openScanner("home")}
-          >
-            <Camera size={23}/>
-            Scan QR
-          </button>
-
-        </div>
-      </section>
-
-      {/* LIBRARY INSIGHTS */}
-      <div className="dashboard-columns">
-
-        <section className="dashboard-section">
-          <h3>📚 Most Borrowed Books</h3>
-
-          {dashboardStats.mostBorrowed.length === 0 ? (
-            <div className="dashboard-empty">
-              No borrowing activity yet.
-            </div>
-          ) : dashboardStats.mostBorrowed.map((x,i)=>(
-            <div className="dashboard-row" key={x.book.id}>
-              <div>
-                <div className="dashboard-row-title">
-                  {i+1}. {x.book.title}
+          {sheet === "dashboard" && (
+            <Modal title="Library Dashboard" onClose={() => setSheet(null)} wide>
+              <div className="dashboard-page" style={{ background: "#fff", color: "#172b24", borderRadius: 16, padding: ".2rem 0" }}>
+                <div style={{ background: "linear-gradient(135deg,#0d3b2e,#17634a)", color: "#fff", borderRadius: 16, padding: "1.2rem", marginBottom: "1rem" }}>
+                  <div style={{ fontSize: ".72rem", letterSpacing: ".12em", opacity: .8, fontWeight: 700 }}>NMMI ISLAMIC LIBRARY</div>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, marginTop: ".35rem" }}>Library Overview</div>
+                  <div style={{ fontSize: ".8rem", opacity: .82, marginTop: ".25rem" }}>Today's library activity at a glance</div>
                 </div>
-                <div className="dashboard-row-sub">
-                  {x.book.code}
-                </div>
-              </div>
-              <div className="dashboard-count">
-                {x.count} times
-              </div>
-            </div>
-          ))}
-        </section>
 
-        <section className="dashboard-section">
-          <h3>🏆 Top Readers</h3>
-
-          {dashboardStats.topReaders.length === 0 ? (
-            <div className="dashboard-empty">
-              No borrowing activity yet.
-            </div>
-          ) : dashboardStats.topReaders.map((x,i)=>(
-            <div className="dashboard-row" key={x.student.id}>
-              <div>
-                <div className="dashboard-row-title">
-                  {i+1}. {x.student.name}
-                </div>
-                <div className="dashboard-row-sub">
-                  {x.student.className || "Unassigned"}
-                </div>
-              </div>
-              <div className="dashboard-count">
-                {x.count} books
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="dashboard-section">
-          <h3>🎓 Most Active Classes</h3>
-
-          {dashboardStats.topClasses.length === 0 ? (
-            <div className="dashboard-empty">
-              No class activity yet.
-            </div>
-          ) : dashboardStats.topClasses.map(([cls,count],i)=>(
-            <div className="dashboard-row" key={cls}>
-              <div className="dashboard-row-title">
-                {i+1}. {cls}
-              </div>
-              <div className="dashboard-count">
-                {count} books
-              </div>
-            </div>
-          ))}
-        </section>
-
-        <section className="dashboard-section">
-          <h3>⚠️ Overdue Alerts</h3>
-
-          {overdueList.length === 0 ? (
-            <div className="dashboard-empty">
-              No overdue books. Great!
-            </div>
-          ) : overdueList.slice(0,6).map(r=>(
-            <div className="dashboard-row" key={r.tx.id}>
-              <div>
-                <div className="dashboard-row-title">
-                  {r.book.title}
-                </div>
-                <div className="dashboard-row-sub">
-                  {r.student.name} · {r.student.className}
-                </div>
-              </div>
-              <div style={{color:"#B5302A",fontWeight:700,fontSize:".78rem"}}>
-                {daysBetween(r.tx.dueDate,todayISO())}d late
-              </div>
-            </div>
-          ))}
-        </section>
-
-      </div>
-
-      {/* NEVER BORROWED */}
-      <section className="dashboard-section">
-        <h3>📦 Never Borrowed Books</h3>
-
-        {dashboardStats.neverBorrowed.length === 0 ? (
-          <div className="dashboard-empty">
-            Every book has been borrowed at least once.
-          </div>
-        ) : dashboardStats.neverBorrowed.slice(0,8).map(b=>(
-          <div className="dashboard-row" key={b.id}>
-            <div>
-              <div className="dashboard-row-title">{b.title}</div>
-              <div className="dashboard-row-sub">{b.code}</div>
-            </div>
-            <div className="dashboard-row-sub">
-              Not borrowed
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {/* RECENT ACTIVITIES */}
-      <section className="dashboard-section">
-        <h3>🕒 Recent Library Activities</h3>
-
-        {[...transactions]
-          .sort((a,b)=>
-            (b.issueDate || "").localeCompare(a.issueDate || "")
-          )
-          .slice(0,8)
-          .map(t=>{
-            const book = bookById(t.bookId);
-            const student = studentById(t.studentId);
-
-            if (!book || !student) return null;
-
-            return (
-              <div className="dashboard-row" key={t.id}>
-                <div>
-                  <div className="dashboard-row-title">
-                    {student.name} – {book.title}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: ".65rem", marginBottom: "1rem" }}>
+                  <div style={{ background: "#f5faf7", border: "1px solid #dcebe2", borderRadius: 13, padding: ".85rem" }}>
+                    <div style={{ color: "#527064", fontSize: ".75rem" }}>Total Books</div>
+                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#14543e" }}>{totalCopies}</div>
+                    <div style={{ fontSize: ".7rem", color: "#71877c" }}>Copies in library</div>
                   </div>
-                  <div className="dashboard-row-sub">
-                    {t.returnDate ? "Returned" : "Issued"}
-                    {" · "}
-                    {formatDate(t.returnDate || t.issueDate)}
+                  <div style={{ background: "#f5faf7", border: "1px solid #dcebe2", borderRadius: 13, padding: ".85rem" }}>
+                    <div style={{ color: "#527064", fontSize: ".75rem" }}>Available</div>
+                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#14543e" }}>{availableCopies}</div>
+                    <div style={{ fontSize: ".7rem", color: "#71877c" }}>Ready to issue</div>
+                  </div>
+                  <div style={{ background: "#f5faf7", border: "1px solid #dcebe2", borderRadius: 13, padding: ".85rem" }}>
+                    <div style={{ color: "#527064", fontSize: ".75rem" }}>Currently Issued</div>
+                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#14543e" }}>{activeTx.length}</div>
+                    <div style={{ fontSize: ".7rem", color: "#71877c" }}>Books with students</div>
+                  </div>
+                  <div style={{ background: overdueTx.length ? "#fff7f5" : "#f5faf7", border: `1px solid ${overdueTx.length ? "#f3d5ce" : "#dcebe2"}`, borderRadius: 13, padding: ".85rem" }}>
+                    <div style={{ color: "#7c625d", fontSize: ".75rem" }}>Overdue</div>
+                    <div style={{ fontSize: "1.65rem", fontWeight: 800, color: overdueTx.length ? "#b64232" : "#14543e" }}>{overdueTx.length}</div>
+                    <div style={{ fontSize: ".7rem", color: "#8a7772" }}>Need attention</div>
                   </div>
                 </div>
-                <div className="dashboard-count">
-                  {t.returnDate ? "Returned" : "Issued"}
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "1rem 0 .6rem" }}>
+                  <div style={{ fontWeight: 800, fontSize: "1rem" }}>Quick Actions</div>
+                  <div style={{ fontSize: ".75rem", color: "#71877c" }}>{students.length} students</div>
                 </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: ".6rem", marginBottom: "1.1rem" }}>
+                  <button className="btn" style={{ justifyContent: "center", minHeight: 48, background: "#14543e" }} onClick={openIssue}><BookMarked size={16} /> Issue Book</button>
+                  <button className="btn secondary" style={{ justifyContent: "center", minHeight: 48 }} onClick={openReturn}><RotateCcw size={16} /> Return Book</button>
+                  <button className="btn secondary" style={{ justifyContent: "center", minHeight: 48 }} onClick={openAddStudent}><UserPlus size={16} /> Add Student</button>
+                  <button className="btn secondary" style={{ justifyContent: "center", minHeight: 48 }} onClick={() => openScanner("home")}><Camera size={16} /> Scan QR / Barcode</button>
+                </div>
+
+                <div style={{ border: "1px solid #e1ebe5", borderRadius: 14, padding: ".9rem", marginBottom: ".8rem" }}>
+                  <div style={{ fontWeight: 800, marginBottom: ".65rem" }}>Overdue Alerts</div>
+                  {overdueList.length === 0 ? <div className="empty">No overdue books. Great work!</div> : (
+                    <div className="row-list">
+                      {overdueList.slice(0, 4).map((r) => (
+                        <div key={r.tx.id} className="row-card overdue">
+                          <div style={{ minWidth: 0 }}>
+                            <div className="title">{r.book.title}</div>
+                            <div className="meta">{r.student.name} · Due {formatDate(r.tx.dueDate)}</div>
+                          </div>
+                          <div className="due" style={{ color: "#b64232", whiteSpace: "nowrap" }}>{daysBetween(r.tx.dueDate, todayISO())}d late</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {overdueList.length > 0 && <button className="btn secondary full" style={{ marginTop: ".6rem", justifyContent: "center" }} onClick={() => setSheet("overdue")}>View all overdue books <ChevronRight size={15} /></button>}
+                </div>
+
+                <h3 className="dash-heading">📚 Most Borrowed Books</h3>
+                {dashboardStats.mostBorrowed.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
+                  <div className="row-list">
+                    {dashboardStats.mostBorrowed.map((x, i) => (
+                      <div key={x.book.id} className="row-card">
+                        <div className="dash-row"><span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span><div><div className="title">{x.book.title}</div><div className="meta">{x.book.code}</div></div></div>
+                        <div className="due" style={{ fontWeight: 700 }}>{x.count}×</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <h3 className="dash-heading">🏆 Top Readers <span className="dash-sub">all-time</span></h3>
+                {dashboardStats.topReaders.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
+                  <div className="row-list">
+                    {dashboardStats.topReaders.map((x, i) => (
+                      <div key={x.student.id} className="row-card">
+                        <div className="dash-row"><span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span><div><div className="title">{x.student.name}</div><div className="meta">{x.student.className || "Unassigned"}</div></div></div>
+                        <div className="due" style={{ fontWeight: 700 }}>{x.count} books</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <h3 className="dash-heading">🎓 Most Active Class</h3>
+                {dashboardStats.topClasses.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
+                  <div className="row-list">
+                    {dashboardStats.topClasses.map(([cls, count], i) => (
+                      <div key={cls} className="row-card"><div className="dash-row"><span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span><div className="title">{cls}</div></div><div className="due" style={{ fontWeight: 700 }}>{count} books</div></div>
+                    ))}
+                  </div>
+                )}
+
+                <h3 className="dash-heading">📦 Never Borrowed <span className="dash-sub">{dashboardStats.neverBorrowed.length} of {books.length} books</span></h3>
+                {dashboardStats.neverBorrowed.length === 0 ? <div className="empty">Every book has been borrowed at least once 🎉</div> : (
+                  <div className="row-list">
+                    {dashboardStats.neverBorrowed.slice(0, 8).map((b) => <div key={b.id} className="row-card"><div><div className="title">{b.title}</div><div className="meta">{b.code}</div></div></div>)}
+                    {dashboardStats.neverBorrowed.length > 8 && <div className="empty" style={{ padding: ".6rem" }}>+{dashboardStats.neverBorrowed.length - 8} more</div>}
+                  </div>
+                )}
               </div>
-            );
-          })}
-
-        {transactions.length === 0 && (
-          <div className="dashboard-empty">
-            No activities recorded yet.
-          </div>
-        )}
-      </section>
-
-    </main>
-  </div>
-)}
-              <h3 className="dash-heading">🏆 Top Readers <span className="dash-sub">all-time</span></h3>
-              {dashboardStats.topReaders.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
-                <div className="row-list">
-                  {dashboardStats.topReaders.map((x, i) => (
-                    <div key={x.student.id} className="row-card">
-                      <div className="dash-row">
-                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
-                        <div><div className="title">{x.student.name}</div><div className="meta">{x.student.className || "Unassigned"}</div></div>
-                      </div>
-                      <div className="due" style={{ fontWeight: 700 }}>{x.count} book{x.count === 1 ? "" : "s"}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <h3 className="dash-heading">🎓 Most Active Class</h3>
-              {dashboardStats.topClasses.length === 0 ? <div className="empty">No borrowing activity yet.</div> : (
-                <div className="row-list">
-                  {dashboardStats.topClasses.map(([cls, count], i) => (
-                    <div key={cls} className="row-card">
-                      <div className="dash-row">
-                        <span className="rank">{i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}</span>
-                        <div className="title">{cls}</div>
-                      </div>
-                      <div className="due" style={{ fontWeight: 700 }}>{count} book{count === 1 ? "" : "s"}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <h3 className="dash-heading">📦 Never Borrowed <span className="dash-sub">{dashboardStats.neverBorrowed.length} of {books.length} book{books.length === 1 ? "" : "s"}</span></h3>
-              {dashboardStats.neverBorrowed.length === 0 ? <div className="empty">Every book has been borrowed at least once 🎉</div> : (
-                <div className="row-list">
-                  {dashboardStats.neverBorrowed.slice(0, 8).map((b) => (
-                    <div key={b.id} className="row-card"><div><div className="title">{b.title}</div><div className="meta">{b.code}</div></div></div>
-                  ))}
-                  {dashboardStats.neverBorrowed.length > 8 && <div className="empty" style={{ padding: ".6rem" }}>+{dashboardStats.neverBorrowed.length - 8} more</div>}
-                </div>
-              )}
             </Modal>
           )}
 
