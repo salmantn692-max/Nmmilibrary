@@ -5,7 +5,7 @@ import {
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
   Settings, Save, Palette, FileDown, BookOpen, Heart, Share2, Sparkles,
-  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic, Image
+  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -714,12 +714,12 @@ export function PublicCatalog() {
   return (
     <div className="pc-app">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
         
         .pc-app { 
           --navy:#1B4D3E; --maroon:#8B2E3C; --sky:#C9A227; --text:#2B2420; --text-soft:#7A6F5D; 
           --line:#E8DCC0; --row-bg:#FBF2D9; --bg:#FDF8ED; --indigo:#2C6E5C;
-          font-family: 'Anek Malayalam', 'Inter', -apple-system, sans-serif;
+          font-family:'Anek Malayalam', 'Inter', -apple-system, sans-serif;
           min-height:100vh; background:var(--bg); color:var(--text);
           padding-bottom:4rem;
           -webkit-font-smoothing: antialiased;
@@ -734,7 +734,7 @@ export function PublicCatalog() {
           background:linear-gradient(180deg,#fff 0%,#FDF8ED 100%); position:sticky; top:0; z-index:20; 
           box-shadow:0 2px 12px rgba(27,77,62,0.08);
         }
-        .pc-header h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-weight:800; font-size:1.35rem; color:var(--navy); margin:0; line-height:1.3; }
+        .pc-header h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif; font-weight:800; font-size:1.35rem; color:var(--navy); margin:0; line-height:1.3; }
         .pc-sub { font-size:.82rem; color:var(--maroon); margin-top:.15rem; font-weight:500; }
         
         .pc-stats { display:flex; justify-content:center; gap:.7rem; margin-top:.7rem; flex-wrap:wrap; }
@@ -820,7 +820,7 @@ export function PublicCatalog() {
         .pc-section { max-width:920px; margin:0 auto; padding:0 1.1rem 1rem; }
         .pc-section-head {
           display:flex; align-items:center; gap:.5rem; margin-bottom:.7rem;
-          font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-weight:700; font-size:1.05rem; color:var(--navy);
+          font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif; font-weight:700; font-size:1.05rem; color:var(--navy);
         }
         .pc-section-head svg { color:var(--sky); }
         
@@ -1282,10 +1282,6 @@ export default function App() {
   const [lastPromotion, setLastPromotion] = useState(null);
   const [printMode, setPrintMode] = useState("students");
   const [printClass, setPrintClass] = useState("ALL");
-  const [posterBookId, setPosterBookId] = useState("");
-  const [posterQuery, setPosterQuery] = useState("");
-  const [posterDownloading, setPosterDownloading] = useState(false);
-  const posterRef = useRef(null);
 
   const [bookQuery, setBookQuery] = useState("");
   const [selectedBook, setSelectedBook] = useState(null);
@@ -1906,44 +1902,6 @@ export default function App() {
     setCertDownloading(false);
   }
   
-  async function downloadPoster(book) {
-    if (!posterRef.current || !book) return;
-    setPosterDownloading(true);
-    try {
-      // A4 at 150 DPI: 210mm x 297mm ≈ 1240 x 1754 px
-      const A4_W = 1240;
-      const A4_H = 1754;
-      const el = posterRef.current;
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
-        backgroundColor: "#FDF8ED",
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        imageTimeout: 15000,
-      });
-      // Resample to exact A4 pixel size for consistent print/download
-      const out = document.createElement("canvas");
-      out.width = A4_W;
-      out.height = A4_H;
-      const ctx = out.getContext("2d");
-      ctx.fillStyle = "#FDF8ED";
-      ctx.fillRect(0, 0, A4_W, A4_H);
-      ctx.drawImage(canvas, 0, 0, A4_W, A4_H);
-      const link = document.createElement("a");
-      const safe = (book.title || book.code || "book").replace(/[^\w\u0D00-\u0D7F]+/g, "_").slice(0, 40);
-      link.download = `notice_${book.code || safe}_A4.png`;
-      link.href = out.toDataURL("image/png");
-      link.click();
-    } catch (err) {
-      console.error(err);
-      alert("Couldn't create the poster image. Check the cover image URL allows download, or try again.");
-    }
-    setPosterDownloading(false);
-  }
-
 
 
   function openAddStudent() {
@@ -1961,7 +1919,7 @@ export default function App() {
   return (
     <div className={`app ${appSettings.darkMode ? "dark" : ""}`}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Anek+Malayalam:wght@400;500;600;700;800&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         :root {
           --navy:#1B4D3E;--navy-deep:#0F3328;--maroon:#8B2E3C;--sky:#C9A227;--gold-soft:#E7C989;
           --green:#2F9E6E;--row-bg:#FBF2D9;--indigo:#2C6E5C;--page-bg:#FDF8ED;--text:#2B2420;
@@ -1971,7 +1929,7 @@ export default function App() {
         }
         * { box-sizing: border-box; }
         html,body { margin:0; padding:0; }
-        .app { font-family:'Inter', 'Noto Sans Malayalam', sans-serif;background:var(--page-bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:6rem;position:relative;line-height:1.5; }
+        .app { font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;background:var(--page-bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:6rem;position:relative;line-height:1.5; }
         .mono { font-family:'JetBrains Mono',monospace; }
         .top-fixed {
           position:sticky;top:0;z-index:20;background-color:var(--page-bg);
@@ -1985,10 +1943,10 @@ export default function App() {
           box-shadow:0 2px 8px rgba(27,77,62,0.08);border-bottom:2px solid var(--sky);
         }
         .header { display:flex;align-items:flex-start;justify-content:space-between;padding:1.1rem 1.1rem .7rem; }
-        .brand h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.5rem;color:var(--navy);margin:0;line-height:1.3; }
+        .brand h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.5rem;color:var(--navy);margin:0;line-height:1.3; }
         .brand .sub { font-size:.72rem;color:var(--maroon);font-weight:500;margin-top:.15rem;line-height:1.4; }
         .desktop-title { display:none; }
-        .desktop-title h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.7rem;color:var(--navy);margin:0;line-height:1.3; }
+        .desktop-title h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.7rem;color:var(--navy);margin:0;line-height:1.3; }
         .desktop-title .sub { font-size:.82rem;color:var(--text-soft);margin-top:.25rem; }
         .sidebar { display:none; }
         .icon-btn { background:transparent;border:none;color:var(--text);cursor:pointer;padding:.3rem;border-radius:6px; }
@@ -1998,7 +1956,7 @@ export default function App() {
         .search-wrap .icon { position:absolute;left:.8rem;top:50%;transform:translateY(-50%);color:var(--text-soft);z-index:1; }
         .search-wrap input {
           width:100%;background:var(--search-bg);border:none;border-radius:999px;
-          padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;color:var(--text);
+          padding:.7rem .9rem .7rem 2.3rem;font-size:.92rem;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;color:var(--text);
           transition:box-shadow .15s ease;
         }
         .search-wrap input:focus-visible { outline:none;box-shadow:0 0 0 2px var(--indigo),var(--shadow-sm); }
@@ -2128,7 +2086,7 @@ export default function App() {
         @media (prefers-reduced-motion:reduce) { .modal-backdrop,.modal-panel { animation:none; } }
         @media (min-width:540px) { .modal-backdrop { align-items:center; } .modal-panel { border-radius:14px;max-height:80vh; } }
         .modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem; }
-        .modal-head h2 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:1.15rem;color:var(--navy);margin:0;line-height:1.3; }
+        .modal-head h2 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:1.15rem;color:var(--navy);margin:0;line-height:1.3; }
         .menu-list { display:flex;flex-direction:column;gap:.4rem; }
         .menu-row {
           display:flex;align-items:center;gap:.7rem;padding:.75rem .5rem;border-radius:8px;
@@ -2138,14 +2096,14 @@ export default function App() {
         .menu-row:hover { background:#EFEFEF; }
         label { display:block;font-size:.8rem;color:var(--text-soft);margin-bottom:.3rem; }
         input[type="text"],input[type="number"],input[type="search"],input[type="month"],input[type="email"],input[type="password"],input[type="tel"],select,textarea {
-          width:100%;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-size:.92rem;padding:.55rem .7rem;
+          width:100%;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;font-size:.92rem;padding:.55rem .7rem;
           border:1px solid #DDD;border-radius:6px;background:#FAFAFA;color:var(--text);
         }
         input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--indigo);border-color:var(--indigo); }
         .field { margin-bottom:.7rem; }
         .form-grid { display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.7rem; }
         .btn {
-          font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;
+          font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;font-weight:700;font-size:.9rem;background:var(--navy);color:#fff;
           border:none;border-radius:9px;padding:.6rem 1.1rem;cursor:pointer;display:inline-flex;
           align-items:center;gap:.4rem;box-shadow:var(--shadow-sm);
           transition:transform .1s ease,box-shadow .15s ease,background .15s ease;
@@ -2202,14 +2160,14 @@ export default function App() {
         .stat-card .num { font-family:'JetBrains Mono',monospace;font-size:1.4rem;font-weight:700;color:var(--navy); }
         .stat-card.warn .num { color:var(--danger); }
         .stat-card .label { font-size:.78rem;color:var(--text-soft);margin-top:.1rem; }
-        .dash-heading { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:1.1rem 0 .5rem;display:flex;align-items:baseline;gap:.4rem;line-height:1.4; }
+        .dash-heading { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:.95rem;color:var(--navy);margin:1.1rem 0 .5rem;display:flex;align-items:baseline;gap:.4rem;line-height:1.4; }
         .dash-heading:first-of-type { margin-top:.2rem; }
-        .dash-heading .dash-sub { font-family:'Inter', 'Noto Sans Malayalam', sans-serif;font-weight:400;font-size:.74rem;color:var(--text-soft); }
+        .dash-heading .dash-sub { font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;font-weight:400;font-size:.74rem;color:var(--text-soft); }
         .rank { font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--navy);width:26px;flex:0 0 auto;text-align:center;font-size:.88rem; }
         .dash-row { display:flex;align-items:center;gap:.6rem; }
         .lock-screen { position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.3rem;text-align:center;overflow-y:auto;background:var(--page-bg); }
         .lock-icon { width:56px;height:56px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:1rem; }
-        .lock-screen h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.3rem;color:var(--navy);margin:0 0 .15rem;line-height:1.3; }
+        .lock-screen h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.3rem;color:var(--navy);margin:0 0 .15rem;line-height:1.3; }
         .lock-screen .sub { font-size:.74rem;color:var(--maroon);margin-bottom:1.6rem; }
         .lock-form { width:100%;max-width:320px;text-align:left; }
         .lock-form .field { margin-bottom:.8rem; }
@@ -2256,11 +2214,11 @@ export default function App() {
           display:flex;flex-direction:column;
         }
         .lib-card-top { background:var(--navy);background-image:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);padding:.65rem .9rem;color:#fff; }
-        .lib-card-brand-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:.95rem;letter-spacing:.02em;line-height:1.3; }
+        .lib-card-brand-name { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:.95rem;letter-spacing:.02em;line-height:1.3; }
         .lib-card-brand-sub { font-size:.6rem;color:var(--gold-soft);margin-top:.15rem;line-height:1.3; }
         .lib-card-body { display:flex;align-items:center;gap:.8rem;padding:.9rem;flex:1; }
         .lib-card-info { flex:1;min-width:0; }
-        .lib-card-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:700;font-size:1.05rem;color:var(--navy-deep);line-height:1.3; }
+        .lib-card-name { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:700;font-size:1.05rem;color:var(--navy-deep);line-height:1.3; }
         .lib-card-meta { font-size:.78rem;color:var(--text-soft);margin-top:.2rem;line-height:1.3; }
         .lib-card-bottom { display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem .8rem;border-top:1px dashed var(--line); }
         .lib-card-id-label { font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.08em;color:var(--text-soft);font-weight:700; }
@@ -2277,10 +2235,10 @@ export default function App() {
           box-shadow:var(--shadow-md);
         }
         .cert-badge { font-size:1.9rem;margin-bottom:.1rem; }
-        .cert-title { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.02rem;color:var(--navy-deep);letter-spacing:.03em;text-transform:uppercase;line-height:1.3; }
+        .cert-title { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.02rem;color:var(--navy-deep);letter-spacing:.03em;text-transform:uppercase;line-height:1.3; }
         .cert-sub { font-size:.64rem;color:var(--maroon);margin-top:.1rem;margin-bottom:.55rem; }
         .cert-presented { font-size:.7rem;color:var(--text-soft); }
-        .cert-name { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:.3rem 0;border-bottom:2px solid var(--gold-soft);padding-bottom:.2rem;line-height:1.3; }
+        .cert-name { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:700;font-size:1.25rem;color:var(--navy);margin:.3rem 0;border-bottom:2px solid var(--gold-soft);padding-bottom:.2rem;line-height:1.3; }
         .cert-desc { font-size:.72rem;color:var(--text);line-height:1.5;max-width:92%;margin-top:.25rem; }
         .cert-month { font-weight:700;color:var(--maroon); }
         .cert-footer { display:flex;justify-content:space-between;width:100%;margin-top:auto;padding-top:.7rem; }
@@ -2289,7 +2247,7 @@ export default function App() {
 
         .settings-sections { display:flex;flex-direction:column;gap:1rem; }
         .settings-section { background:#FAF6EC;border:1px solid var(--line);border-radius:10px;padding:.95rem 1.05rem; }
-        .settings-section h3 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
+        .settings-section h3 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
         .settings-section .field:last-child { margin-bottom:0; }
         .settings-section .form-grid:last-child { margin-bottom:0; }
         .settings-footer {
@@ -2308,12 +2266,12 @@ export default function App() {
             box-shadow:2px 0 12px rgba(0,0,0,.12);overflow-y:auto;
           }
           .sidebar-brand { padding:.4rem 1.2rem 1rem;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:.8rem; }
-          .sidebar-brand-logo { font-family:'Playfair Display', 'Noto Serif Malayalam', serif;font-weight:800;font-size:1.3rem;line-height:1.3;color:#fff; }
+          .sidebar-brand-logo { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-weight:800;font-size:1.3rem;line-height:1.3;color:#fff; }
           .sidebar-brand-sub { font-size:.68rem;color:var(--gold-soft);margin-top:.25rem;line-height:1.4; }
           .sidebar-actions { display:flex;flex-direction:column;gap:.4rem;padding:0 .7rem .9rem;margin-bottom:.6rem;border-bottom:1px solid rgba(255,255,255,.12); }
           .sidebar-action-btn {
             display:flex;align-items:center;gap:.6rem;background:var(--sky);color:var(--navy-deep);
-            border:none;border-radius:8px;padding:.62rem .85rem;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
+            border:none;border-radius:8px;padding:.62rem .85rem;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;
             font-weight:700;font-size:.85rem;cursor:pointer;text-align:left;
             transition:background .15s ease,transform .1s ease;
           }
@@ -2323,7 +2281,7 @@ export default function App() {
           .sidebar-nav { display:flex;flex-direction:column;gap:.12rem;padding:0 .7rem;flex:1; }
           .sidebar-nav button {
             display:flex;align-items:center;gap:.7rem;background:transparent;color:rgba(255,255,255,.82);
-            border:none;padding:.6rem .8rem;border-radius:8px;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
+            border:none;padding:.6rem .8rem;border-radius:8px;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;
             font-size:.86rem;font-weight:500;cursor:pointer;text-align:left;position:relative;
             transition:background .15s ease,color .15s ease;
           }
@@ -2337,7 +2295,7 @@ export default function App() {
           .sidebar-footer { padding:.8rem .7rem 0;border-top:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;gap:.12rem; }
           .sidebar-footer button {
             display:flex;align-items:center;gap:.7rem;background:transparent;color:rgba(255,255,255,.65);
-            border:none;padding:.55rem .8rem;border-radius:8px;font-family:'Inter', 'Noto Sans Malayalam', sans-serif;
+            border:none;padding:.55rem .8rem;border-radius:8px;font-family:'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif;
             font-size:.82rem;cursor:pointer;text-align:left;
             transition:background .15s ease,color .15s ease;
           }
@@ -2369,7 +2327,6 @@ export default function App() {
 
         @media print {
   /* UI എലമെന്റുകൾ മറയ്ക്കൽ */
-  .notice-poster { page-break-inside: avoid !important; }
   .no-print, .sidebar, .top-fixed, .bottom-bar, .modal-head {
     display: none !important;
   }
@@ -2575,9 +2532,6 @@ export default function App() {
                 <Award size={18} /> Certificate
               </button>
               <button onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
-              <button onClick={() => { setPosterBookId(""); setPosterQuery(""); setSheet("noticeBoard"); }}>
-                <Image size={18} /> Notice Board Poster
-              </button>
               <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
                 <Settings size={18} /> Settings
               </button>
@@ -2740,9 +2694,6 @@ export default function App() {
                   <Award size={18} /> Monthly Certificate
                 </button>
                 <button className="menu-row" onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
-                <button className="menu-row" onClick={() => { setPosterBookId(""); setPosterQuery(""); setSheet("noticeBoard"); }}>
-                  <Image size={18} /> Notice Board Poster
-                </button>
                 <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
                   <Settings size={18} /> Settings
                 </button>
@@ -2901,245 +2852,7 @@ export default function App() {
           )}
 
 
-          {sheet === "noticeBoard" && (() => {
-            const posterBook = posterBookId ? books.find((b) => b.id === posterBookId) : null;
-            const posterMatches = (() => {
-              const q = posterQuery.trim().toLowerCase();
-              let list = books;
-              if (q) {
-                list = list.filter((b) =>
-                  (b.title || "").toLowerCase().includes(q) ||
-                  (b.author || "").toLowerCase().includes(q) ||
-                  normCode(b.code).includes(normCode(q))
-                );
-              }
-              return list.slice(0, 12);
-            })();
-            const coverFb = (book) => {
-              const palette = ["#1B4D3E", "#8B2E3C", "#2C6E5C", "#C9A227", "#5B4B8A", "#2F6B8A"];
-              const idx = (book.code || book.title || "A").charCodeAt(0) % palette.length;
-              const initial = ((book.title || "?").trim().charAt(0) || "?").toUpperCase();
-              return { bg: palette[idx], initial };
-            };
-            // Fixed A4 layout size used for on-screen preview + capture (CSS px ≈ 96dpi)
-            // 794 x 1123 ≈ A4; we scale up on download
-            const A4_CSS_W = 794;
-            const A4_CSS_H = 1123;
-            return (
-              <Modal title="Notice Board Poster" onClose={() => setSheet(null)} wide>
-                <div className="no-print">
-                  <p style={{ fontSize: ".82rem", color: "var(--text-soft)", marginBottom: ".7rem", lineHeight: 1.5 }}>
-                    Pick a book to generate an A4 poster for the notice board. Download PNG is print-ready (A4 size).
-                  </p>
-                  {!posterBook ? (
-                    <>
-                      <div className="field">
-                        <label>Find book</label>
-                        <input
-                          type="search"
-                          value={posterQuery}
-                          onChange={(e) => setPosterQuery(e.target.value)}
-                          placeholder="Title, author or code..."
-                          autoFocus
-                        />
-                      </div>
-                      <div className="pick-list" style={{ maxHeight: 280, overflowY: "auto" }}>
-                        {posterMatches.length === 0 && <div className="empty">No books found</div>}
-                        {posterMatches.map((b) => (
-                          <button key={b.id} className="pick-item" onClick={() => setPosterBookId(b.id)}>
-                            <span className="badge">{b.code}</span>
-                            <span>
-                              <div className="t-title">{b.title}</div>
-                              <div className="t-meta">{b.author || "—"} · {(b.availableCopies || 0) > 0 ? "Available" : "Issued"}</div>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem", marginBottom: ".9rem", alignItems: "center" }}>
-                      <button type="button" className="btn secondary" onClick={() => setPosterBookId("")}>Change book</button>
-                      <button type="button" className="btn" disabled={posterDownloading} onClick={() => downloadPoster(posterBook)}>
-                        <Download size={15} /> {posterDownloading ? "Preparing A4..." : "Download PNG"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {posterBook && (
-                  <div className="no-print" style={{ overflowX: "auto", padding: ".4rem 0 1rem", background: "#e8e0d0", borderRadius: 12 }}>
-                    <div style={{ transform: "scale(0.72)", transformOrigin: "top center", width: A4_CSS_W, margin: "0 auto -280px" }}>
-                      <div
-                        ref={posterRef}
-                        className="notice-poster"
-                        style={{
-                          width: A4_CSS_W,
-                          height: A4_CSS_H,
-                          background: "#FDF8ED",
-                          border: "12px solid #C9A227",
-                          boxSizing: "border-box",
-                          display: "flex",
-                          flexDirection: "column",
-                          fontFamily: "'Anek Malayalam', 'Noto Sans Malayalam', 'Inter', sans-serif",
-                          color: "#2B2420",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {/* Header */}
-                        <div style={{
-                          background: "linear-gradient(180deg, #1B4D3E 0%, #0F3328 100%)",
-                          color: "#fff",
-                          textAlign: "center",
-                          padding: "22px 28px 18px",
-                          flexShrink: 0,
-                        }}>
-                          <div style={{
-                            fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif",
-                            fontWeight: 800,
-                            fontSize: 28,
-                            letterSpacing: "0.06em",
-                            lineHeight: 1.2,
-                          }}>
-                            {appSettings.libraryName || "NMMI ISLAMIC LIBRARY"}
-                          </div>
-                          <div style={{ fontSize: 12, color: "#E7C989", marginTop: 6, fontWeight: 500 }}>
-                            {appSettings.librarySubtitle || "Nandiyil Muhammed Musliyar Memorial Islamic Library"}
-                          </div>
-                        </div>
-
-                        {/* Body */}
-                        <div style={{
-                          flex: 1,
-                          padding: "32px 36px 24px",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 28,
-                          minHeight: 0,
-                        }}>
-                          {/* Top row: cover + meta */}
-                          <div style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
-                            <div style={{
-                              width: 168,
-                              height: 252,
-                              flexShrink: 0,
-                              borderRadius: 10,
-                              overflow: "hidden",
-                              boxShadow: "0 6px 18px rgba(0,0,0,0.14)",
-                              border: "1px solid #E8DCC0",
-                              background: "#fff",
-                            }}>
-                              {posterBook.coverUrl ? (
-                                <img
-                                  src={posterBook.coverUrl}
-                                  alt=""
-                                  crossOrigin="anonymous"
-                                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                                />
-                              ) : (
-                                <div style={{
-                                  width: "100%", height: "100%",
-                                  background: coverFb(posterBook).bg,
-                                  color: "#fff",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  fontSize: 56,
-                                  fontWeight: 800,
-                                }}>
-                                  {coverFb(posterBook).initial}
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0, paddingTop: 8 }}>
-                              <div style={{
-                                fontFamily: "'Anek Malayalam', 'Playfair Display', serif",
-                                fontWeight: 800,
-                                fontSize: 32,
-                                color: "#1B4D3E",
-                                lineHeight: 1.3,
-                                marginBottom: 8,
-                              }}>
-                                {posterBook.title}
-                              </div>
-                              <div style={{
-                                fontSize: 18,
-                                fontWeight: 600,
-                                color: "#8B2E3C",
-                                marginBottom: 18,
-                              }}>
-                                {posterBook.author || "Unknown Author"}
-                              </div>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                                <span style={{
-                                  background: "#F0E6D0", border: "1px solid #E8DCC0", borderRadius: 8,
-                                  padding: "6px 12px", fontSize: 13, fontWeight: 700, color: "#5A5040",
-                                }}>
-                                  {posterBook.code}
-                                </span>
-                                <span style={{
-                                  background: "#fff", border: "1px solid #E8DCC0", borderRadius: 8,
-                                  padding: "6px 12px", fontSize: 13, fontWeight: 600, color: "#7A6F5D",
-                                }}>
-                                  {posterBook.category || "Uncategorized"}
-                                </span>
-                                <span style={{
-                                  background: (posterBook.availableCopies || 0) > 0 ? "#E1F0E6" : "#F3E1E0",
-                                  borderRadius: 8,
-                                  padding: "6px 12px", fontSize: 13, fontWeight: 700,
-                                  color: (posterBook.availableCopies || 0) > 0 ? "#1F7A52" : "#8B2E3C",
-                                }}>
-                                  {(posterBook.availableCopies || 0) > 0 ? "Available" : "All Issued"}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Description card */}
-                          <div style={{
-                            background: "#fff",
-                            border: "1px solid #E8DCC0",
-                            borderRadius: 16,
-                            padding: "22px 24px",
-                            flex: 1,
-                            minHeight: 200,
-                          }}>
-                            <div style={{
-                              fontSize: 16,
-                              lineHeight: 1.8,
-                              color: "#2B2420",
-                              whiteSpace: "pre-wrap",
-                            }}>
-                              {posterBook.description
-                                || "No description available for this book yet. Add a short description in the Book Catalog for a richer notice-board poster."}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div style={{
-                          borderTop: "2px solid #C9A227",
-                          background: "#FBF2D9",
-                          padding: "12px 28px",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          fontSize: 12,
-                          color: "#7A6F5D",
-                          fontWeight: 600,
-                          flexShrink: 0,
-                        }}>
-                          <span>Digital Book Card · Notice Board Display</span>
-                          <span>{appSettings.libraryName || "NMMI Islamic Library"}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Modal>
-            );
-          })()}
-
-          {sheet === "issue" && (
+{sheet === "issue" && (
             <Modal title="Issue Book" onClose={() => setSheet(null)}>
               {selectedStudent ? (
                 <div className="current-pick">
@@ -3693,7 +3406,6 @@ export default function App() {
                   <div style={{ display: "flex", gap: ".7rem", flexWrap: "wrap" }}>
                     <button onClick={() => { setSheet("catalog"); startEditBook(dBook); }}><Pencil size={12} style={{ verticalAlign: "-1px" }} /> Edit</button>
                     <button onClick={() => { deleteBook(dBook); setSheet(null); }}><Trash2 size={12} style={{ verticalAlign: "-1px" }} /> Remove</button>
-                    <button onClick={() => { setPosterBookId(dBook.id); setPosterQuery(""); setSheet("noticeBoard"); }}><Image size={12} style={{ verticalAlign: "-1px" }} /> Poster</button>
                   </div>
                 </div>
                 <h2 style={{ fontFamily: "'Playfair Display', 'Noto Serif Malayalam', serif", fontSize: ".98rem", color: "var(--navy)", marginBottom: ".4rem" }}>Currently issued to</h2>
