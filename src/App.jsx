@@ -16,7 +16,7 @@ import {
 } from "firebase/auth";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc, addDoc,
-  query, where, getDocs, deleteDoc, writeBatch, limit, increment
+  query, where, getDocs, getDoc, deleteDoc, writeBatch, limit, increment
 } from "firebase/firestore";
 
 const DEFAULT_CLASSES = ["CLASS-1", "CLASS-2", "CLASS-3", "CLASS-4", "CLASS-5", "CLASS-6"];
@@ -1420,8 +1420,12 @@ export default function App() {
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
       const list = snap.exists() ? snap.data().list : null;
-      if (Array.isArray(list) && list.length > 0) setCategories(list);
-      else { setCategories(DEFAULT_CATEGORIES); try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {} }
+      if (Array.isArray(list)) {
+        setCategories(list);
+      } else {
+        setCategories(DEFAULT_CATEGORIES);
+        try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {}
+      }
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "app"), (snap) => {
       if (snap.exists()) { const merged = { ...SETTINGS_DEFAULTS, ...snap.data() }; setAppSettings(merged); setSettingsDraft(merged); }
@@ -1523,26 +1527,67 @@ export default function App() {
     if (!window.confirm(count > 0 ? `${count} student(s) are in "${name}". Remove the class anyway?` : `Remove class "${name}"?`)) return;
     try { await setDoc(doc(db, "settings", "classes"), { list: classes.filter((c) => c !== name) }); } catch {}
   }
-  async function addCategory(e) {
-    e.preventDefault(); const name = newCategoryName.trim(); if (!name) return;
-    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewCategoryName(""); return; }
-    try { await setDoc(doc(db, "settings", "bookCategories"), { list: [...categories, name] }); } catch {}
-    setNewCategoryName("");
+  async function loadCategoryList() {
+    try {
+      const snap = await getDoc(doc(db, "settings", "bookCategories"));
+      if (snap.exists() && Array.isArray(snap.data().list)) return snap.data().list;
+    } catch {}
+    return Array.isArray(categories) ? [...categories] : [];
   }
+
+  async function addCategory(e) {
+    e.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) {
+      alert("Enter a category name.");
+      return;
+    }
+    try {
+      const current = await loadCategoryList();
+      if (current.some((c) => String(c).toLowerCase() === name.toLowerCase())) {
+        alert(`Category "${name}" already exists.`);
+        setNewCategoryName("");
+        return;
+      }
+      const next = [...current, name];
+      await setDoc(doc(db, "settings", "bookCategories"), { list: next });
+      setCategories(next);
+      setNewCategoryName("");
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't add category. Check your connection and try again.");
+    }
+  }
+
   function startEditCategory(n) { setEditingCategoryOld(n); setEditCategoryName(n); }
   function cancelEditCategory() { setEditingCategoryOld(null); }
+
   async function saveEditCategory(e) {
-    e.preventDefault(); const oldName = editingCategoryOld, newName = editCategoryName.trim();
+    e.preventDefault();
+    const oldName = editingCategoryOld;
+    const newName = editCategoryName.trim();
     if (!newName || newName === oldName) { setEditingCategoryOld(null); return; }
-    if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
     try {
-      await setDoc(doc(db, "settings", "bookCategories"), { list: categories.map((c) => (c === oldName ? newName : c)) });
+      const current = await loadCategoryList();
+      if (current.some((c) => c !== oldName && String(c).toLowerCase() === newName.toLowerCase())) {
+        alert(`Category "${newName}" already exists.`);
+        return;
+      }
+      const next = current.map((c) => (c === oldName ? newName : c));
+      await setDoc(doc(db, "settings", "bookCategories"), { list: next });
+      setCategories(next);
       const q = query(collection(db, "books"), where("category", "==", oldName));
       const snap = await getDocs(q);
-      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch {} }
-    } catch {}
-    setEditingCategoryOld(null);
+      for (const d of snap.docs) {
+        try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch {}
+      }
+      setEditingCategoryOld(null);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't rename category. Please try again.");
+    }
   }
+
   async function deleteCategory(name) {
     const inCategory = books.filter((b) => (b.category || "") === name);
     const count = inCategory.length;
@@ -1550,38 +1595,42 @@ export default function App() {
     if (count === 0) {
       if (!window.confirm(`Remove empty category "${name}"?`)) return;
       try {
-        await setDoc(doc(db, "settings", "bookCategories"), { list: categories.filter((c) => c !== name) });
-      } catch {}
+        const current = await loadCategoryList();
+        const next = current.filter((c) => c !== name);
+        await setDoc(doc(db, "settings", "bookCategories"), { list: next });
+        setCategories(next);
+      } catch (err) {
+        console.error(err);
+        alert("Couldn't remove category.");
+      }
       return;
     }
 
-    // Block if any book in this category is currently issued
     const issued = inCategory.filter((b) =>
       transactions.some((t) => t.bookId === b.id && !t.returnDate)
     );
     if (issued.length > 0) {
       alert(
-        `Cannot delete "${name}".\n\n${issued.length} book(s) in this section are still issued to students.\nReturn them first, then delete the section.`
+        `Cannot delete "${name}".\n\n${issued.length} book(s) in this section are still issued.\nReturn them first, then delete the section.`
       );
       return;
     }
 
-    const ok = window.confirm(
-      `Delete section "${name}" and all ${count} book(s) in it?\n\nThis removes the books from the library permanently. This cannot be undone.`
-    );
-    if (!ok) return;
+    if (!window.confirm(
+      `Delete section "${name}" and all ${count} book(s) in it?\n\nBooks will be removed permanently.`
+    )) return;
 
     try {
-      // Delete books in batches of 400 (Firestore limit is 500)
       for (let i = 0; i < inCategory.length; i += 400) {
         const chunk = inCategory.slice(i, i + 400);
         const batch = writeBatch(db);
         chunk.forEach((b) => batch.delete(doc(db, "books", b.id)));
         await batch.commit();
       }
-      await setDoc(doc(db, "settings", "bookCategories"), {
-        list: categories.filter((c) => c !== name),
-      });
+      const current = await loadCategoryList();
+      const next = current.filter((c) => c !== name);
+      await setDoc(doc(db, "settings", "bookCategories"), { list: next });
+      setCategories(next);
     } catch (err) {
       console.error(err);
       alert("Couldn't fully delete the section. Please try again.");
