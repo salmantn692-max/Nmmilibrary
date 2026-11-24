@@ -5,7 +5,7 @@ import {
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
   Settings, Save, Palette, FileDown, BookOpen, Heart, Share2, Sparkles,
-  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic
+  Filter, ChevronUp, ChevronDown, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic, Menu, Home
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -16,7 +16,7 @@ import {
 } from "firebase/auth";
 import {
   collection, doc, onSnapshot, setDoc, updateDoc, addDoc,
-  query, where, getDocs, getDoc, deleteDoc, writeBatch, limit, increment
+  query, where, getDocs, deleteDoc, writeBatch, limit, increment
 } from "firebase/firestore";
 
 const DEFAULT_CLASSES = ["CLASS-1", "CLASS-2", "CLASS-3", "CLASS-4", "CLASS-5", "CLASS-6"];
@@ -57,6 +57,13 @@ function inferCategoryFromCode(code) {
 }
 function normCode(s) { return (s || "").replace(/\s+/g, "").toLowerCase(); }
 function stripSpaces(s) { return (s || "").replace(/\s+/g, ""); }
+/** Natural order for codes: SH1, SH2, … SH9, SH10 (not SH1, SH10, SH2) */
+function compareBookCodes(a, b) {
+  return String(a || "").trim().localeCompare(String(b || "").trim(), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
 function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -456,6 +463,8 @@ export function PublicCatalog() {
   const [availableOnly, setAvailableOnly] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [viewMode, setViewMode] = useState("browse");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(24);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [listening, setListening] = useState(false);
@@ -552,14 +561,19 @@ export function PublicCatalog() {
         normCode(b.code).includes(normCode(q))
       );
     }
-    if (sortBy === "popular") {
-      list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
+    // Within a section (or no search): code order SH1, SH2, … SH10
+    if (selectedCategory !== "ALL" && !q) {
+      list.sort((a, b) => compareBookCodes(a.code, b.code));
+    } else if (sortBy === "popular") {
+      list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || compareBookCodes(a.code, b.code));
     } else if (sortBy === "available") {
-      list.sort((a, b) => (b.availableCopies || 0) - (a.availableCopies || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
+      list.sort((a, b) => (b.availableCopies || 0) - (a.availableCopies || 0) || compareBookCodes(a.code, b.code));
     } else if (sortBy === "title") {
-      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ml"));
+      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ml") || compareBookCodes(a.code, b.code));
     } else if (sortBy === "newest") {
-      list.sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
+      list.sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")) || compareBookCodes(a.code, b.code));
+    } else {
+      list.sort((a, b) => compareBookCodes(a.code, b.code));
     }
     return list;
   }, [query, books, selectedCategory, sortBy, availableOnly, viewMode, wishlistBooks]);
@@ -928,9 +942,91 @@ export function PublicCatalog() {
         .pc-action-btn.on { border-color:var(--sky); background:#FBF2D9; color:var(--navy); }
         .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:.98rem; line-height:1.6; color:var(--text); margin-top:.9rem; padding-top:.9rem; border-top:1px solid var(--line); white-space:pre-wrap; }
         .pc-result-count { font-size:.8rem; color:var(--text-soft); padding:0 1.1rem .4rem; max-width:920px; margin:0 auto; font-weight:600; }
+
+        .pc-header { position: relative; }
+        .pc-menu-btn {
+          position: absolute; left: 0.85rem; top: 1.1rem;
+          width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
+          background: #fff; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--navy); box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+          z-index: 2;
+        }
+        .pc-drawer-backdrop {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.42); z-index: 80;
+          animation: pcFadeIn .2s ease;
+        }
+        @keyframes pcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .pc-drawer {
+          position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 88vw);
+          background: #fff; z-index: 90; box-shadow: 8px 0 28px rgba(0,0,0,0.14);
+          display: flex; flex-direction: column;
+          animation: pcSlideIn .25s cubic-bezier(.16,1,.3,1);
+        }
+        @keyframes pcSlideIn { from { transform: translateX(-102%); } to { transform: translateX(0); } }
+        .pc-drawer-head {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 1rem 1rem 0.9rem; border-bottom: 1px solid var(--line);
+        }
+        .pc-drawer-head .title {
+          font-family: 'Anek Malayalam', 'Playfair Display', serif;
+          font-weight: 800; font-size: 1.05rem; color: var(--navy);
+        }
+        .pc-drawer-close {
+          width: 36px; height: 36px; border-radius: 50%; border: none;
+          background: var(--row-bg); display: flex; align-items: center; justify-content: center;
+          cursor: pointer; color: var(--text);
+        }
+        .pc-drawer-nav { flex: 1; overflow-y: auto; padding: 0.45rem 0 1.5rem; -webkit-overflow-scrolling: touch; }
+        .pc-nav-item {
+          display: flex; align-items: center; gap: 0.7rem; width: 100%;
+          padding: 0.85rem 1.15rem; border: none; background: transparent;
+          font-size: 0.95rem; font-weight: 600; color: var(--text);
+          cursor: pointer; text-align: left; font-family: inherit;
+          transition: background .15s;
+        }
+        .pc-nav-item:hover { background: #F7F3E8; }
+        .pc-nav-item.active { background: #EAF3EC; color: var(--navy); }
+        .pc-nav-item svg { flex-shrink: 0; color: var(--navy); }
+        .pc-nav-item .chev {
+          margin-left: auto; color: var(--text-soft);
+          transition: transform .28s cubic-bezier(.16,1,.3,1);
+          display: flex; align-items: center;
+        }
+        .pc-nav-item .chev.open { transform: rotate(180deg); }
+        .pc-nav-sub {
+          overflow: hidden;
+          max-height: 0;
+          opacity: 0;
+          transition: max-height .35s cubic-bezier(.16,1,.3,1), opacity .25s ease;
+          border-left: 2px solid var(--line);
+          margin-left: 1.55rem;
+        }
+        .pc-nav-sub.open {
+          max-height: min(70vh, 2000px);
+          opacity: 1;
+        }
+        .pc-nav-sub-item {
+          display: flex; align-items: center; justify-content: space-between;
+          width: 100%; padding: 0.55rem 1rem 0.55rem 0.85rem;
+          border: none; background: transparent; cursor: pointer;
+          font-size: 0.88rem; font-weight: 600; color: var(--text);
+          text-align: left; font-family: inherit;
+          transition: background .12s, transform .12s;
+        }
+        .pc-nav-sub-item:hover { background: #F7F3E8; }
+        .pc-nav-sub-item.active { color: var(--navy); background: #EAF3EC; }
+        .pc-nav-sub-item .count {
+          font-size: 0.72rem; font-weight: 700; color: var(--text-soft);
+          background: var(--row-bg); padding: 0.12rem 0.45rem; border-radius: 999px;
+          flex-shrink: 0;
+        }
+        .pc-nav-sub-item.active .count { background: #fff; color: var(--navy); }
       `}</style>
 
       <div className="pc-header">
+        <button type="button" className="pc-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu">
+          <Menu size={20} />
+        </button>
         <h1>NMMI ISLAMIC LIBRARY</h1>
         <div className="pc-sub">Digital Book Catalog</div>
         {!loading && (
@@ -950,6 +1046,92 @@ export function PublicCatalog() {
           </button>
         </div>
       </div>
+
+      {menuOpen && (
+        <>
+          <div className="pc-drawer-backdrop" onClick={() => setMenuOpen(false)} />
+          <aside className="pc-drawer" role="dialog" aria-label="Catalog menu">
+            <div className="pc-drawer-head">
+              <div className="title">Menu</div>
+              <button type="button" className="pc-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+                <X size={18} />
+              </button>
+            </div>
+            <nav className="pc-drawer-nav">
+              <button
+                type="button"
+                className={`pc-nav-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
+                onClick={() => {
+                  setViewMode("browse");
+                  setSelectedCategory("ALL");
+                  setMenuOpen(false);
+                }}
+              >
+                <Home size={18} /> Home
+              </button>
+              <button
+                type="button"
+                className={`pc-nav-item ${viewMode === "wishlist" ? "active" : ""}`}
+                onClick={() => {
+                  setViewMode("wishlist");
+                  setMenuOpen(false);
+                }}
+              >
+                <Bookmark size={18} /> My Favourites
+                {wishlistIds.length > 0 && (
+                  <span className="count" style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 700, background: "var(--row-bg)", padding: "0.12rem 0.45rem", borderRadius: 999 }}>
+                    {wishlistIds.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="pc-nav-item"
+                onClick={() => setCategoriesOpen((v) => !v)}
+                aria-expanded={categoriesOpen}
+              >
+                <LayoutGrid size={18} /> Categories
+                <span className={`chev ${categoriesOpen ? "open" : ""}`}>
+                  <ChevronDown size={18} />
+                </span>
+              </button>
+              <div className={`pc-nav-sub ${categoriesOpen ? "open" : ""}`}>
+                <button
+                  type="button"
+                  className={`pc-nav-sub-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
+                  onClick={() => {
+                    setViewMode("browse");
+                    setSelectedCategory("ALL");
+                    setMenuOpen(false);
+                  }}
+                >
+                  <span>All Books</span>
+                  <span className="count">{categoryCounts.ALL || 0}</span>
+                </button>
+                {categoriesList.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`pc-nav-sub-item ${selectedCategory === c ? "active" : ""}`}
+                    onClick={() => {
+                      setViewMode("browse");
+                      setSelectedCategory(c);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{c}</span>
+                    <span className="count">{categoryCounts[c] || 0}</span>
+                  </button>
+                ))}
+                {categoriesList.length === 0 && (
+                  <div style={{ padding: "0.5rem 1rem", fontSize: "0.82rem", color: "var(--text-soft)" }}>No categories yet</div>
+                )}
+              </div>
+            </nav>
+          </aside>
+        </>
+      )}
       
       <div className="pc-search-wrap">
         <Search size={18} className="pc-search-icon" />
@@ -1420,12 +1602,8 @@ export default function App() {
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
       const list = snap.exists() ? snap.data().list : null;
-      if (Array.isArray(list)) {
-        setCategories(list);
-      } else {
-        setCategories(DEFAULT_CATEGORIES);
-        try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {}
-      }
+      if (Array.isArray(list) && list.length > 0) setCategories(list);
+      else { setCategories(DEFAULT_CATEGORIES); try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {} }
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "app"), (snap) => {
       if (snap.exists()) { const merged = { ...SETTINGS_DEFAULTS, ...snap.data() }; setAppSettings(merged); setSettingsDraft(merged); }
@@ -1527,114 +1705,35 @@ export default function App() {
     if (!window.confirm(count > 0 ? `${count} student(s) are in "${name}". Remove the class anyway?` : `Remove class "${name}"?`)) return;
     try { await setDoc(doc(db, "settings", "classes"), { list: classes.filter((c) => c !== name) }); } catch {}
   }
-  async function loadCategoryList() {
-    try {
-      const snap = await getDoc(doc(db, "settings", "bookCategories"));
-      if (snap.exists() && Array.isArray(snap.data().list)) return snap.data().list;
-    } catch {}
-    return Array.isArray(categories) ? [...categories] : [];
-  }
-
   async function addCategory(e) {
-    e.preventDefault();
-    const name = newCategoryName.trim();
-    if (!name) {
-      alert("Enter a category name.");
-      return;
-    }
-    try {
-      const current = await loadCategoryList();
-      if (current.some((c) => String(c).toLowerCase() === name.toLowerCase())) {
-        alert(`Category "${name}" already exists.`);
-        setNewCategoryName("");
-        return;
-      }
-      const next = [...current, name];
-      await setDoc(doc(db, "settings", "bookCategories"), { list: next });
-      setCategories(next);
-      setNewCategoryName("");
-    } catch (err) {
-      console.error(err);
-      alert("Couldn't add category. Check your connection and try again.");
-    }
+    e.preventDefault(); const name = newCategoryName.trim(); if (!name) return;
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewCategoryName(""); return; }
+    try { await setDoc(doc(db, "settings", "bookCategories"), { list: [...categories, name] }); } catch {}
+    setNewCategoryName("");
   }
-
   function startEditCategory(n) { setEditingCategoryOld(n); setEditCategoryName(n); }
   function cancelEditCategory() { setEditingCategoryOld(null); }
-
   async function saveEditCategory(e) {
-    e.preventDefault();
-    const oldName = editingCategoryOld;
-    const newName = editCategoryName.trim();
+    e.preventDefault(); const oldName = editingCategoryOld, newName = editCategoryName.trim();
     if (!newName || newName === oldName) { setEditingCategoryOld(null); return; }
+    if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
     try {
-      const current = await loadCategoryList();
-      if (current.some((c) => c !== oldName && String(c).toLowerCase() === newName.toLowerCase())) {
-        alert(`Category "${newName}" already exists.`);
-        return;
-      }
-      const next = current.map((c) => (c === oldName ? newName : c));
-      await setDoc(doc(db, "settings", "bookCategories"), { list: next });
-      setCategories(next);
+      await setDoc(doc(db, "settings", "bookCategories"), { list: categories.map((c) => (c === oldName ? newName : c)) });
       const q = query(collection(db, "books"), where("category", "==", oldName));
       const snap = await getDocs(q);
-      for (const d of snap.docs) {
-        try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch {}
-      }
-      setEditingCategoryOld(null);
-    } catch (err) {
-      console.error(err);
-      alert("Couldn't rename category. Please try again.");
-    }
+      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch {} }
+    } catch {}
+    setEditingCategoryOld(null);
   }
-
   async function deleteCategory(name) {
-    const inCategory = books.filter((b) => (b.category || "") === name);
-    const count = inCategory.length;
-
-    if (count === 0) {
-      if (!window.confirm(`Remove empty category "${name}"?`)) return;
-      try {
-        const current = await loadCategoryList();
-        const next = current.filter((c) => c !== name);
-        await setDoc(doc(db, "settings", "bookCategories"), { list: next });
-        setCategories(next);
-      } catch (err) {
-        console.error(err);
-        alert("Couldn't remove category.");
-      }
-      return;
-    }
-
-    const issued = inCategory.filter((b) =>
-      transactions.some((t) => t.bookId === b.id && !t.returnDate)
-    );
-    if (issued.length > 0) {
-      alert(
-        `Cannot delete "${name}".\n\n${issued.length} book(s) in this section are still issued.\nReturn them first, then delete the section.`
-      );
-      return;
-    }
-
-    if (!window.confirm(
-      `Delete section "${name}" and all ${count} book(s) in it?\n\nBooks will be removed permanently.`
-    )) return;
-
+    const count = books.filter((b) => b.category === name).length;
+    if (!window.confirm(count > 0 ? `${count} book(s) are in "${name}". Remove the category anyway?` : `Remove category "${name}"?`)) return;
     try {
-      for (let i = 0; i < inCategory.length; i += 400) {
-        const chunk = inCategory.slice(i, i + 400);
-        const batch = writeBatch(db);
-        chunk.forEach((b) => batch.delete(doc(db, "books", b.id)));
-        await batch.commit();
-      }
-      const current = await loadCategoryList();
-      const next = current.filter((c) => c !== name);
-      await setDoc(doc(db, "settings", "bookCategories"), { list: next });
-      setCategories(next);
-    } catch (err) {
-      console.error(err);
-      alert("Couldn't fully delete the section. Please try again.");
-    }
+      await setDoc(doc(db, "settings", "bookCategories"), { list: categories.filter((c) => c !== name) });
+      const q = query(collection(db, "books"), where("category", "==", name));
+      const snap = await getDocs(q);
+      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: "" }); } catch {} }
+    } catch {}
   }
 
   async function addBook(e) {
@@ -1852,6 +1951,9 @@ export default function App() {
     catalogMatches.forEach((b) => {
       const cat = b.category && b.category.trim() ? b.category : UNCATEGORIZED;
       (groups[cat] = groups[cat] || []).push(b);
+    });
+    Object.keys(groups).forEach((c) => {
+      groups[c].sort((a, b) => compareBookCodes(a.code, b.code));
     });
     const ordered = [];
     categories.forEach((c) => { if (groups[c]) { ordered.push([c, groups[c]]); delete groups[c]; } });
@@ -2963,7 +3065,12 @@ export default function App() {
                       </div>
                     ))
                   : [...books]
-                      .sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: "base" }))
+                      .sort((a, b) => {
+                        const ca = (a.category || "").trim();
+                        const cb = (b.category || "").trim();
+                        if (ca !== cb) return ca.localeCompare(cb, undefined, { sensitivity: "base" });
+                        return compareBookCodes(a.code, b.code);
+                      })
                       .map((b) => (
                         <div className="id-card book-label-card" key={b.id}>
                           <div className="book-label-code">{b.code}</div>
