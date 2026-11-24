@@ -1322,6 +1322,7 @@ export default function App() {
   const [settingsDraft, setSettingsDraft] = useState(SETTINGS_DEFAULTS);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsSavedMsg, setSettingsSavedMsg] = useState("");
+  const [settingsTab, setSettingsTab] = useState("library");
 
   useEffect(() => {
     const onResize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -2245,6 +2246,16 @@ export default function App() {
         .cert-foot-item { font-size:.62rem;color:var(--text-soft);text-align:center; }
         .cert-foot-line { border-top:1px solid var(--text-soft);width:80px;margin:0 auto .2rem; }
 
+        .settings-tabs {
+          display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:1rem;border-bottom:1px solid var(--line);padding-bottom:.65rem;
+        }
+        .settings-tab {
+          display:inline-flex;align-items:center;gap:.35rem;background:transparent;border:1px solid var(--line);
+          border-radius:999px;padding:.4rem .85rem;font-size:.8rem;font-weight:700;cursor:pointer;
+          color:var(--text-soft);font-family:inherit;transition:all .15s;
+        }
+        .settings-tab.active { background:var(--navy);color:#fff;border-color:var(--navy); }
+        .settings-tab:hover:not(.active) { background:var(--row-bg); }
         .settings-sections { display:flex;flex-direction:column;gap:1rem; }
         .settings-section { background:#FAF6EC;border:1px solid var(--line);border-radius:10px;padding:.95rem 1.05rem; }
         .settings-section h3 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif;font-size:.95rem;color:var(--navy);margin:0 0 .7rem;display:flex;align-items:center;gap:.45rem;line-height:1.4; }
@@ -2319,8 +2330,7 @@ export default function App() {
           .modal-panel .row-card .meta { font-size:.78rem; }
           .modal-panel th,.modal-panel td { padding:.65rem .4rem;font-size:.86rem; }
           .settings-footer { bottom:-1.8rem;margin:1.2rem -1.8rem -1.8rem;padding:1rem 1.8rem; }
-          .settings-sections { display:grid;grid-template-columns:1fr 1fr;gap:1rem; }
-          .settings-section:first-child,.settings-section:nth-child(5) { grid-column:1 / -1; }
+          .settings-sections { display:flex;flex-direction:column;gap:1rem; }
           .empty { padding:3rem 1rem; }
         }
         @media (min-width:1440px) { .student-list { grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); } }
@@ -2461,6 +2471,9 @@ export default function App() {
         .app.dark .settings-section { background:#232528; }
         .app.dark .settings-section h3 { color:#e8e3d8; }
         .app.dark .settings-footer { background:#1a1c1f; }
+        .app.dark .settings-tab { border-color:#34373c; color:var(--text-soft); }
+        .app.dark .settings-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
+        .app.dark .settings-tab:hover:not(.active) { background:#232528; }
         .app.dark input[type="text"],.app.dark input[type="number"],.app.dark input[type="search"],
         .app.dark input[type="month"],.app.dark input[type="email"],.app.dark input[type="password"],
         .app.dark input[type="tel"],.app.dark select,.app.dark textarea {
@@ -2532,7 +2545,7 @@ export default function App() {
                 <Award size={18} /> Certificate
               </button>
               <button onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
-              <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
+              <button onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSettingsTab("library"); setSheet("settings"); }}>
                 <Settings size={18} /> Settings
               </button>
             </nav>
@@ -2694,7 +2707,7 @@ export default function App() {
                   <Award size={18} /> Monthly Certificate
                 </button>
                 <button className="menu-row" onClick={() => setSheet("printCards")}><Printer size={18} /> Print QR Labels</button>
-                <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSheet("settings"); }}>
+                <button className="menu-row" onClick={() => { setSettingsDraft(appSettings); setSettingsSavedMsg(""); setSettingsTab("library"); setSheet("settings"); }}>
                   <Settings size={18} /> Settings
                 </button>
                 <button className="menu-row" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
@@ -2722,92 +2735,129 @@ export default function App() {
 
           {sheet === "settings" && (
             <Modal title="Settings" onClose={() => setSheet(null)} wide>
-              <div className="settings-sections">
-                <div className="settings-section">
-                  <h3><Library size={16} /> Library Info</h3>
-                  <div className="field">
-                    <label>Library name</label>
-                    <input type="text" value={settingsDraft.libraryName} onChange={(e) => setSettingsDraft({ ...settingsDraft, libraryName: e.target.value })} />
-                  </div>
-                  <div className="field">
-                    <label>Subtitle</label>
-                    <input type="text" value={settingsDraft.librarySubtitle} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarySubtitle: e.target.value })} />
-                  </div>
-                  <div className="form-grid">
-                    <div>
-                      <label>Librarian name</label>
-                      <input type="text" value={settingsDraft.librarianName} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarianName: e.target.value })} placeholder="For certificates" />
-                    </div>
-                    <div>
-                      <label>Phone</label>
-                      <input type="tel" value={settingsDraft.phone} onChange={(e) => setSettingsDraft({ ...settingsDraft, phone: e.target.value })} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="settings-section">
-                  <h3><Clock size={16} /> Loan Rules</h3>
-                  <div className="form-grid">
-                    <div>
-                      <label>Default loan days</label>
-                      <input type="number" min="1" value={settingsDraft.defaultLoanDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, defaultLoanDays: parseInt(e.target.value) || 14 })} />
-                    </div>
-                    <div>
-                      <label>Max books per student (0 = unlimited)</label>
-                      <input type="number" min="0" value={settingsDraft.maxBooksPerStudent} onChange={(e) => setSettingsDraft({ ...settingsDraft, maxBooksPerStudent: parseInt(e.target.value) || 0 })} />
-                    </div>
-                  </div>
-                  <div className="form-grid">
-                    <div>
-                      <label>Fine per day (₹)</label>
-                      <input type="number" min="0" value={settingsDraft.finePerDay} onChange={(e) => setSettingsDraft({ ...settingsDraft, finePerDay: parseInt(e.target.value) || 0 })} />
-                    </div>
-                    <div>
-                      <label>Grace days before fine</label>
-                      <input type="number" min="0" value={settingsDraft.graceDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, graceDays: parseInt(e.target.value) || 0 })} />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="settings-section">
-                  <h3><Palette size={16} /> Appearance</h3>
-                  <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: 0 }}>
-                    <input type="checkbox" checked={settingsDraft.darkMode} onChange={(e) => setSettingsDraft({ ...settingsDraft, darkMode: e.target.checked })} style={{ width: "auto", margin: 0 }} />
-                    Dark mode
-                  </label>
-                </div>
-
-                <div className="settings-section">
-                  <h3><FileDown size={16} /> Data & Backup</h3>
-                  <p style={{ fontSize: ".8rem", color: "var(--text-soft)", margin: "0 0 .7rem" }}>
-                    Download a snapshot of your library data as CSV. Safe to open in Excel or Google Sheets.
-                  </p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                    <button type="button" className="btn secondary" onClick={exportBooksCSV}><FileDown size={14} /> Books</button>
-                    <button type="button" className="btn secondary" onClick={exportStudentsCSV}><FileDown size={14} /> Students</button>
-                    <button type="button" className="btn secondary" onClick={exportTransactionsCSV}><FileDown size={14} /> Transactions</button>
-                  </div>
-                </div>
-
-                <div className="settings-section">
-                  <h3><Lock size={16} /> Account</h3>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
-                    <button type="button" className="btn secondary" onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSheet("changePassword"); }}>
-                      <Lock size={14} /> Change Password
-                    </button>
-                    <button type="button" className="btn secondary" onClick={handleSignOut}><LogOut size={14} /> Sign Out</button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-footer">
-                {settingsSavedMsg && (
-                  <div style={{ color: settingsSavedMsg.startsWith("✅") ? "#1F8A5E" : "var(--danger)", fontSize: ".84rem", fontWeight: 700 }}>{settingsSavedMsg}</div>
-                )}
-                <button className="btn full" onClick={saveSettings} disabled={settingsSaving}>
-                  <Save size={16} /> {settingsSaving ? "Saving..." : "Save Settings"}
+              <div className="settings-tabs">
+                <button type="button" className={`settings-tab ${settingsTab === "library" ? "active" : ""}`} onClick={() => setSettingsTab("library")}>
+                  <Library size={14} /> Library Info
+                </button>
+                <button type="button" className={`settings-tab ${settingsTab === "loan" ? "active" : ""}`} onClick={() => setSettingsTab("loan")}>
+                  <Clock size={14} /> Loan Rules
+                </button>
+                <button type="button" className={`settings-tab ${settingsTab === "appearance" ? "active" : ""}`} onClick={() => setSettingsTab("appearance")}>
+                  <Palette size={14} /> Appearance
+                </button>
+                <button type="button" className={`settings-tab ${settingsTab === "data" ? "active" : ""}`} onClick={() => setSettingsTab("data")}>
+                  <FileDown size={14} /> Data & Backup
+                </button>
+                <button type="button" className={`settings-tab ${settingsTab === "account" ? "active" : ""}`} onClick={() => { setChangeNewPw(""); setChangeNewPw2(""); setChangeError(""); setChangeSuccess(false); setSettingsTab("account"); }}>
+                  <Lock size={14} /> Account
                 </button>
               </div>
+
+              <div className="settings-sections">
+                {settingsTab === "library" && (
+                  <div className="settings-section">
+                    <h3><Library size={16} /> Library Info</h3>
+                    <div className="field">
+                      <label>Library name</label>
+                      <input type="text" value={settingsDraft.libraryName} onChange={(e) => setSettingsDraft({ ...settingsDraft, libraryName: e.target.value })} />
+                    </div>
+                    <div className="field">
+                      <label>Subtitle</label>
+                      <input type="text" value={settingsDraft.librarySubtitle} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarySubtitle: e.target.value })} />
+                    </div>
+                    <div className="form-grid">
+                      <div>
+                        <label>Librarian name</label>
+                        <input type="text" value={settingsDraft.librarianName} onChange={(e) => setSettingsDraft({ ...settingsDraft, librarianName: e.target.value })} placeholder="For certificates" />
+                      </div>
+                      <div>
+                        <label>Phone</label>
+                        <input type="tel" value={settingsDraft.phone} onChange={(e) => setSettingsDraft({ ...settingsDraft, phone: e.target.value })} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {settingsTab === "loan" && (
+                  <div className="settings-section">
+                    <h3><Clock size={16} /> Loan Rules</h3>
+                    <div className="form-grid">
+                      <div>
+                        <label>Default loan days</label>
+                        <input type="number" min="1" value={settingsDraft.defaultLoanDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, defaultLoanDays: parseInt(e.target.value) || 14 })} />
+                      </div>
+                      <div>
+                        <label>Max books per student (0 = unlimited)</label>
+                        <input type="number" min="0" value={settingsDraft.maxBooksPerStudent} onChange={(e) => setSettingsDraft({ ...settingsDraft, maxBooksPerStudent: parseInt(e.target.value) || 0 })} />
+                      </div>
+                    </div>
+                    <div className="form-grid">
+                      <div>
+                        <label>Fine per day (₹)</label>
+                        <input type="number" min="0" value={settingsDraft.finePerDay} onChange={(e) => setSettingsDraft({ ...settingsDraft, finePerDay: parseInt(e.target.value) || 0 })} />
+                      </div>
+                      <div>
+                        <label>Grace days before fine</label>
+                        <input type="number" min="0" value={settingsDraft.graceDays} onChange={(e) => setSettingsDraft({ ...settingsDraft, graceDays: parseInt(e.target.value) || 0 })} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {settingsTab === "appearance" && (
+                  <div className="settings-section">
+                    <h3><Palette size={16} /> Appearance</h3>
+                    <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: 0 }}>
+                      <input type="checkbox" checked={settingsDraft.darkMode} onChange={(e) => setSettingsDraft({ ...settingsDraft, darkMode: e.target.checked })} style={{ width: "auto", margin: 0 }} />
+                      Dark mode
+                    </label>
+                  </div>
+                )}
+
+                {settingsTab === "data" && (
+                  <div className="settings-section">
+                    <h3><FileDown size={16} /> Data & Backup</h3>
+                    <p style={{ fontSize: ".8rem", color: "var(--text-soft)", margin: "0 0 .7rem" }}>
+                      Download a snapshot of your library data as CSV. Safe to open in Excel or Google Sheets.
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: ".5rem" }}>
+                      <button type="button" className="btn secondary" onClick={exportBooksCSV}><FileDown size={14} /> Books</button>
+                      <button type="button" className="btn secondary" onClick={exportStudentsCSV}><FileDown size={14} /> Students</button>
+                      <button type="button" className="btn secondary" onClick={exportTransactionsCSV}><FileDown size={14} /> Transactions</button>
+                    </div>
+                  </div>
+                )}
+
+                {settingsTab === "account" && (
+                  <div className="settings-section">
+                    <h3><Lock size={16} /> Account</h3>
+                    {changeSuccess ? (
+                      <div className="empty" style={{ padding: "1rem 0" }}><Check size={18} style={{ marginBottom: ".3rem" }} /><br />Password updated.</div>
+                    ) : (
+                      <form onSubmit={handleChangePassword}>
+                        {changeError && <div className="lock-error">{changeError}</div>}
+                        <div className="field"><label>New password</label><input type="password" value={changeNewPw} onChange={(e) => setChangeNewPw(e.target.value)} required /></div>
+                        <div className="field"><label>Confirm new password</label><input type="password" value={changeNewPw2} onChange={(e) => setChangeNewPw2(e.target.value)} required /></div>
+                        <button type="submit" className="btn full"><Lock size={15} /> Update Password</button>
+                      </form>
+                    )}
+                    <div style={{ borderTop: "1px solid var(--line)", marginTop: "1.1rem", paddingTop: ".9rem" }}>
+                      <button type="button" className="btn secondary full" onClick={handleSignOut}><LogOut size={15} /> Sign Out</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {settingsTab !== "account" && (
+                <div className="settings-footer">
+                  {settingsSavedMsg && (
+                    <div style={{ color: settingsSavedMsg.startsWith("✅") ? "#1F8A5E" : "var(--danger)", fontSize: ".84rem", fontWeight: 700 }}>{settingsSavedMsg}</div>
+                  )}
+                  <button className="btn full" onClick={saveSettings} disabled={settingsSaving}>
+                    <Save size={16} /> {settingsSaving ? "Saving..." : "Save Settings"}
+                  </button>
+                </div>
+              )}
             </Modal>
           )}
 
