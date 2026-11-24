@@ -37,7 +37,6 @@ const SETTINGS_DEFAULTS = {
   graceDays: 0,
   reminderDaysBefore: 2,
   darkMode: false,
-  catalogHeroImageUrl: "",
 };
 
 function bookQrValue(code) { return BOOK_QR_PREFIX + stripSpaces(code); }
@@ -451,34 +450,19 @@ export function PublicCatalog() {
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedBook, setSelectedBook] = useState(null);
-  const [catalogSettings, setCatalogSettings] = useState(SETTINGS_DEFAULTS);
-  const [heroImgOk, setHeroImgOk] = useState(true);
 
   const [visibleCount, setVisibleCount] = useState(20);
   const observerTarget = useRef(null);
 
   // Liked IDs state - prevents whole list re-render and double count
   const [likedIds, setLikedIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]"); } catch { return []; }
+    return JSON.parse(localStorage.getItem("nmmi_liked_books") || "[]");
   });
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "books"),
       (qsnap) => { setBooks(qsnap.docs.map((d) => ({ id: d.id, ...d.data() }))); setLoading(false); },
       () => setLoading(false)
-    );
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, "settings", "app"),
-      (snap) => {
-        if (snap.exists()) {
-          setCatalogSettings({ ...SETTINGS_DEFAULTS, ...snap.data() });
-          setHeroImgOk(true);
-        }
-      },
-      () => {}
     );
     return unsub;
   }, []);
@@ -507,15 +491,6 @@ export function PublicCatalog() {
       normCode(b.code).includes(normCode(q))
     );
   }, [query, books, selectedCategory]);
-
-  const catalogStats = useMemo(() => {
-    const available = books.reduce((n, b) => n + ((b.availableCopies || 0) > 0 ? 1 : 0), 0);
-    return {
-      total: books.length,
-      available,
-      categories: categoriesList.length,
-    };
-  }, [books, categoriesList]);
 
   useEffect(() => {
     setVisibleCount(20);
@@ -588,57 +563,23 @@ export function PublicCatalog() {
           padding-bottom:3rem;
         }
         
-        .pc-hero {
-          position: relative; text-align: center; padding: 2.2rem 1.2rem 1.8rem;
-          background: linear-gradient(145deg, #0F3328 0%, #1B4D3E 55%, #2C6E5C 100%);
-          background-size: cover; background-position: center;
-          color: #fff; overflow: hidden;
-        }
-        .pc-hero.has-image { background-color: #0F3328; }
-        .pc-hero-overlay {
-          position: absolute; inset: 0;
-          background: linear-gradient(180deg, rgba(12,35,28,0.45) 0%, rgba(12,35,28,0.72) 100%);
-          pointer-events: none;
-        }
-        .pc-hero-inner { position: relative; z-index: 1; max-width: 920px; margin: 0 auto; }
-        .pc-hero h1 {
-          font-family: 'Playfair Display', 'Noto Serif Malayalam', serif;
-          font-weight: 800; font-size: clamp(1.55rem, 5vw, 2.1rem);
-          margin: 0; line-height: 1.25; letter-spacing: 0.02em; color: #fff;
-          text-shadow: 0 2px 12px rgba(0,0,0,0.25);
-        }
-        .pc-hero .pc-sub {
-          font-size: 0.88rem; color: #E7C989; margin-top: 0.45rem; font-weight: 500;
-          opacity: 0.95;
-        }
-        .pc-stats-line {
-          margin-top: 1rem; font-size: 0.8rem; font-weight: 600;
-          color: rgba(255,255,255,0.88); letter-spacing: 0.01em;
-        }
-        .pc-stats-line span { opacity: 0.55; margin: 0 0.35rem; }
+        .pc-header { padding:1.5rem 1.1rem 1rem; text-align:center; border-bottom:3px solid var(--sky); background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .pc-header h1 { font-family:'Playfair Display', 'Noto Serif Malayalam', serif; font-weight:800; font-size:1.4rem; color:var(--navy); margin:0; line-height:1.3; }
+        .pc-sub { font-size:.85rem; color:var(--maroon); margin-top:.2rem; font-weight:500; }
         
-        .pc-sticky-bar {
+        .pc-search-sticky {
           position: sticky; top: 0; z-index: 30;
-          background: rgba(253,248,237,0.94);
-          backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-          border-bottom: 2px solid var(--sky);
-          box-shadow: 0 4px 16px rgba(27,77,62,0.06);
+          background: rgba(253,248,237,0.96);
+          backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
           padding: 0.75rem 1.1rem 0.65rem;
+          border-bottom: 1px solid var(--line);
+          box-shadow: 0 2px 10px rgba(27,77,62,0.06);
         }
-        .pc-search-wrap { max-width: 900px; margin: 0 auto; position: relative; }
-        .pc-search {
-          width: 100%; font-size: 1rem; padding: 0.75rem 1rem 0.75rem 2.6rem;
-          border: 1.5px solid var(--line); border-radius: 999px; background: #fff;
-          color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-          font-family: 'Anek Malayalam', inherit;
-        }
-        .pc-search:focus { outline: none; border-color: var(--sky); box-shadow: 0 0 0 3px rgba(201,162,39,0.22); }
-        .pc-search-icon {
-          position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%);
-          color: var(--text-soft); pointer-events: none;
-        }
+        .pc-search-wrap { max-width:900px; margin:0 auto; }
+        .pc-search { width:100%; font-size:1rem; padding:.75rem 1rem; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--text); box-shadow:0 2px 5px rgba(0,0,0,0.02); font-family:'Anek Malayalam', inherit; }
+        .pc-search:focus { outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(201,162,39,0.2); }
         
-        .pc-cat-scroll { display:flex; gap:.5rem; overflow-x:auto; padding:.65rem 1.1rem .35rem; max-width:900px; margin:0 auto; scrollbar-width:none; }
+        .pc-cat-scroll { display:flex; gap:.5rem; overflow-x:auto; padding:.5rem 1.1rem; max-width:900px; margin:0 auto; scrollbar-width:none; }
         .pc-cat-scroll::-webkit-scrollbar { display:none; }
         .pc-cat-btn { white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); padding:.4rem .9rem; border-radius:999px; font-size:.85rem; font-weight:600; cursor:pointer; transition:all .2s; font-family:'Anek Malayalam', inherit; }
         .pc-cat-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
@@ -745,53 +686,23 @@ export function PublicCatalog() {
           .id-card { border: 1px dashed #ccc !important; padding: 4px !important; page-break-inside: avoid !important; }
           .id-qrcode { display: block !important; visibility: visible !important; opacity: 1 !important; width: 100% !important; max-width: 110px !important; height: auto !important; }
         }
+
+
       `}</style>
 
-      {/* Hero — scrolls away; background from Settings URL */}
-      <div
-        className={`pc-hero${(catalogSettings.catalogHeroImageUrl || "").trim() && heroImgOk ? " has-image" : ""}`}
-        style={
-          (catalogSettings.catalogHeroImageUrl || "").trim() && heroImgOk
-            ? { backgroundImage: `url(${(catalogSettings.catalogHeroImageUrl || "").trim()})` }
-            : undefined
-        }
-      >
-        {(catalogSettings.catalogHeroImageUrl || "").trim() && heroImgOk && <div className="pc-hero-overlay" />}
-        <div className="pc-hero-inner">
-          <h1>{catalogSettings.libraryName || "NMMI ISLAMIC LIBRARY"}</h1>
-          <div className="pc-sub">{catalogSettings.librarySubtitle || "Digital Book Catalog"}</div>
-          {!loading && (
-            <div className="pc-stats-line">
-              <b>{catalogStats.total}</b> books
-              <span>·</span>
-              <b>{catalogStats.available}</b> available
-              <span>·</span>
-              <b>{catalogStats.categories}</b> categories
-            </div>
-          )}
-        </div>
-        {/* preload check for broken image URL */}
-        {(catalogSettings.catalogHeroImageUrl || "").trim() && (
-          <img
-            src={(catalogSettings.catalogHeroImageUrl || "").trim()}
-            alt=""
-            style={{ display: "none" }}
-            onError={() => setHeroImgOk(false)}
-            onLoad={() => setHeroImgOk(true)}
-          />
-        )}
+      <div className="pc-header">
+        <h1>NMMI ISLAMIC LIBRARY</h1>
+        <div className="pc-sub">Digital Book Catalog</div>
       </div>
-
-      {/* Search always visible while scrolling */}
-      <div className="pc-sticky-bar">
+      
+      <div className="pc-search-sticky">
         <div className="pc-search-wrap">
-          <Search size={18} className="pc-search-icon" />
-          <input
-            type="search"
-            className="pc-search"
-            placeholder="Search by title, author or code..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+          <input 
+            type="search" 
+            className="pc-search" 
+            placeholder="Search by book name, author or code..." 
+            value={query} 
+            onChange={(e) => setQuery(e.target.value)} 
           />
         </div>
       </div>
@@ -2435,32 +2346,10 @@ export default function App() {
 
                 <div className="settings-section">
                   <h3><Palette size={16} /> Appearance</h3>
-                  <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: ".85rem" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: ".6rem", cursor: "pointer", fontSize: ".92rem", color: "var(--text)", marginBottom: 0 }}>
                     <input type="checkbox" checked={settingsDraft.darkMode} onChange={(e) => setSettingsDraft({ ...settingsDraft, darkMode: e.target.checked })} style={{ width: "auto", margin: 0 }} />
                     Dark mode
                   </label>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>Student catalog background image (URL)</label>
-                    <input
-                      type="url"
-                      value={settingsDraft.catalogHeroImageUrl || ""}
-                      onChange={(e) => setSettingsDraft({ ...settingsDraft, catalogHeroImageUrl: e.target.value })}
-                      placeholder="https://example.com/college-photo.jpg"
-                    />
-                    <p style={{ fontSize: ".75rem", color: "var(--text-soft)", margin: ".4rem 0 0", lineHeight: 1.45 }}>
-                      Paste a direct image link (college / library photo). Leave empty for the default green gradient. Shows on the student catalog after Save.
-                    </p>
-                    {(settingsDraft.catalogHeroImageUrl || "").trim() && (
-                      <div style={{ marginTop: ".65rem", borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)", maxHeight: 120 }}>
-                        <img
-                          src={(settingsDraft.catalogHeroImageUrl || "").trim()}
-                          alt="Catalog background preview"
-                          style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }}
-                          onError={(e) => { e.currentTarget.style.display = "none"; }}
-                        />
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <div className="settings-section">
