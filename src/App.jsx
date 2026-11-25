@@ -490,12 +490,12 @@ export function PublicCatalog() {
     return unsub;
   }, []);
 
-  // Live staff category list — new sections appear in sidebar automatically
+  // Staff category list — keeps sidebar in sync when new sections are added
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "bookCategories"),
       (snap) => {
         const list = snap.exists() ? snap.data().list : null;
-        setSettingsCategories(Array.isArray(list) ? list : []);
+        setSettingsCategories(Array.isArray(list) ? list.map(String) : []);
       },
       () => setSettingsCategories([])
     );
@@ -527,20 +527,21 @@ export function PublicCatalog() {
     };
   }, []);
 
-  // All sections: settings list + any category found on books (auto-updates)
   const categoriesList = useMemo(() => {
     const cats = new Set();
+    // 1) Every section defined in staff Settings → Book Categories
     settingsCategories.forEach((c) => {
       const t = String(c || "").trim();
-      if (t && t !== "Uncategorized") cats.add(t);
+      if (t && t !== UNCATEGORIZED) cats.add(t);
     });
+    // 2) Every category actually used on books (covers orphaned / renamed ones)
     books.forEach((b) => {
-      const t = (b.category || "").trim();
-      if (t && t !== "Uncategorized") cats.add(t);
+      const t = String(b.category || "").trim();
+      if (t && t !== UNCATEGORIZED) cats.add(t);
     });
-    return Array.from(cats)
-      .filter((cat) => !cat.includes(",") && !cat.includes('"'))
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+    return Array.from(cats).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: "base", numeric: true })
+    );
   }, [books, settingsCategories]);
 
   const categoryCounts = useMemo(() => {
@@ -964,7 +965,7 @@ export function PublicCatalog() {
         }
         @keyframes pcFadeIn { from { opacity: 0; } to { opacity: 1; } }
         .pc-drawer {
-          position: fixed; top: 0; left: 0; bottom: 0; width: min(300px, 88vw);
+          position: fixed; top: 0; left: 0; bottom: 0; width: min(310px, 90vw);
           background: #fff; z-index: 90; box-shadow: 8px 0 28px rgba(0,0,0,0.14);
           display: flex; flex-direction: column;
           animation: pcSlideIn .25s cubic-bezier(.16,1,.3,1);
@@ -973,6 +974,7 @@ export function PublicCatalog() {
         .pc-drawer-head {
           display: flex; align-items: center; justify-content: space-between;
           padding: 1rem 1rem 0.9rem; border-bottom: 1px solid var(--line);
+          flex-shrink: 0;
         }
         .pc-drawer-head .title {
           font-family: 'Anek Malayalam', 'Playfair Display', serif;
@@ -983,13 +985,15 @@ export function PublicCatalog() {
           background: var(--row-bg); display: flex; align-items: center; justify-content: center;
           cursor: pointer; color: var(--text);
         }
-        .pc-drawer-nav { flex: 1; overflow-y: auto; padding: 0.45rem 0 1.5rem; -webkit-overflow-scrolling: touch; }
+        .pc-drawer-nav {
+          flex: 1; overflow-y: auto; padding: 0.45rem 0 2rem;
+          -webkit-overflow-scrolling: touch;
+        }
         .pc-nav-item {
           display: flex; align-items: center; gap: 0.7rem; width: 100%;
           padding: 0.85rem 1.15rem; border: none; background: transparent;
           font-size: 0.95rem; font-weight: 600; color: var(--text);
           cursor: pointer; text-align: left; font-family: inherit;
-          transition: background .15s;
         }
         .pc-nav-item:hover { background: #F7F3E8; }
         .pc-nav-item.active { background: #EAF3EC; color: var(--navy); }
@@ -1001,17 +1005,12 @@ export function PublicCatalog() {
         }
         .pc-nav-item .chev.open { transform: rotate(180deg); }
         .pc-nav-sub {
-          overflow: hidden;
-          max-height: 0;
-          opacity: 0;
-          transition: max-height .35s cubic-bezier(.16,1,.3,1), opacity .22s ease;
+          display: none;
           border-left: 2px solid var(--line);
           margin-left: 1.55rem;
+          padding-bottom: 0.35rem;
         }
-        .pc-nav-sub.open {
-          max-height: min(75vh, 2400px);
-          opacity: 1;
-        }
+        .pc-nav-sub.open { display: block; }
         @keyframes pcCatSlideDown {
           from { opacity: 0; transform: translateY(-10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -1117,7 +1116,7 @@ export function PublicCatalog() {
                     key={c}
                     type="button"
                     className={`pc-nav-sub-item ${selectedCategory === c ? "active" : ""}`}
-                    style={{ animationDelay: `${(i + 1) * 0.05}s` }}
+                    style={{ animationDelay: `${Math.min((i + 1) * 0.05, 1.2)}s` }}
                     onClick={() => { setViewMode("browse"); setSelectedCategory(c); setMenuOpen(false); }}
                   >
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{c}</span>
