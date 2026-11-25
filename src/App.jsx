@@ -5,7 +5,7 @@ import {
   ChevronRight, Lock, Camera, LogOut, Printer, Trash2, Bookmark,
   MessageCircle, CreditCard, Download, Award, GraduationCap, QrCode,
   Settings, Save, Palette, FileDown, BookOpen, Heart, Share2, Sparkles,
-  Filter, ChevronUp, ChevronDown, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic, Menu, Home
+  Filter, ChevronUp, TrendingUp, Eye, LayoutGrid, ArrowUpDown, Mic
 } from "lucide-react";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import QRCode from "qrcode";
@@ -456,9 +456,7 @@ export function PublicCatalog() {
   const [availableOnly, setAvailableOnly] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [viewMode, setViewMode] = useState("browse");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [settingsCategories, setSettingsCategories] = useState([]);
+  const [categoryMeta, setCategoryMeta] = useState({});
   const [visibleCount, setVisibleCount] = useState(24);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [listening, setListening] = useState(false);
@@ -490,14 +488,15 @@ export function PublicCatalog() {
     return unsub;
   }, []);
 
-  // Staff category list — keeps sidebar in sync when new sections are added
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "settings", "bookCategories"),
       (snap) => {
-        const list = snap.exists() ? snap.data().list : null;
-        setSettingsCategories(Array.isArray(list) ? list.map(String) : []);
+        if (!snap.exists()) { setCategoryMeta({}); return; }
+        const data = snap.data() || {};
+        const meta = data.meta && typeof data.meta === "object" ? data.meta : {};
+        setCategoryMeta(meta);
       },
-      () => setSettingsCategories([])
+      () => setCategoryMeta({})
     );
     return unsub;
   }, []);
@@ -529,20 +528,13 @@ export function PublicCatalog() {
 
   const categoriesList = useMemo(() => {
     const cats = new Set();
-    // 1) Every section defined in staff Settings → Book Categories
-    settingsCategories.forEach((c) => {
-      const t = String(c || "").trim();
-      if (t && t !== UNCATEGORIZED) cats.add(t);
-    });
-    // 2) Every category actually used on books (covers orphaned / renamed ones)
     books.forEach((b) => {
-      const t = String(b.category || "").trim();
-      if (t && t !== UNCATEGORIZED) cats.add(t);
+      if (b.category && b.category.trim() !== "" && b.category !== "Uncategorized") {
+        cats.add(b.category.trim());
+      }
     });
-    return Array.from(cats).sort((a, b) =>
-      a.localeCompare(b, undefined, { sensitivity: "base", numeric: true })
-    );
-  }, [books, settingsCategories]);
+    return Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("? 8M")).sort();
+  }, [books]);
 
   const categoryCounts = useMemo(() => {
     const map = { ALL: books.length };
@@ -568,11 +560,21 @@ export function PublicCatalog() {
     }
     const q = query.trim().toLowerCase();
     if (q) {
-      list = list.filter((b) =>
-        (b.title || "").toLowerCase().includes(q) ||
-        (b.author || "").toLowerCase().includes(q) ||
-        normCode(b.code).includes(normCode(q))
-      );
+      list = list.filter((b) => {
+        if ((b.title || "").toLowerCase().includes(q)) return true;
+        if ((b.author || "").toLowerCase().includes(q)) return true;
+        if (normCode(b.code).includes(normCode(q))) return true;
+        if ((b.description || "").toLowerCase().includes(q)) return true;
+        if ((b.tags || "").toLowerCase().includes(q)) return true;
+        const cat = (b.category || "").trim();
+        if (cat.toLowerCase().includes(q)) return true;
+        const meta = categoryMeta[cat];
+        if (meta) {
+          if (String(meta.label || "").toLowerCase().includes(q)) return true;
+          if (String(meta.keywords || "").toLowerCase().includes(q)) return true;
+        }
+        return false;
+      });
     }
     if (sortBy === "popular") {
       list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
@@ -584,7 +586,7 @@ export function PublicCatalog() {
       list.sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
     }
     return list;
-  }, [query, books, selectedCategory, sortBy, availableOnly, viewMode, wishlistBooks]);
+  }, [query, books, selectedCategory, sortBy, availableOnly, viewMode, wishlistBooks, categoryMeta]);
 
   const trending = useMemo(() => {
     return [...books]
@@ -950,95 +952,9 @@ export function PublicCatalog() {
         .pc-action-btn.on { border-color:var(--sky); background:#FBF2D9; color:var(--navy); }
         .pc-modal-desc { font-family:'Anek Malayalam', sans-serif; font-size:.98rem; line-height:1.6; color:var(--text); margin-top:.9rem; padding-top:.9rem; border-top:1px solid var(--line); white-space:pre-wrap; }
         .pc-result-count { font-size:.8rem; color:var(--text-soft); padding:0 1.1rem .4rem; max-width:920px; margin:0 auto; font-weight:600; }
-
-        .pc-header { position: relative; }
-        .pc-menu-btn {
-          position: absolute; left: 0.85rem; top: 1.1rem;
-          width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line);
-          background: #fff; display: flex; align-items: center; justify-content: center;
-          cursor: pointer; color: var(--navy); box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-          z-index: 2;
-        }
-        .pc-drawer-backdrop {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.42); z-index: 80;
-          animation: pcFadeIn .2s ease;
-        }
-        @keyframes pcFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .pc-drawer {
-          position: fixed; top: 0; left: 0; bottom: 0; width: min(310px, 90vw);
-          background: #fff; z-index: 90; box-shadow: 8px 0 28px rgba(0,0,0,0.14);
-          display: flex; flex-direction: column;
-          animation: pcSlideIn .25s cubic-bezier(.16,1,.3,1);
-        }
-        @keyframes pcSlideIn { from { transform: translateX(-102%); } to { transform: translateX(0); } }
-        .pc-drawer-head {
-          display: flex; align-items: center; justify-content: space-between;
-          padding: 1rem 1rem 0.9rem; border-bottom: 1px solid var(--line);
-          flex-shrink: 0;
-        }
-        .pc-drawer-head .title {
-          font-family: 'Anek Malayalam', 'Playfair Display', serif;
-          font-weight: 800; font-size: 1.05rem; color: var(--navy);
-        }
-        .pc-drawer-close {
-          width: 36px; height: 36px; border-radius: 50%; border: none;
-          background: var(--row-bg); display: flex; align-items: center; justify-content: center;
-          cursor: pointer; color: var(--text);
-        }
-        .pc-drawer-nav {
-          flex: 1; overflow-y: auto; padding: 0.45rem 0 2rem;
-          -webkit-overflow-scrolling: touch;
-        }
-        .pc-nav-item {
-          display: flex; align-items: center; gap: 0.7rem; width: 100%;
-          padding: 0.85rem 1.15rem; border: none; background: transparent;
-          font-size: 0.95rem; font-weight: 600; color: var(--text);
-          cursor: pointer; text-align: left; font-family: inherit;
-        }
-        .pc-nav-item:hover { background: #F7F3E8; }
-        .pc-nav-item.active { background: #EAF3EC; color: var(--navy); }
-        .pc-nav-item svg { flex-shrink: 0; color: var(--navy); }
-        .pc-nav-item .chev {
-          margin-left: auto; color: var(--text-soft);
-          transition: transform .28s cubic-bezier(.16,1,.3,1);
-          display: flex; align-items: center;
-        }
-        .pc-nav-item .chev.open { transform: rotate(180deg); }
-        .pc-nav-sub {
-          display: none;
-          border-left: 2px solid var(--line);
-          margin-left: 1.55rem;
-          padding-bottom: 0.35rem;
-        }
-        .pc-nav-sub.open { display: block; }
-        @keyframes pcCatSlideDown {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .pc-nav-sub.open .pc-nav-sub-item {
-          animation: pcCatSlideDown 0.2s ease both;
-        }
-        .pc-nav-sub-item {
-          display: flex; align-items: center; justify-content: space-between;
-          width: 100%; padding: 0.55rem 1rem 0.55rem 0.85rem;
-          border: none; background: transparent; cursor: pointer;
-          font-size: 0.88rem; font-weight: 600; color: var(--text);
-          text-align: left; font-family: inherit;
-        }
-        .pc-nav-sub-item:hover { background: #F7F3E8; }
-        .pc-nav-sub-item.active { color: var(--navy); background: #EAF3EC; }
-        .pc-nav-sub-item .count {
-          font-size: 0.72rem; font-weight: 700; color: var(--text-soft);
-          background: var(--row-bg); padding: 0.12rem 0.45rem; border-radius: 999px;
-          flex-shrink: 0;
-        }
-        .pc-nav-sub-item.active .count { background: #fff; color: var(--navy); }
       `}</style>
 
       <div className="pc-header">
-        <button type="button" className="pc-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Open menu">
-          <Menu size={20} />
-        </button>
         <h1>NMMI ISLAMIC LIBRARY</h1>
         <div className="pc-sub">Digital Book Catalog</div>
         {!loading && (
@@ -1058,86 +974,13 @@ export function PublicCatalog() {
           </button>
         </div>
       </div>
-
-      {menuOpen && (
-        <>
-          <div className="pc-drawer-backdrop" onClick={() => setMenuOpen(false)} />
-          <aside className="pc-drawer" role="dialog" aria-label="Catalog menu">
-            <div className="pc-drawer-head">
-              <div className="title">Menu</div>
-              <button type="button" className="pc-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">
-                <X size={18} />
-              </button>
-            </div>
-            <nav className="pc-drawer-nav">
-              <button
-                type="button"
-                className={`pc-nav-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
-                onClick={() => { setViewMode("browse"); setSelectedCategory("ALL"); setMenuOpen(false); }}
-              >
-                <Home size={18} /> Home
-              </button>
-              <button
-                type="button"
-                className={`pc-nav-item ${viewMode === "wishlist" ? "active" : ""}`}
-                onClick={() => { setViewMode("wishlist"); setMenuOpen(false); }}
-              >
-                <Bookmark size={18} /> My Favourites
-                {wishlistIds.length > 0 && (
-                  <span style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 700, background: "var(--row-bg)", padding: "0.12rem 0.45rem", borderRadius: 999 }}>
-                    {wishlistIds.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                className="pc-nav-item"
-                onClick={() => setCategoriesOpen((v) => !v)}
-                aria-expanded={categoriesOpen}
-              >
-                <LayoutGrid size={18} /> Categories
-                <span className={`chev ${categoriesOpen ? "open" : ""}`}>
-                  <ChevronDown size={18} />
-                </span>
-              </button>
-              <div className={`pc-nav-sub ${categoriesOpen ? "open" : ""}`}>
-                <button
-                  type="button"
-                  className={`pc-nav-sub-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
-                  style={{ animationDelay: "0s" }}
-                  onClick={() => { setViewMode("browse"); setSelectedCategory("ALL"); setMenuOpen(false); }}
-                >
-                  <span>All Books</span>
-                  <span className="count">{categoryCounts.ALL || 0}</span>
-                </button>
-                {categoriesList.map((c, i) => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`pc-nav-sub-item ${selectedCategory === c ? "active" : ""}`}
-                    style={{ animationDelay: `${Math.min((i + 1) * 0.05, 1.2)}s` }}
-                    onClick={() => { setViewMode("browse"); setSelectedCategory(c); setMenuOpen(false); }}
-                  >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{c}</span>
-                    <span className="count">{categoryCounts[c] || 0}</span>
-                  </button>
-                ))}
-                {categoriesList.length === 0 && (
-                  <div style={{ padding: "0.5rem 1rem", fontSize: "0.82rem", color: "var(--text-soft)" }}>No categories yet</div>
-                )}
-              </div>
-            </nav>
-          </aside>
-        </>
-      )}
       
       <div className="pc-search-wrap">
         <Search size={18} className="pc-search-icon" />
         <input 
           type="search" 
           className="pc-search" 
-          placeholder={listening ? "Listening&" : "Search by title, author or code..."} 
+          placeholder={listening ? "Listening…" : "Search title, author, topic, tags…"} 
           value={query} 
           onChange={(e) => setQuery(e.target.value)} 
         />
@@ -1189,7 +1032,7 @@ export function PublicCatalog() {
           </button>
           {categoriesList.map((c) => (
             <button key={c} className={`pc-cat-btn ${selectedCategory === c ? "active" : ""}`} onClick={() => setSelectedCategory(c)}>
-              {c} <span className="count">{categoryCounts[c] || 0}</span>
+              {c}{categoryMeta[c]?.label ? ` · ${categoryMeta[c].label}` : ""} <span className="count">{categoryCounts[c] || 0}</span>
             </button>
           ))}
         </div>
@@ -1441,7 +1284,10 @@ export default function App() {
   const [editingClassOld, setEditingClassOld] = useState(null);
   const [editClassName, setEditClassName] = useState("");
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+  const [categoryMeta, setCategoryMeta] = useState({});
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [editCategoryLabel, setEditCategoryLabel] = useState("");
+  const [editCategoryKeywords, setEditCategoryKeywords] = useState("");
   const [editingCategoryOld, setEditingCategoryOld] = useState(null);
   const [editCategoryName, setEditCategoryName] = useState("");
 
@@ -1473,10 +1319,10 @@ export default function App() {
   const [returnQuery, setReturnQuery] = useState("");
   const [justReturnedId, setJustReturnedId] = useState(null);
 
-  const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
+  const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "", tags: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
   const [editingBookId, setEditingBookId] = useState(null);
-  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "", coverUrl: "", description: "" });
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "", tags: "" });
 
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
@@ -1600,9 +1446,12 @@ export default function App() {
       else { setClasses(DEFAULT_CLASSES); try { await setDoc(doc(db, "settings", "classes"), { list: DEFAULT_CLASSES }); } catch {} }
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "bookCategories"), async (snap) => {
-      const list = snap.exists() ? snap.data().list : null;
+      const data = snap.exists() ? snap.data() : null;
+      const list = data ? data.list : null;
+      const meta = data && data.meta && typeof data.meta === "object" ? data.meta : {};
+      setCategoryMeta(meta);
       if (Array.isArray(list) && list.length > 0) setCategories(list);
-      else { setCategories(DEFAULT_CATEGORIES); try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES }); } catch {} }
+      else { setCategories(DEFAULT_CATEGORIES); try { await setDoc(doc(db, "settings", "bookCategories"), { list: DEFAULT_CATEGORIES, meta: {} }); } catch {} }
     }));
     unsubs.push(onSnapshot(doc(db, "settings", "app"), (snap) => {
       if (snap.exists()) { const merged = { ...SETTINGS_DEFAULTS, ...snap.data() }; setAppSettings(merged); setSettingsDraft(merged); }
@@ -1704,35 +1553,112 @@ export default function App() {
     if (!window.confirm(count > 0 ? `${count} student(s) are in "${name}". Remove the class anyway?` : `Remove class "${name}"?`)) return;
     try { await setDoc(doc(db, "settings", "classes"), { list: classes.filter((c) => c !== name) }); } catch {}
   }
+  async function saveCategoryDoc(list, meta) {
+    await setDoc(doc(db, "settings", "bookCategories"), { list, meta: meta || {} });
+  }
+
   async function addCategory(e) {
-    e.preventDefault(); const name = newCategoryName.trim(); if (!name) return;
-    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewCategoryName(""); return; }
-    try { await setDoc(doc(db, "settings", "bookCategories"), { list: [...categories, name] }); } catch {}
-    setNewCategoryName("");
+    e.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (categories.some((c) => c.toLowerCase() === name.toLowerCase())) {
+      alert("Category already exists.");
+      setNewCategoryName("");
+      return;
+    }
+    try {
+      const nextList = [...categories, name];
+      const nextMeta = { ...categoryMeta, [name]: { label: "", keywords: "" } };
+      await saveCategoryDoc(nextList, nextMeta);
+      setCategories(nextList);
+      setCategoryMeta(nextMeta);
+      setNewCategoryName("");
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't add category.");
+    }
   }
-  function startEditCategory(n) { setEditingCategoryOld(n); setEditCategoryName(n); }
+
+  function startEditCategory(n) {
+    setEditingCategoryOld(n);
+    setEditCategoryName(n);
+    const m = categoryMeta[n] || {};
+    setEditCategoryLabel(m.label || "");
+    setEditCategoryKeywords(m.keywords || "");
+  }
   function cancelEditCategory() { setEditingCategoryOld(null); }
+
   async function saveEditCategory(e) {
-    e.preventDefault(); const oldName = editingCategoryOld, newName = editCategoryName.trim();
-    if (!newName || newName === oldName) { setEditingCategoryOld(null); return; }
-    if (categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) return;
+    e.preventDefault();
+    const oldName = editingCategoryOld;
+    const newName = editCategoryName.trim();
+    if (!newName) return;
+    if (newName !== oldName && categories.some((c) => c !== oldName && c.toLowerCase() === newName.toLowerCase())) {
+      alert("Category code already exists.");
+      return;
+    }
     try {
-      await setDoc(doc(db, "settings", "bookCategories"), { list: categories.map((c) => (c === oldName ? newName : c)) });
-      const q = query(collection(db, "books"), where("category", "==", oldName));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch {} }
-    } catch {}
-    setEditingCategoryOld(null);
+      const nextList = categories.map((c) => (c === oldName ? newName : c));
+      const nextMeta = { ...categoryMeta };
+      const entry = {
+        label: editCategoryLabel.trim(),
+        keywords: editCategoryKeywords.trim(),
+      };
+      if (newName !== oldName) {
+        delete nextMeta[oldName];
+        nextMeta[newName] = entry;
+        const q = query(collection(db, "books"), where("category", "==", oldName));
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          try { await updateDoc(doc(db, "books", d.id), { category: newName }); } catch {}
+        }
+      } else {
+        nextMeta[newName] = entry;
+      }
+      await saveCategoryDoc(nextList, nextMeta);
+      setCategories(nextList);
+      setCategoryMeta(nextMeta);
+      setEditingCategoryOld(null);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't save category.");
+    }
   }
+
   async function deleteCategory(name) {
-    const count = books.filter((b) => b.category === name).length;
-    if (!window.confirm(count > 0 ? `${count} book(s) are in "${name}". Remove the category anyway?` : `Remove category "${name}"?`)) return;
+    const inCategory = books.filter((b) => (b.category || "") === name);
+    const count = inCategory.length;
+    if (count > 0) {
+      const issued = inCategory.filter((b) =>
+        transactions.some((t) => t.bookId === b.id && !t.returnDate)
+      );
+      if (issued.length > 0) {
+        alert(`Cannot delete "${name}".\n${issued.length} book(s) are still issued. Return them first.`);
+        return;
+      }
+      if (!window.confirm(`Delete section "${name}" AND all ${count} book(s)?\nThis cannot be undone.`)) return;
+    } else {
+      if (!window.confirm(`Remove empty category "${name}"?`)) return;
+    }
     try {
-      await setDoc(doc(db, "settings", "bookCategories"), { list: categories.filter((c) => c !== name) });
-      const q = query(collection(db, "books"), where("category", "==", name));
-      const snap = await getDocs(q);
-      for (const d of snap.docs) { try { await updateDoc(doc(db, "books", d.id), { category: "" }); } catch {} }
-    } catch {}
+      if (count > 0) {
+        for (let i = 0; i < inCategory.length; i += 400) {
+          const chunk = inCategory.slice(i, i + 400);
+          const batch = writeBatch(db);
+          chunk.forEach((b) => batch.delete(doc(db, "books", b.id)));
+          await batch.commit();
+        }
+      }
+      const nextList = categories.filter((c) => c !== name);
+      const nextMeta = { ...categoryMeta };
+      delete nextMeta[name];
+      await saveCategoryDoc(nextList, nextMeta);
+      setCategories(nextList);
+      setCategoryMeta(nextMeta);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't delete category.");
+    }
   }
 
   async function addBook(e) {
@@ -1744,17 +1670,20 @@ export default function App() {
       await setDoc(doc(db, "books", code), {
         title: bookForm.title.trim(), author: bookForm.author.trim(), code,
         totalCopies: copies, availableCopies: copies, category: bookForm.category || "",
-        coverUrl: bookForm.coverUrl || "", description: bookForm.description || "", likes: 0
+        coverUrl: bookForm.coverUrl || "", description: bookForm.description || "",
+        tags: (bookForm.tags || "").trim(), likes: 0
       });
     } catch {}
-    setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category, coverUrl: "", description: "" });
+    setBookForm({ title: "", author: "", code: "", copies: "1", category: bookForm.category, coverUrl: "", description: "", tags: "" });
   }
 
   function startEditBook(b) {
     setEditingBookId(b.id);
     setEditBookForm({
-      title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "",
-      coverUrl: b.coverUrl || "", description: b.description || ""
+      title: b.title, author: b.author || "", code: b.code || "",
+      copies: String(b.totalCopies), category: b.category || "",
+      coverUrl: b.coverUrl || "", description: b.description || "",
+      tags: b.tags || ""
     });
   }
   function cancelEditBook() { setEditingBookId(null); }
@@ -1764,16 +1693,31 @@ export default function App() {
     if (!editBookForm.title.trim()) return;
     const book = books.find((b) => b.id === editingBookId);
     if (!book) return;
+    const newCode = stripSpaces((editBookForm.code || "").trim());
+    if (!newCode) { alert("Book code is required."); return; }
+    if (books.some((b) => b.id !== editingBookId && normCode(b.code) === normCode(newCode))) {
+      alert(`Code "${newCode}" is already used by another book.`);
+      return;
+    }
     const newTotal = Math.max(1, parseInt(editBookForm.copies) || 1);
     const newAvailable = Math.max(0, newTotal - (book.totalCopies - book.availableCopies));
     try {
       await updateDoc(doc(db, "books", editingBookId), {
-        title: editBookForm.title.trim(), author: editBookForm.author.trim(),
-        totalCopies: newTotal, availableCopies: newAvailable, category: editBookForm.category || "",
-        coverUrl: editBookForm.coverUrl || "", description: editBookForm.description || ""
+        title: editBookForm.title.trim(),
+        author: editBookForm.author.trim(),
+        code: newCode,
+        totalCopies: newTotal,
+        availableCopies: newAvailable,
+        category: editBookForm.category || "",
+        coverUrl: editBookForm.coverUrl || "",
+        description: editBookForm.description || "",
+        tags: (editBookForm.tags || "").trim()
       });
-    } catch {}
-    setEditingBookId(null);
+      setEditingBookId(null);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't save book.");
+    }
   }
 
   async function deleteBook(book) {
@@ -3277,16 +3221,31 @@ export default function App() {
 
           {sheet === "bookCategories" && (
             <Modal title="Book Categories" onClose={() => setSheet(null)} wide>
+              <p style={{ fontSize: ".8rem", color: "var(--text-soft)", margin: "0 0 .85rem", lineHeight: 1.45 }}>
+                Short code (e.g. LN) is used for staff &amp; QR. Add a full <b>label</b> and <b>keywords</b> so students can search by topic (e.g. “നോവൽ”, “social media”).
+              </p>
               <form onSubmit={addCategory} style={{ display: "flex", gap: ".5rem", alignItems: "flex-end", marginBottom: "1rem" }}>
-                <div style={{ flex: 1 }}><label>New category name</label><input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. Fiqh" /></div>
+                <div style={{ flex: 1 }}><label>New category code</label><input type="text" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="e.g. LN" /></div>
                 <button type="submit" className="btn"><Plus size={16} /> Add</button>
               </form>
               <div className="row-list">
                 {categories.map((c) => {
                   const count = books.filter((b) => b.category === c).length;
+                  const meta = categoryMeta[c] || {};
                   return editingCategoryOld === c ? (
                     <form key={c} onSubmit={saveEditCategory} className="row-card" style={{ flexDirection: "column", alignItems: "stretch", gap: ".5rem" }}>
-                      <input type="text" value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} required />
+                      <div>
+                        <label style={{ fontSize: ".72rem" }}>Code</label>
+                        <input type="text" value={editCategoryName} onChange={(e) => setEditCategoryName(e.target.value)} required />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: ".72rem" }}>Full name / label</label>
+                        <input type="text" value={editCategoryLabel} onChange={(e) => setEditCategoryLabel(e.target.value)} placeholder="e.g. നോവലുകൾ / Novels" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: ".72rem" }}>Keywords (comma separated)</label>
+                        <input type="text" value={editCategoryKeywords} onChange={(e) => setEditCategoryKeywords(e.target.value)} placeholder="novel, fiction, നോവൽ, കഥ" />
+                      </div>
                       <div style={{ display: "flex", gap: ".5rem" }}>
                         <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
                         <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditCategory}><X size={14} /> Cancel</button>
@@ -3294,9 +3253,12 @@ export default function App() {
                     </form>
                   ) : (
                     <div key={c} className="row-card">
-                      <div><div className="title">{c}</div><div className="meta">{count} book{count === 1 ? "" : "s"}</div></div>
-                      <div style={{ display: "flex", gap: ".4rem" }}>
-                        <button className="btn secondary" onClick={() => startEditCategory(c)} aria-label="Rename category"><Pencil size={13} /></button>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="title">{c}{meta.label ? ` · ${meta.label}` : ""}</div>
+                        <div className="meta">{count} book{count === 1 ? "" : "s"}{meta.keywords ? ` · ${meta.keywords}` : ""}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: ".4rem", flexShrink: 0 }}>
+                        <button className="btn secondary" onClick={() => startEditCategory(c)} aria-label="Edit category"><Pencil size={13} /></button>
                         <button className="btn secondary" onClick={() => deleteCategory(c)} aria-label="Remove category"><Trash2 size={13} /></button>
                       </div>
                     </div>
@@ -3327,13 +3289,15 @@ export default function App() {
                               <div className="form-grid" style={{ marginBottom: 0 }}>
                                 <select value={editBookForm.category} onChange={(e) => setEditBookForm({ ...editBookForm, category: e.target.value })}>
                                   <option value="">Uncategorized</option>
-                                  {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                                  {categories.map((c) => <option key={c} value={c}>{c}{categoryMeta[c]?.label ? ` · ${categoryMeta[c].label}` : ""}</option>)}
                                 </select>
                                 <input type="number" min="1" value={editBookForm.copies} onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })} />
                               </div>
+                              <input type="text" value={editBookForm.code} onChange={(e) => setEditBookForm({ ...editBookForm, code: e.target.value })} placeholder="Code (e.g. LN200)" required />
                               <input type="text" value={editBookForm.coverUrl} onChange={(e) => setEditBookForm({ ...editBookForm, coverUrl: e.target.value })} placeholder="Cover Image URL (https://...)" />
                               <textarea value={editBookForm.description} onChange={(e) => setEditBookForm({ ...editBookForm, description: e.target.value })} placeholder="Short description" rows={2} style={{ resize: "vertical" }} />
-                              <div className="meta" style={{ fontSize: ".72rem" }}>Code: {b.code} (fixed)</div>
+                              <input type="text" value={editBookForm.tags || ""} onChange={(e) => setEditBookForm({ ...editBookForm, tags: e.target.value })} placeholder="Tags / keywords (e.g. social media, IT, ഡിജിറ്റൽ)" />
+                              
                               <div style={{ display: "flex", gap: ".5rem" }}>
                                 <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
                                 <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditBook}><X size={14} /> Cancel</button>
@@ -3372,6 +3336,7 @@ export default function App() {
                 </div>
                 <div className="field"><label>Cover Image URL (optional)</label><input type="text" value={bookForm.coverUrl} onChange={(e) => setBookForm({ ...bookForm, coverUrl: e.target.value })} placeholder="https://..." /></div>
                 <div className="field"><label>Description (optional)</label><textarea value={bookForm.description} onChange={(e) => setBookForm({ ...bookForm, description: e.target.value })} rows={2} style={{ resize: "vertical" }} placeholder="Short book description" /></div>
+                <div className="field"><label>Tags / keywords (optional)</label><input type="text" value={bookForm.tags || ""} onChange={(e) => setBookForm({ ...bookForm, tags: e.target.value })} placeholder="e.g. social media, IT, ഡിജിറ്റൽ" /></div>
                 <button type="submit" className="btn full"><Plus size={16} /> Add Book</button>
               </form>
               <div style={{ borderTop: "1px solid #EEE", marginTop: "1.1rem", paddingTop: ".9rem" }}>
