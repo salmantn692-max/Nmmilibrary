@@ -1477,7 +1477,7 @@ export default function App() {
   const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
   const [editingBookId, setEditingBookId] = useState(null);
-  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "", coverUrl: "", description: "" });
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
 
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
@@ -1754,7 +1754,7 @@ export default function App() {
   function startEditBook(b) {
     setEditingBookId(b.id);
     setEditBookForm({
-      title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "",
+      title: b.title, author: b.author || "", code: b.code || b.id || "", copies: String(b.totalCopies), category: b.category || "",
       coverUrl: b.coverUrl || "", description: b.description || ""
     });
   }
@@ -1765,15 +1765,61 @@ export default function App() {
     if (!editBookForm.title.trim()) return;
     const book = books.find((b) => b.id === editingBookId);
     if (!book) return;
+    const newCode = stripSpaces(editBookForm.code);
+    if (!newCode) {
+      alert("Book code is required.");
+      return;
+    }
     const newTotal = Math.max(1, parseInt(editBookForm.copies) || 1);
     const newAvailable = Math.max(0, newTotal - (book.totalCopies - book.availableCopies));
+    const updatedFields = {
+      title: editBookForm.title.trim(),
+      author: editBookForm.author.trim(),
+      code: newCode,
+      totalCopies: newTotal,
+      availableCopies: newAvailable,
+      category: editBookForm.category || "",
+      coverUrl: editBookForm.coverUrl || "",
+      description: editBookForm.description || "",
+    };
     try {
-      await updateDoc(doc(db, "books", editingBookId), {
-        title: editBookForm.title.trim(), author: editBookForm.author.trim(),
-        totalCopies: newTotal, availableCopies: newAvailable, category: editBookForm.category || "",
-        coverUrl: editBookForm.coverUrl || "", description: editBookForm.description || ""
-      });
-    } catch {}
+      const oldId = editingBookId;
+      const codeChanged = normCode(newCode) !== normCode(book.code || oldId);
+      if (codeChanged) {
+        const conflict = books.find((b) => b.id !== oldId && normCode(b.code || b.id) === normCode(newCode));
+        if (conflict) {
+          alert(`Code "${newCode}" is already used by "${conflict.title}". Choose a different code.`);
+          return;
+        }
+        // Document ID is the book code — migrate to a new doc and re-point transactions
+        const batch = writeBatch(db);
+        const newRef = doc(db, "books", newCode);
+        batch.set(newRef, {
+          title: updatedFields.title,
+          author: updatedFields.author,
+          code: newCode,
+          totalCopies: updatedFields.totalCopies,
+          availableCopies: updatedFields.availableCopies,
+          category: updatedFields.category,
+          coverUrl: updatedFields.coverUrl,
+          description: updatedFields.description,
+          likes: book.likes || 0,
+        });
+        const txSnap = await getDocs(query(collection(db, "transactions"), where("bookId", "==", oldId)));
+        txSnap.forEach((txDoc) => {
+          batch.update(txDoc.ref, { bookId: newCode });
+        });
+        batch.delete(doc(db, "books", oldId));
+        await batch.commit();
+        if (detailBookId === oldId) setDetailBookId(newCode);
+      } else {
+        await updateDoc(doc(db, "books", oldId), updatedFields);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Could not save book changes. Please try again.");
+      return;
+    }
     setEditingBookId(null);
   }
 
@@ -3340,9 +3386,9 @@ export default function App() {
                                 </select>
                                 <input type="number" min="1" value={editBookForm.copies} onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })} />
                               </div>
+                              <input type="text" value={editBookForm.code} onChange={(e) => setEditBookForm({ ...editBookForm, code: e.target.value })} placeholder="Code (e.g. LN200)" required />
                               <input type="text" value={editBookForm.coverUrl} onChange={(e) => setEditBookForm({ ...editBookForm, coverUrl: e.target.value })} placeholder="Cover Image URL (https://...)" />
                               <textarea value={editBookForm.description} onChange={(e) => setEditBookForm({ ...editBookForm, description: e.target.value })} placeholder="Short description" rows={2} style={{ resize: "vertical" }} />
-                              <div className="meta" style={{ fontSize: ".72rem" }}>Code: {b.code} (fixed)</div>
                               <div style={{ display: "flex", gap: ".5rem" }}>
                                 <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
                                 <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditBook}><X size={14} /> Cancel</button>
