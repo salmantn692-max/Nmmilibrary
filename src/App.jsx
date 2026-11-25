@@ -57,15 +57,6 @@ function inferCategoryFromCode(code) {
 }
 function normCode(s) { return (s || "").replace(/\s+/g, "").toLowerCase(); }
 function stripSpaces(s) { return (s || "").replace(/\s+/g, ""); }
-/** Natural order for codes: SH1, SH2, … SH9, SH10 (not SH1, SH10, SH2) */
-function compareBookCodes(a, b) {
-  const ca = stripSpaces(String(a || ""));
-  const cb = stripSpaces(String(b || ""));
-  return ca.localeCompare(cb, undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
-}
 function resizeImageToDataURL(file, maxSize = 160, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -467,6 +458,7 @@ export function PublicCatalog() {
   const [viewMode, setViewMode] = useState("browse");
   const [menuOpen, setMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [settingsCategories, setSettingsCategories] = useState([]);
   const [visibleCount, setVisibleCount] = useState(24);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [listening, setListening] = useState(false);
@@ -498,6 +490,18 @@ export function PublicCatalog() {
     return unsub;
   }, []);
 
+  // Live staff category list — new sections appear in sidebar automatically
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, "settings", "bookCategories"),
+      (snap) => {
+        const list = snap.exists() ? snap.data().list : null;
+        setSettingsCategories(Array.isArray(list) ? list : []);
+      },
+      () => setSettingsCategories([])
+    );
+    return unsub;
+  }, []);
+
   useEffect(() => {
     const SR = typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition);
     setVoiceSupported(!!SR);
@@ -523,15 +527,21 @@ export function PublicCatalog() {
     };
   }, []);
 
+  // All sections: settings list + any category found on books (auto-updates)
   const categoriesList = useMemo(() => {
     const cats = new Set();
-    books.forEach((b) => {
-      if (b.category && b.category.trim() !== "" && b.category !== "Uncategorized") {
-        cats.add(b.category.trim());
-      }
+    settingsCategories.forEach((c) => {
+      const t = String(c || "").trim();
+      if (t && t !== "Uncategorized") cats.add(t);
     });
-    return Array.from(cats).filter(cat => !cat.includes(",") && !cat.includes('"') && !cat.includes("? 8M")).sort();
-  }, [books]);
+    books.forEach((b) => {
+      const t = (b.category || "").trim();
+      if (t && t !== "Uncategorized") cats.add(t);
+    });
+    return Array.from(cats)
+      .filter((cat) => !cat.includes(",") && !cat.includes('"'))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true }));
+  }, [books, settingsCategories]);
 
   const categoryCounts = useMemo(() => {
     const map = { ALL: books.length };
@@ -563,20 +573,14 @@ export function PublicCatalog() {
         normCode(b.code).includes(normCode(q))
       );
     }
-    // Code order SH1, SH2, … SH10 within a section, on code-like search, or as default
-    const qLooksLikeCode = q && /^[a-z0-9]+$/i.test(q.replace(/\s+/g, "")) && list.some((b) => normCode(b.code).startsWith(normCode(q)));
-    if ((selectedCategory !== "ALL" && !q) || qLooksLikeCode || sortBy === "code") {
-      list.sort((a, b) => compareBookCodes(a.code, b.code));
-    } else if (sortBy === "popular") {
-      list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || compareBookCodes(a.code, b.code));
+    if (sortBy === "popular") {
+      list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
     } else if (sortBy === "available") {
-      list.sort((a, b) => (b.availableCopies || 0) - (a.availableCopies || 0) || compareBookCodes(a.code, b.code));
+      list.sort((a, b) => (b.availableCopies || 0) - (a.availableCopies || 0) || (a.title || "").localeCompare(b.title || "", "ml"));
     } else if (sortBy === "title") {
-      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ml") || compareBookCodes(a.code, b.code));
+      list.sort((a, b) => (a.title || "").localeCompare(b.title || "", "ml"));
     } else if (sortBy === "newest") {
-      list.sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")) || compareBookCodes(a.code, b.code));
-    } else {
-      list.sort((a, b) => compareBookCodes(a.code, b.code));
+      list.sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
     }
     return list;
   }, [query, books, selectedCategory, sortBy, availableOnly, viewMode, wishlistBooks]);
@@ -1000,13 +1004,20 @@ export function PublicCatalog() {
           overflow: hidden;
           max-height: 0;
           opacity: 0;
-          transition: max-height .35s cubic-bezier(.16,1,.3,1), opacity .25s ease;
+          transition: max-height .35s cubic-bezier(.16,1,.3,1), opacity .22s ease;
           border-left: 2px solid var(--line);
           margin-left: 1.55rem;
         }
         .pc-nav-sub.open {
-          max-height: min(70vh, 2000px);
+          max-height: min(75vh, 2400px);
           opacity: 1;
+        }
+        @keyframes pcCatSlideDown {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .pc-nav-sub.open .pc-nav-sub-item {
+          animation: pcCatSlideDown 0.2s ease both;
         }
         .pc-nav-sub-item {
           display: flex; align-items: center; justify-content: space-between;
@@ -1014,7 +1025,6 @@ export function PublicCatalog() {
           border: none; background: transparent; cursor: pointer;
           font-size: 0.88rem; font-weight: 600; color: var(--text);
           text-align: left; font-family: inherit;
-          transition: background .12s, transform .12s;
         }
         .pc-nav-sub-item:hover { background: #F7F3E8; }
         .pc-nav-sub-item.active { color: var(--navy); background: #EAF3EC; }
@@ -1064,25 +1074,18 @@ export function PublicCatalog() {
               <button
                 type="button"
                 className={`pc-nav-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
-                onClick={() => {
-                  setViewMode("browse");
-                  setSelectedCategory("ALL");
-                  setMenuOpen(false);
-                }}
+                onClick={() => { setViewMode("browse"); setSelectedCategory("ALL"); setMenuOpen(false); }}
               >
                 <Home size={18} /> Home
               </button>
               <button
                 type="button"
                 className={`pc-nav-item ${viewMode === "wishlist" ? "active" : ""}`}
-                onClick={() => {
-                  setViewMode("wishlist");
-                  setMenuOpen(false);
-                }}
+                onClick={() => { setViewMode("wishlist"); setMenuOpen(false); }}
               >
                 <Bookmark size={18} /> My Favourites
                 {wishlistIds.length > 0 && (
-                  <span className="count" style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 700, background: "var(--row-bg)", padding: "0.12rem 0.45rem", borderRadius: 999 }}>
+                  <span style={{ marginLeft: "auto", fontSize: "0.72rem", fontWeight: 700, background: "var(--row-bg)", padding: "0.12rem 0.45rem", borderRadius: 999 }}>
                     {wishlistIds.length}
                   </span>
                 )}
@@ -1103,25 +1106,19 @@ export function PublicCatalog() {
                 <button
                   type="button"
                   className={`pc-nav-sub-item ${viewMode === "browse" && selectedCategory === "ALL" ? "active" : ""}`}
-                  onClick={() => {
-                    setViewMode("browse");
-                    setSelectedCategory("ALL");
-                    setMenuOpen(false);
-                  }}
+                  style={{ animationDelay: "0s" }}
+                  onClick={() => { setViewMode("browse"); setSelectedCategory("ALL"); setMenuOpen(false); }}
                 >
                   <span>All Books</span>
                   <span className="count">{categoryCounts.ALL || 0}</span>
                 </button>
-                {categoriesList.map((c) => (
+                {categoriesList.map((c, i) => (
                   <button
                     key={c}
                     type="button"
                     className={`pc-nav-sub-item ${selectedCategory === c ? "active" : ""}`}
-                    onClick={() => {
-                      setViewMode("browse");
-                      setSelectedCategory(c);
-                      setMenuOpen(false);
-                    }}
+                    style={{ animationDelay: `${(i + 1) * 0.05}s` }}
+                    onClick={() => { setViewMode("browse"); setSelectedCategory(c); setMenuOpen(false); }}
                   >
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 8 }}>{c}</span>
                     <span className="count">{categoryCounts[c] || 0}</span>
@@ -1480,7 +1477,7 @@ export default function App() {
   const [bookForm, setBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
   const [catalogQuery, setCatalogQuery] = useState("");
   const [editingBookId, setEditingBookId] = useState(null);
-  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", code: "", copies: "1", category: "", coverUrl: "", description: "" });
+  const [editBookForm, setEditBookForm] = useState({ title: "", author: "", copies: "1", category: "", coverUrl: "", description: "" });
 
   const [studentForm, setStudentForm] = useState({ name: "", className: "CLASS-1", roll: "", phone: "" });
   const [editingStudentId, setEditingStudentId] = useState(null);
@@ -1675,9 +1672,8 @@ export default function App() {
 
   const activeTx = useMemo(() => transactions.filter((t) => !t.returnDate), [transactions]);
   const overdueTx = useMemo(() => activeTx.filter((t) => t.dueDate < todayISO()), [activeTx]);
-  // One code = one book. Count catalog entries (codes), not sum of totalCopies.
-  const totalCopies = useMemo(() => books.length, [books]);
-  const availableCopies = useMemo(() => books.reduce((s, b) => s + ((b.availableCopies || 0) > 0 ? 1 : 0), 0), [books]);
+  const totalCopies = useMemo(() => books.reduce((s, b) => s + b.totalCopies, 0), [books]);
+  const availableCopies = useMemo(() => books.reduce((s, b) => s + b.availableCopies, 0), [books]);
 
   function bookById(id) { return books.find((b) => b.id === id); }
   function studentById(id) { return students.find((s) => s.id === id); }
@@ -1758,7 +1754,7 @@ export default function App() {
   function startEditBook(b) {
     setEditingBookId(b.id);
     setEditBookForm({
-      title: b.title, author: b.author || "", code: b.code || b.id || "", copies: String(b.totalCopies), category: b.category || "",
+      title: b.title, author: b.author || "", copies: String(b.totalCopies), category: b.category || "",
       coverUrl: b.coverUrl || "", description: b.description || ""
     });
   }
@@ -1769,59 +1765,15 @@ export default function App() {
     if (!editBookForm.title.trim()) return;
     const book = books.find((b) => b.id === editingBookId);
     if (!book) return;
-    const newCode = stripSpaces(editBookForm.code);
-    if (!newCode) {
-      alert("Book code is required.");
-      return;
-    }
     const newTotal = Math.max(1, parseInt(editBookForm.copies) || 1);
     const newAvailable = Math.max(0, newTotal - (book.totalCopies - book.availableCopies));
-    const updatedFields = {
-      title: editBookForm.title.trim(),
-      author: editBookForm.author.trim(),
-      code: newCode,
-      totalCopies: newTotal,
-      availableCopies: newAvailable,
-      category: editBookForm.category || "",
-      coverUrl: editBookForm.coverUrl || "",
-      description: editBookForm.description || "",
-    };
     try {
-      const oldId = editingBookId;
-      const codeChanged = normCode(newCode) !== normCode(book.code || oldId);
-      if (codeChanged) {
-        const conflict = books.find((b) => b.id !== oldId && normCode(b.code || b.id) === normCode(newCode));
-        if (conflict) {
-          alert(`Code "${newCode}" is already used by "${conflict.title}". Choose a different code.`);
-          return;
-        }
-        const batch = writeBatch(db);
-        batch.set(doc(db, "books", newCode), {
-          title: updatedFields.title,
-          author: updatedFields.author,
-          code: newCode,
-          totalCopies: updatedFields.totalCopies,
-          availableCopies: updatedFields.availableCopies,
-          category: updatedFields.category,
-          coverUrl: updatedFields.coverUrl,
-          description: updatedFields.description,
-          likes: book.likes || 0,
-        });
-        const txSnap = await getDocs(query(collection(db, "transactions"), where("bookId", "==", oldId)));
-        txSnap.forEach((txDoc) => {
-          batch.update(txDoc.ref, { bookId: newCode });
-        });
-        batch.delete(doc(db, "books", oldId));
-        await batch.commit();
-        if (detailBookId === oldId) setDetailBookId(newCode);
-      } else {
-        await updateDoc(doc(db, "books", oldId), updatedFields);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Could not save book changes. Please try again.");
-      return;
-    }
+      await updateDoc(doc(db, "books", editingBookId), {
+        title: editBookForm.title.trim(), author: editBookForm.author.trim(),
+        totalCopies: newTotal, availableCopies: newAvailable, category: editBookForm.category || "",
+        coverUrl: editBookForm.coverUrl || "", description: editBookForm.description || ""
+      });
+    } catch {}
     setEditingBookId(null);
   }
 
@@ -1961,10 +1913,7 @@ export default function App() {
 
   const searchBookMatches = useMemo(() => {
     const q = homeQuery.trim().toLowerCase(); if (!q) return [];
-    return books
-      .filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)))
-      .sort((a, b) => compareBookCodes(a.code, b.code))
-      .slice(0, 12);
+    return books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 5);
   }, [homeQuery, books]);
 
   const filteredStudents = useMemo(() => {
@@ -1976,11 +1925,8 @@ export default function App() {
   }, [students, selectedClass, homeQuery]);
 
   const issueBookMatches = useMemo(() => {
-    const q = bookQuery.trim().toLowerCase();
-    const list = !q
-      ? [...books]
-      : books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
-    return list.sort((a, b) => compareBookCodes(a.code, b.code)).slice(0, 12);
+    const q = bookQuery.trim().toLowerCase(); if (!q) return books.slice(0, 6);
+    return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 6);
   }, [bookQuery, books]);
 
   const issueStudentMatches = useMemo(() => {
@@ -1996,11 +1942,8 @@ export default function App() {
   }, [returnQuery, activeTx, books, students]);
 
   const catalogMatches = useMemo(() => {
-    const q = catalogQuery.trim().toLowerCase();
-    const list = !q
-      ? [...books]
-      : books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
-    return list.sort((a, b) => compareBookCodes(a.code, b.code));
+    const q = catalogQuery.trim().toLowerCase(); if (!q) return books;
+    return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
   }, [catalogQuery, books]);
 
   const catalogGrouped = useMemo(() => {
@@ -2008,9 +1951,6 @@ export default function App() {
     catalogMatches.forEach((b) => {
       const cat = b.category && b.category.trim() ? b.category : UNCATEGORIZED;
       (groups[cat] = groups[cat] || []).push(b);
-    });
-    Object.keys(groups).forEach((c) => {
-      groups[c].sort((a, b) => compareBookCodes(a.code, b.code));
     });
     const ordered = [];
     categories.forEach((c) => { if (groups[c]) { ordered.push([c, groups[c]]); delete groups[c]; } });
@@ -3122,12 +3062,7 @@ export default function App() {
                       </div>
                     ))
                   : [...books]
-                      .sort((a, b) => {
-                        const ca = (a.category || "").trim();
-                        const cb = (b.category || "").trim();
-                        if (ca !== cb) return ca.localeCompare(cb, undefined, { sensitivity: "base" });
-                        return compareBookCodes(a.code, b.code);
-                      })
+                      .sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: "base" }))
                       .map((b) => (
                         <div className="id-card book-label-card" key={b.id}>
                           <div className="book-label-code">{b.code}</div>
@@ -3397,9 +3332,9 @@ export default function App() {
                                 </select>
                                 <input type="number" min="1" value={editBookForm.copies} onChange={(e) => setEditBookForm({ ...editBookForm, copies: e.target.value })} />
                               </div>
-                              <input type="text" value={editBookForm.code} onChange={(e) => setEditBookForm({ ...editBookForm, code: e.target.value })} placeholder="Code (e.g. LN200)" required />
                               <input type="text" value={editBookForm.coverUrl} onChange={(e) => setEditBookForm({ ...editBookForm, coverUrl: e.target.value })} placeholder="Cover Image URL (https://...)" />
                               <textarea value={editBookForm.description} onChange={(e) => setEditBookForm({ ...editBookForm, description: e.target.value })} placeholder="Short description" rows={2} style={{ resize: "vertical" }} />
+                              <div className="meta" style={{ fontSize: ".72rem" }}>Code: {b.code} (fixed)</div>
                               <div style={{ display: "flex", gap: ".5rem" }}>
                                 <button type="submit" className="btn" style={{ flex: 1, justifyContent: "center" }}><Check size={14} /> Save</button>
                                 <button type="button" className="btn secondary" style={{ flex: 1, justifyContent: "center" }} onClick={cancelEditBook}><X size={14} /> Cancel</button>
