@@ -563,6 +563,7 @@ export function PublicCatalog() {
         normCode(b.code).includes(normCode(q))
       );
     }
+    // Code order SH1, SH2, … SH10 within a section, on code-like search, or as default
     const qLooksLikeCode = q && /^[a-z0-9]+$/i.test(q.replace(/\s+/g, "")) && list.some((b) => normCode(b.code).startsWith(normCode(q)));
     if ((selectedCategory !== "ALL" && !q) || qLooksLikeCode || sortBy === "code") {
       list.sort((a, b) => compareBookCodes(a.code, b.code));
@@ -733,9 +734,8 @@ export function PublicCatalog() {
         @import url('https://fonts.googleapis.com/css2?family=Anek+Malayalam:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Serif+Malayalam:wght@700;800&display=swap');
         
         .pc-app { 
-          --navy:#0F6B4C; --maroon:#8B2E3C; --sky:#3ECF8E; --text:#1A2E28; --text-soft:#6B7F76; 
-          --line:#D4EDE3; --row-bg:#E8F7F0; --bg:#F3FAF7; --indigo:#0F6B4C;
-          --card:#FFFFFF; --accent:#FF8A3D; --sidebar:#FFFFFF;
+          --navy:#1B4D3E; --maroon:#8B2E3C; --sky:#C9A227; --text:#2B2420; --text-soft:#7A6F5D; 
+          --line:#E8DCC0; --row-bg:#FBF2D9; --bg:#FDF8ED; --indigo:#2C6E5C;
           font-family:'Anek Malayalam', 'Inter', -apple-system, sans-serif;
           min-height:100vh; background:var(--bg); color:var(--text);
           padding-bottom:4rem;
@@ -747,29 +747,29 @@ export function PublicCatalog() {
         .pc-app img { max-width: 100%; height: auto; }
         
         .pc-header { 
-          padding:1rem 1.1rem .85rem; text-align:center; border-bottom:1px solid var(--line); 
-          background:rgba(255,255,255,.92); backdrop-filter:blur(12px); position:sticky; top:0; z-index:20; 
-          box-shadow:0 4px 24px rgba(15,107,76,0.06);
+          padding:1.25rem 1.1rem 1rem; text-align:center; border-bottom:3px solid var(--sky); 
+          background:linear-gradient(180deg,#fff 0%,#FDF8ED 100%); position:sticky; top:0; z-index:20; 
+          box-shadow:0 2px 12px rgba(27,77,62,0.08);
         }
-        .pc-header h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif; font-weight:800; font-size:1.28rem; color:var(--navy); margin:0; line-height:1.3; letter-spacing:-0.02em; }
-        .pc-sub { font-size:.8rem; color:var(--text-soft); margin-top:.12rem; font-weight:500; }
+        .pc-header h1 { font-family:'Anek Malayalam', 'Noto Serif Malayalam', 'Playfair Display', serif; font-weight:800; font-size:1.35rem; color:var(--navy); margin:0; line-height:1.3; }
+        .pc-sub { font-size:.82rem; color:var(--maroon); margin-top:.15rem; font-weight:500; }
         
-        .pc-stats { display:flex; justify-content:center; gap:.55rem; margin-top:.65rem; flex-wrap:wrap; }
+        .pc-stats { display:flex; justify-content:center; gap:.7rem; margin-top:.7rem; flex-wrap:wrap; }
         .pc-stat {
           font-size:.72rem; color:var(--text-soft); font-weight:600;
-          background:var(--row-bg); border:none; border-radius:999px; padding:.3rem .75rem;
+          background:#fff; border:1px solid var(--line); border-radius:999px; padding:.25rem .7rem;
         }
         .pc-stat b { color:var(--navy); font-weight:800; }
         
         .pc-tabs {
-          display:flex; gap:.4rem; justify-content:center; margin-top:.7rem;
+          display:flex; gap:.4rem; justify-content:center; margin-top:.75rem;
         }
         .pc-tab {
           display:inline-flex; align-items:center; gap:.35rem; background:transparent; border:1px solid var(--line);
-          border-radius:999px; padding:.42rem 1rem; font-size:.82rem; font-weight:700; cursor:pointer;
+          border-radius:999px; padding:.4rem .95rem; font-size:.82rem; font-weight:700; cursor:pointer;
           color:var(--text-soft); font-family:inherit; transition:all .15s;
         }
-        .pc-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); box-shadow:0 4px 14px rgba(15,107,76,.25); }
+        .pc-tab.active { background:var(--navy); color:#fff; border-color:var(--navy); }
         .pc-tab .badge {
           background:rgba(255,255,255,.25); font-size:.68rem; padding:.05rem .4rem; border-radius:999px; font-weight:800;
         }
@@ -777,11 +777,11 @@ export function PublicCatalog() {
         
         .pc-search-wrap { padding:1rem 1.1rem .35rem; max-width:920px; margin:0 auto; position:relative; }
         .pc-search { 
-          width:100%; font-size:1rem; padding:.8rem 3.2rem .8rem 2.7rem; border:1px solid transparent; 
-          border-radius:999px; background:#fff; color:var(--text); box-shadow:0 4px 18px rgba(15,107,76,0.07); 
+          width:100%; font-size:1rem; padding:.75rem 3.2rem .75rem 2.6rem; border:1px solid var(--line); 
+          border-radius:999px; background:#fff; color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,0.04); 
           font-family:'Anek Malayalam', inherit; 
         }
-        .pc-search:focus { outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(62,207,142,0.28); }
+        .pc-search:focus { outline:none; border-color:var(--sky); box-shadow:0 0 0 3px rgba(201,162,39,0.22); }
         .pc-search-icon { position:absolute; left:1.9rem; top:50%; transform:translateY(-42%); color:var(--text-soft); pointer-events:none; }
         .pc-mic-btn {
           position:absolute; right:1.7rem; top:50%; transform:translateY(-42%);
@@ -827,12 +827,11 @@ export function PublicCatalog() {
         .pc-cat-scroll::-webkit-scrollbar { display:none; }
         .pc-cat-btn { 
           white-space:nowrap; background:#fff; border:1px solid var(--line); color:var(--text); 
-          padding:.4rem .9rem; border-radius:999px; font-size:.8rem; font-weight:600; cursor:pointer; 
+          padding:.38rem .85rem; border-radius:999px; font-size:.8rem; font-weight:600; cursor:pointer; 
           transition:all .18s; font-family:'Anek Malayalam', inherit; display:inline-flex; align-items:center; gap:.35rem;
-          box-shadow:0 2px 8px rgba(15,107,76,0.04);
         }
         .pc-cat-btn .count { font-size:.68rem; opacity:.7; font-weight:700; }
-        .pc-cat-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); box-shadow:0 4px 12px rgba(15,107,76,0.22); }
+        .pc-cat-btn.active { background:var(--navy); color:#fff; border-color:var(--navy); }
         .pc-cat-btn.active .count { opacity:.9; }
         
         .pc-section { max-width:920px; margin:0 auto; padding:0 1.1rem 1rem; }
@@ -852,30 +851,11 @@ export function PublicCatalog() {
         .pc-hscroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:4px; }
         
         .pc-mini-card {
-          flex:0 0 120px; scroll-snap-align:start; background:#fff; border-radius:14px; overflow:hidden;
-          border:1px solid rgba(212,237,227,0.9); cursor:pointer; transition:transform .2s, box-shadow .2s;
-          box-shadow:0 4px 14px rgba(15,107,76,0.06);
+          flex:0 0 120px; scroll-snap-align:start; background:#fff; border-radius:10px; overflow:hidden;
+          border:1px solid var(--line); cursor:pointer; transition:transform .2s, box-shadow .2s;
+          box-shadow:0 2px 8px rgba(43,36,32,0.05);
         }
-        .pc-mini-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(15,107,76,0.12); }
-        .pc-hero {
-          margin:0 1.1rem .9rem; max-width:920px; margin-left:auto; margin-right:auto;
-          background:linear-gradient(135deg,#0F6B4C 0%,#1FA971 55%,#3ECF8E 100%);
-          border-radius:20px; padding:1.35rem 1.25rem 1.25rem; color:#fff;
-          box-shadow:0 12px 32px rgba(15,107,76,0.22); position:relative; overflow:hidden;
-        }
-        .pc-hero::after {
-          content:""; position:absolute; right:-20px; top:-20px; width:140px; height:140px;
-          background:rgba(255,255,255,0.1); border-radius:50%;
-        }
-        .pc-hero h2 { margin:0; font-size:1.2rem; font-weight:800; letter-spacing:-0.02em; position:relative; z-index:1; }
-        .pc-hero p { margin:.35rem 0 0; font-size:.84rem; opacity:.92; position:relative; z-index:1; max-width:85%; line-height:1.4; }
-        .pc-hero-btn {
-          margin-top:.85rem; display:inline-flex; align-items:center; gap:.35rem;
-          background:#fff; color:var(--navy); border:none; border-radius:999px;
-          padding:.45rem 1.05rem; font-size:.8rem; font-weight:800; cursor:pointer;
-          font-family:inherit; position:relative; z-index:1;
-          box-shadow:0 4px 12px rgba(0,0,0,0.12);
-        }
+        .pc-mini-card:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(43,36,32,0.1); }
         .pc-mini-cover { width:100%; aspect-ratio:2/3; background:#eee; display:flex; align-items:center; justify-content:center; overflow:hidden; }
         .pc-mini-cover img { width:100%; height:100%; object-fit:cover; }
         .pc-mini-title { font-size:.72rem; font-weight:700; padding:.4rem .45rem .5rem; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -884,13 +864,13 @@ export function PublicCatalog() {
         @media(min-width: 600px) { .pc-grid { grid-template-columns:repeat(auto-fill, minmax(175px, 1fr)); gap:1.25rem; } }
         
         .pc-card { 
-          background:var(--card); border-radius:16px; overflow:hidden; box-shadow:0 6px 20px rgba(15,107,76,0.07); 
+          background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 12px rgba(43,36,32,0.06); 
           cursor:pointer; transition:transform .22s ease, box-shadow .22s ease; display:flex; flex-direction:column; 
-          border:1px solid rgba(212,237,227,0.8); position:relative;
+          border:1px solid var(--line); position:relative;
         }
         @media (hover:hover) {
-          .pc-card:hover { transform:translateY(-5px); box-shadow:0 14px 32px rgba(15,107,76,0.14); }
-          .pc-mini-card:hover { transform:translateY(-3px); box-shadow:0 8px 20px rgba(15,107,76,0.12); }
+          .pc-card:hover { transform:translateY(-4px); box-shadow:0 10px 28px rgba(43,36,32,0.12); }
+          .pc-mini-card:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(43,36,32,0.1); }
         }
         .pc-card:active { transform:scale(0.98); }
         .pc-wishlist-flag {
@@ -913,14 +893,8 @@ export function PublicCatalog() {
         .pc-author { font-size:.78rem; color:var(--text-soft); margin-bottom:.45rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         
         .pc-badge { font-size:.68rem; font-weight:700; padding:.18rem .4rem; border-radius:4px; display:inline-block; }
-        .pc-avail { background:#D8F5E8; color:#0F6B4C; }
-        .pc-out { background:#FCE8E6; color:#C0392B; }
-        .pc-filter-btn, .pc-sort-btn {
-          box-shadow:0 2px 8px rgba(15,107,76,0.05);
-        }
-        .pc-filter-btn.active {
-          box-shadow:0 4px 12px rgba(15,107,76,0.2);
-        }
+        .pc-avail { background:#E1F0E6; color:#1F7A52; }
+        .pc-out { background:#F3E1E0; color:#8B2E3C; }
         
         .pc-like-btn {
           background:none; border:none; display:flex; align-items:center; gap:4px; cursor:pointer; 
@@ -1246,19 +1220,9 @@ export function PublicCatalog() {
         </div>
       )}
 
-      {viewMode === "browse" && !query && selectedCategory === "ALL" && !availableOnly && (
-        <div className="pc-hero">
-          <h2>Trending books</h2>
-          <p>Library-യിലെ ഏറ്റവും liked പുസ്തകങ്ങൾ — browse ചെയ്ത് favourites-ൽ save ചെയ്യാം.</p>
-          <button type="button" className="pc-hero-btn" onClick={() => setSortBy("popular")}>
-            <TrendingUp size={14} /> View popular
-          </button>
-        </div>
-      )}
-
       {viewMode === "browse" && !query && selectedCategory === "ALL" && !availableOnly && trending.length > 0 && (
         <div className="pc-section">
-          <div className="pc-section-head"><TrendingUp size={18} /> Popular</div>
+          <div className="pc-section-head"><TrendingUp size={18} /> Trending now</div>
           <div className="pc-hscroll">
             {trending.map((b) => {
               const fb = coverFallback(b);
@@ -1711,7 +1675,7 @@ export default function App() {
 
   const activeTx = useMemo(() => transactions.filter((t) => !t.returnDate), [transactions]);
   const overdueTx = useMemo(() => activeTx.filter((t) => t.dueDate < todayISO()), [activeTx]);
-  // One code = one book
+  // One code = one book. Count catalog entries (codes), not sum of totalCopies.
   const totalCopies = useMemo(() => books.length, [books]);
   const availableCopies = useMemo(() => books.reduce((s, b) => s + ((b.availableCopies || 0) > 0 ? 1 : 0), 0), [books]);
 
