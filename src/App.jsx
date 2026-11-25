@@ -59,7 +59,9 @@ function normCode(s) { return (s || "").replace(/\s+/g, "").toLowerCase(); }
 function stripSpaces(s) { return (s || "").replace(/\s+/g, ""); }
 /** Natural order for codes: SH1, SH2, … SH9, SH10 (not SH1, SH10, SH2) */
 function compareBookCodes(a, b) {
-  return String(a || "").trim().localeCompare(String(b || "").trim(), undefined, {
+  const ca = stripSpaces(String(a || ""));
+  const cb = stripSpaces(String(b || ""));
+  return ca.localeCompare(cb, undefined, {
     numeric: true,
     sensitivity: "base",
   });
@@ -561,8 +563,9 @@ export function PublicCatalog() {
         normCode(b.code).includes(normCode(q))
       );
     }
-    // Within a section (or no search): code order SH1, SH2, … SH10
-    if (selectedCategory !== "ALL" && !q) {
+    // Code order SH1, SH2, … SH10 within a section, on code-like search, or as default
+    const qLooksLikeCode = q && /^[a-z0-9]+$/i.test(q.replace(/\s+/g, "")) && list.some((b) => normCode(b.code).startsWith(normCode(q)));
+    if ((selectedCategory !== "ALL" && !q) || qLooksLikeCode || sortBy === "code") {
       list.sort((a, b) => compareBookCodes(a.code, b.code));
     } else if (sortBy === "popular") {
       list.sort((a, b) => (b.likes || 0) - (a.likes || 0) || compareBookCodes(a.code, b.code));
@@ -1793,8 +1796,7 @@ export default function App() {
         }
         // Document ID is the book code — migrate to a new doc and re-point transactions
         const batch = writeBatch(db);
-        const newRef = doc(db, "books", newCode);
-        batch.set(newRef, {
+        batch.set(doc(db, "books", newCode), {
           title: updatedFields.title,
           author: updatedFields.author,
           code: newCode,
@@ -1959,7 +1961,10 @@ export default function App() {
 
   const searchBookMatches = useMemo(() => {
     const q = homeQuery.trim().toLowerCase(); if (!q) return [];
-    return books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 5);
+    return books
+      .filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)))
+      .sort((a, b) => compareBookCodes(a.code, b.code))
+      .slice(0, 12);
   }, [homeQuery, books]);
 
   const filteredStudents = useMemo(() => {
@@ -1971,8 +1976,11 @@ export default function App() {
   }, [students, selectedClass, homeQuery]);
 
   const issueBookMatches = useMemo(() => {
-    const q = bookQuery.trim().toLowerCase(); if (!q) return books.slice(0, 6);
-    return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q))).slice(0, 6);
+    const q = bookQuery.trim().toLowerCase();
+    const list = !q
+      ? [...books]
+      : books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
+    return list.sort((a, b) => compareBookCodes(a.code, b.code)).slice(0, 12);
   }, [bookQuery, books]);
 
   const issueStudentMatches = useMemo(() => {
@@ -1988,8 +1996,11 @@ export default function App() {
   }, [returnQuery, activeTx, books, students]);
 
   const catalogMatches = useMemo(() => {
-    const q = catalogQuery.trim().toLowerCase(); if (!q) return books;
-    return books.filter((b) => b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
+    const q = catalogQuery.trim().toLowerCase();
+    const list = !q
+      ? [...books]
+      : books.filter((b) => (b.title || "").toLowerCase().includes(q) || (b.author || "").toLowerCase().includes(q) || normCode(b.code).includes(normCode(q)));
+    return list.sort((a, b) => compareBookCodes(a.code, b.code));
   }, [catalogQuery, books]);
 
   const catalogGrouped = useMemo(() => {
