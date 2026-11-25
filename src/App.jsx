@@ -1675,8 +1675,9 @@ export default function App() {
 
   const activeTx = useMemo(() => transactions.filter((t) => !t.returnDate), [transactions]);
   const overdueTx = useMemo(() => activeTx.filter((t) => t.dueDate < todayISO()), [activeTx]);
-  const totalCopies = useMemo(() => books.reduce((s, b) => s + b.totalCopies, 0), [books]);
-  const availableCopies = useMemo(() => books.reduce((s, b) => s + b.availableCopies, 0), [books]);
+  // One code = one book. Count catalog entries (codes), not sum of totalCopies.
+  const totalCopies = useMemo(() => books.length, [books]);
+  const availableCopies = useMemo(() => books.reduce((s, b) => s + ((b.availableCopies || 0) > 0 ? 1 : 0), 0), [books]);
 
   function bookById(id) { return books.find((b) => b.id === id); }
   function studentById(id) { return students.find((s) => s.id === id); }
@@ -1794,7 +1795,6 @@ export default function App() {
           alert(`Code "${newCode}" is already used by "${conflict.title}". Choose a different code.`);
           return;
         }
-        // Document ID is the book code — migrate to a new doc and re-point transactions
         const batch = writeBatch(db);
         batch.set(doc(db, "books", newCode), {
           title: updatedFields.title,
